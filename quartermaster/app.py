@@ -9,9 +9,12 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
+from quartermaster.api.foundation import router as foundation_router
+from quartermaster.api.limits import BodyLimitMiddleware
 from quartermaster.api.routes import router, validation_error
 from quartermaster.config import Settings, initialize_storage
 from quartermaster.db import SchemaError, migrate
+from quartermaster.errors import DomainError
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +36,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="QuarterMaster", version="0.1.0.dev0", lifespan=lifespan)
     app.include_router(router)
+    app.include_router(foundation_router)
+    app.add_middleware(BodyLimitMiddleware)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "ui" / "static"), "static")
     app.add_exception_handler(RequestValidationError, validation_error)
+
+    async def domain_error(request: Request, exc: DomainError):
+        if request.url.path.startswith("/api/"):
+            return JSONResponse(status_code=exc.status, content={"detail": exc.message})
+        from quartermaster.api.routes import templates
+
+        return templates.TemplateResponse(
+            request=request,
+            name="error.html",
+            context={"message": exc.message},
+            status_code=exc.status,
+        )
+
+    app.add_exception_handler(DomainError, domain_error)
 
     async def storage_error(request: Request, exc: Exception):
         logger.error("STORAGE_UNAVAILABLE")

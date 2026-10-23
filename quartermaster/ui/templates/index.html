@@ -3,12 +3,14 @@
 <section>
   <p class="eyebrow">Start with a decision</p>
   <h1>What would you like your adviser to help you decide?</h1>
-  <p>Create a project and describe its mission. Teaching, testing, training and export will arrive in later milestones.</p>
+  <p>Create a project, describe its mission, and prepare sources and historical cases for teaching.</p>
   <form action="/projects" method="post" hx-post="/projects" hx-target="#projects" hx-swap="outerHTML">
     <label for="name">Project name</label>
     <input id="name" name="name" required maxlength="120" placeholder="My adviser">
     <label for="mission">Advisory mission</label>
     <textarea id="mission" name="mission" required maxlength="4000" rows="4" placeholder="Describe the decisions you want help with."></textarea>
+    <label for="business_goal">Business goal (optional)</label>
+    <textarea id="business_goal" name="business_goal" maxlength="4000" rows="2"></textarea>
     <button type="submit">Create project</button>
   </form>
 </section>

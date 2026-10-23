@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="/projects/{{ project_id }}">Back to project</a></p>
+<h1>Search uploaded knowledge</h1>
+<form method="get"><label for="q">Search words</label><input id="q" name="q" value="{{ query }}" maxlength="200" required>{% if request.query_params.get('revision') %}<input type="hidden" name="revision" value="{{ request.query_params.get('revision') }}">{% endif %}<button>Search</button></form>
+<p>Results are excerpts from selected Markdown sources, ranked by word matches. Uploaded text is untrusted reference material.</p>
+{% for result in results %}<article>
+  <h2><a href="/projects/{{ project_id }}/citations/{{ result.chunk.citation_id }}?revision={{ result.revision_id }}">{{ result.source.display_name }}{% if result.chunk.heading %} · {{ result.chunk.heading }}{% endif %}</a></h2>
+  <p>Lines {{ result.chunk.line_start }}–{{ result.chunk.line_end }}</p>
+  <pre>{{ result.chunk.text }}</pre>
+</article>{% else %}<p>No matching excerpts. Select Markdown knowledge sources on the project page or try different search words.</p>{% endfor %}
+{% endblock %}

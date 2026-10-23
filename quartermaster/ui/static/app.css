@@ -11,7 +11,7 @@ p { line-height: 1.6; }
 .eyebrow { text-transform: uppercase; letter-spacing: .12em; color: #245343; font-size: .8rem; }
 form { display: grid; gap: .7rem; margin-top: 2rem; }
 label { font-weight: 600; }
-input, textarea, button { font: inherit; padding: .8rem; border-radius: .4rem; border: 1px solid #8a9b91; }
+input, textarea, button, select { font: inherit; padding: .8rem; border-radius: .4rem; border: 1px solid #8a9b91; min-width: 0; max-width: 100%; box-sizing: border-box; }
 textarea { resize: vertical; }
 button { justify-self: start; background: #245343; color: white; cursor: pointer; margin-top: .5rem; }
 button:disabled, .htmx-request button { opacity: .6; }
@@ -19,3 +19,16 @@ article { background: white; padding: 1rem 1.5rem; border: 1px solid #ccd4ce; bo
 .mission { white-space: pre-wrap; overflow-wrap: anywhere; }
 :focus-visible { outline: 3px solid #b26b28; outline-offset: 3px; }
 @media (max-width: 40rem) { header { flex-direction: column; } }
+.table-scroll { overflow-x: auto; margin: 1rem 0; }
+table { width: 100%; border-collapse: collapse; background: white; }
+th, td { text-align: left; border: 1px solid #ccd4ce; padding: .6rem; vertical-align: top; }
+caption { text-align: left; font-weight: 600; padding: .5rem 0; }
+.cell { white-space: pre-wrap; min-width: 8rem; max-width: 24rem; overflow-wrap: anywhere; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #edf1eb; padding: 1rem; line-height: 1.5; }
+.hash { overflow-wrap: anywhere; }
+details { margin: 1.5rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.check { display: flex; align-items: start; gap: .7rem; font-weight: 400; }
+.check input { flex: none; margin-top: .3rem; }
+.notice { padding: 1rem; border-left: 4px solid #b26b28; background: #fff6e7; }
+.button { display: inline-block; background: #245343; color: white; padding: .8rem; border-radius: .4rem; }

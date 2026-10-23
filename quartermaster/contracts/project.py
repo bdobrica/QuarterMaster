@@ -1,4 +1,4 @@
-"""Bootstrap project metadata; the adviser specification belongs to Milestone 2."""
+"""Project listing contract; the adviser contract holds versioned configuration."""
 
 from datetime import datetime
 from typing import Annotated, Literal
@@ -15,6 +15,7 @@ class ProjectCreate(BaseModel):
 
     name: Name
     mission: Mission
+    business_goal: Mission | None = None
 
 
 class Project(BaseModel):

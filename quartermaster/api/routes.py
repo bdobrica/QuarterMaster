@@ -55,9 +55,11 @@ def new_project(draft: ProjectCreate, request: Request):
 @router.post("/projects")
 async def project_form(request: Request):
     require_same_origin(request, form=True)
-    async with request.form(max_fields=2, max_files=0, max_part_size=16384) as form:
+    async with request.form(max_fields=3, max_files=0, max_part_size=16384) as form:
         try:
-            draft = ProjectCreate.model_validate(dict(form))
+            data = dict(form)
+            data["business_goal"] = data.get("business_goal") or None
+            draft = ProjectCreate.model_validate(data)
         except ValidationError:
             # Do not reflect untrusted field values or validation inputs in the error.
             return templates.TemplateResponse(
@@ -79,5 +81,7 @@ async def project_form(request: Request):
 async def validation_error(request: Request, exc: RequestValidationError):
     return JSONResponse(
         status_code=422,
-        content={"detail": "PROJECT_INVALID: Supply only name (1–120) and mission (1–4000)."},
+        content={
+            "detail": "REQUEST_INVALID: Check required fields, types and supported schema versions."
+        },
     )

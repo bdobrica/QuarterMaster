@@ -1,6 +1,6 @@
 # QuarterMaster — Implementation TODO
 
-**Status:** Milestones 0 and 1 implemented and locally verified; Milestones 2–8 remain pending.
+**Status:** Milestones 0–2 implemented and locally verified; Milestones 3–8 remain pending.
 
 **Scope:** first self-hosted teachable-adviser MVP (`0.1.0`).  
 **Design authority:** [PLAN.md](PLAN.md); implementation rules: [AGENTS.md](AGENTS.md).
@@ -69,36 +69,38 @@ Implementation and verification: [Milestone 1 record](docs/milestone-1.md).
 
 ## Milestone 2 — Project, uploads and knowledge foundation
 
-- [ ] Define and validate `quartermaster.adviser/v1` project/adviser schema.
-- [ ] Implement project creation, listing, opening and renaming.
-- [ ] Add a mission textbox and optional business-goal field.
-- [ ] Persist the mission and all revisions with timestamps.
-- [ ] Add CSRF-safe upload actions and server-side file-size limits.
-- [ ] Store original uploads immutably under content hashes.
-- [ ] Reject unsupported file extensions and invalid content.
-- [ ] Parse CSV using explicit delimiter/encoding handling.
-- [ ] Parse XLSX worksheets without executing formulas/macros.
-- [ ] Parse Markdown and preserve headings and source positions.
-- [ ] Show spreadsheet sheet names, field names, row counts and sample rows.
-- [ ] Show missing-value and likely type/date summaries without rewriting input.
-- [ ] Let the owner label a source as observations, examples or knowledge.
-- [ ] Add a user-confirmed case-grain selector (one row/post/invoice/etc.).
-- [ ] Require explicit join keys before combining spreadsheet sources.
-- [ ] Identify candidate target/outcome columns and decision-time input columns.
-- [ ] Warn when a selected input looks unavailable at the proposed decision time.
-- [ ] Implement canonical case serialization from a reviewed field mapping.
-- [ ] Preserve source ID, sheet/row and field mapping in every derived case.
-- [ ] Chunk Markdown using heading-aware boundaries and bounded length.
-- [ ] Build a per-project SQLite FTS5 knowledge index.
-- [ ] Retrieve ranked chunks with stable citation/source identifiers.
-- [ ] Add source-replacement/reindex behavior via a new immutable knowledge revision.
-- [ ] Add parser and provenance tests with malformed files and hostile filenames.
+- [x] Define and validate `quartermaster.adviser/v1` project/adviser schema.
+- [x] Implement project creation, listing, opening and renaming.
+- [x] Add a mission textbox and optional business-goal field.
+- [x] Persist the mission and all revisions with timestamps.
+- [x] Add CSRF-safe upload actions and server-side file-size limits.
+- [x] Store original uploads immutably under content hashes.
+- [x] Reject unsupported file extensions and invalid content.
+- [x] Parse CSV using explicit delimiter/encoding handling.
+- [x] Parse XLSX worksheets without executing formulas/macros.
+- [x] Parse Markdown and preserve headings and source positions.
+- [x] Show spreadsheet sheet names, field names, row counts and sample rows.
+- [x] Show missing-value and likely type/date summaries without rewriting input.
+- [x] Let the owner label a source as observations, examples or knowledge.
+- [x] Add a user-confirmed case-grain selector (one row/post/invoice/etc.).
+- [x] Require explicit join keys before combining spreadsheet sources.
+- [x] Identify candidate target/outcome columns and decision-time input columns.
+- [x] Warn when a selected input looks unavailable at the proposed decision time.
+- [x] Implement canonical case serialization from a reviewed field mapping.
+- [x] Preserve source ID, sheet/row and field mapping in every derived case.
+- [x] Chunk Markdown using heading-aware boundaries and bounded length.
+- [x] Build a per-project SQLite FTS5 knowledge index.
+- [x] Retrieve ranked chunks with stable citation/source identifiers.
+- [x] Add source-replacement/reindex behavior via a new immutable knowledge revision.
+- [x] Add parser and provenance tests with malformed files and hostile filenames.
 
 **Acceptance criteria**
 
-- [ ] A project accepts multiple CSV/XLSX/MD uploads and previews them correctly.
-- [ ] Owner-confirmed mappings produce deterministic, provenance-linked cases.
-- [ ] A citation points to the actual uploaded source; removing a source from a revision removes its retrieval results.
+- [x] A project accepts multiple CSV/XLSX/MD uploads and previews them correctly.
+- [x] Owner-confirmed mappings produce deterministic, provenance-linked cases.
+- [x] A citation points to the actual uploaded source; removing a source from a revision removes its retrieval results.
+
+Implementation and verification: [Milestone 2 record](docs/milestone-2.md).
 
 ---
 

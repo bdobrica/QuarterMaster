@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="/projects/{{ project_id }}/mappings/new">Change the field mapping</a></p>
+<h1>Review {{ preview.case_count }} proposed cases</h1>
+<p>One case represents {{ preview.mapping.grain }}. Advice is requested {{ preview.mapping.decision_time }}.</p>
+{% for warning in preview.warnings %}<p class="notice" role="alert">{{ warning }}</p>{% endfor %}
+<p>The first {{ preview.samples|length }} cases are shown below. Outcomes and target candidates are kept outside the decision input. Saving cases does not approve target advice for training.</p>
+{% for entry in entries %}<article>
+  <h2>Case {{ loop.index }}</h2>
+  {% for title, fields in entry.groups %}<h3>{{ title }}</h3>
+    {% if fields %}<div class="table-scroll"><table><thead><tr><th>Source / sheet</th><th>Field</th><th>Value</th></tr></thead><tbody>
+      {% for field in fields %}<tr><td><a href="/projects/{{ project_id }}/sources/{{ field.source_id }}">{{ field.name }}</a> / {{ field.sheet }}</td><td>{{ field.field }}</td><td class="cell">{{ field.value if field.value is not none else '—' }}</td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<p>None mapped.</p>{% endif %}
+  {% endfor %}
+  <p>Source rows: {% for row in entry.item.source_rows %}<a href="/projects/{{ project_id }}/sources/{{ row.source_id }}">{{ row.sheet }} · row {{ row.row }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+</article>{% endfor %}
+<form method="post" action="/projects/{{ project_id }}/mappings">
+  <input type="hidden" name="mapping" value="{{ preview.mapping.model_dump_json() }}">
+  <label class="check"><input type="checkbox" name="confirm" value="yes" required>I reviewed the mapping and warnings and confirm the decision inputs and join keys were available at the stated time.</label>
+  <button>Confirm mapping and save cases</button>
+</form>
+{% endblock %}

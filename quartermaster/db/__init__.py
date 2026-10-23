@@ -1,10 +1,14 @@
 """Deliberate, sequential SQLite migrations. No automatic downgrade or reset."""
 
+import json
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
+from uuid import UUID
 
-SCHEMA_VERSION = 1
+from quartermaster.contracts.adviser import AdviserSpec
+
+SCHEMA_VERSION = 2
 
 
 class SchemaError(RuntimeError):
@@ -30,6 +34,22 @@ def check_schema(connection: sqlite3.Connection) -> None:
     columns = {row[1] for row in connection.execute("PRAGMA table_info(projects)")}
     if columns != {"id", "name", "mission", "created_at"}:
         raise SchemaError("DB_SCHEMA: Restore a valid backup; the projects schema is incompatible.")
+    required = {
+        "adviser_revisions": {"project_id", "revision", "document"},
+        "sources": {"id", "project_id", "document"},
+        "case_mappings": {"id", "project_id", "document", "created_at"},
+        "derived_cases": {"id", "mapping_id", "document"},
+        "knowledge_revisions": {"id", "project_id", "document"},
+        "knowledge_members": {"revision_id", "source_id"},
+        "chunks": {"id", "source_id", "project_id", "document"},
+        "chunks_fts": {"citation_id", "text"},
+    }
+    for table, expected in required.items():
+        actual = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
+        if actual != expected:
+            raise SchemaError(
+                "DB_SCHEMA: Restore a valid backup; a metadata table is incompatible."
+            )
 
 
 def migrate(path: Path) -> None:
@@ -46,6 +66,38 @@ def migrate(path: Path) -> None:
                 "CREATE TABLE projects (id TEXT PRIMARY KEY, name TEXT NOT NULL, "
                 "mission TEXT NOT NULL, created_at TEXT NOT NULL)"
             )
+            version = 1
+        if version == 1:
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(projects)")}
+            if columns != {"id", "name", "mission", "created_at"}:
+                raise SchemaError("DB_SCHEMA: Restore a valid projects backup before migrating.")
+            statements = [
+                "CREATE TABLE adviser_revisions (project_id TEXT REFERENCES projects(id), "
+                "revision INTEGER, document TEXT NOT NULL, PRIMARY KEY(project_id, revision))",
+                "CREATE TABLE sources (id TEXT PRIMARY KEY, "
+                "project_id TEXT NOT NULL REFERENCES projects(id), document TEXT NOT NULL)",
+                "CREATE TABLE case_mappings (id TEXT PRIMARY KEY, "
+                "project_id TEXT NOT NULL REFERENCES projects(id), document TEXT NOT NULL, "
+                "created_at TEXT NOT NULL)",
+                "CREATE TABLE derived_cases (id TEXT PRIMARY KEY, "
+                "mapping_id TEXT NOT NULL REFERENCES case_mappings(id), document TEXT NOT NULL)",
+                "CREATE TABLE knowledge_revisions (id TEXT PRIMARY KEY, "
+                "project_id TEXT NOT NULL REFERENCES projects(id), document TEXT NOT NULL)",
+                "CREATE TABLE knowledge_members "
+                "(revision_id TEXT REFERENCES knowledge_revisions(id),"
+                " source_id TEXT REFERENCES sources(id), PRIMARY KEY(revision_id, source_id))",
+                "CREATE TABLE chunks (id TEXT PRIMARY KEY, source_id TEXT REFERENCES sources(id), "
+                "project_id TEXT REFERENCES projects(id), document TEXT NOT NULL)",
+                "CREATE VIRTUAL TABLE chunks_fts USING fts5(citation_id UNINDEXED, text)",
+            ]
+            for statement in statements:
+                connection.execute(statement)
+            for row in connection.execute("SELECT * FROM projects").fetchall():
+                spec = AdviserSpec.model_validate_json(json.dumps({**dict(row), "revision": 1}))
+                connection.execute(
+                    "INSERT INTO adviser_revisions VALUES (?, 1, ?)",
+                    (str(UUID(row["id"])), spec.model_dump_json()),
+                )
             connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         check_schema(connection)
     with connect(path) as connection:

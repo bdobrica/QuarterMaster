@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="/projects/{{ project.id }}">Back to project</a></p>
+<h1>Describe one historical case</h1>
+<p>Inputs enter the situation. Outcomes remain separate; target advice stays an unreviewed candidate. Field-name hints do not establish which facts were known before a decision.</p>
+{% if tables %}
+<form method="post" action="/projects/{{ project.id }}/mappings/preview">
+  <label for="primary">Primary table (one row becomes one case)</label>
+  <select id="primary" name="primary" required>{% for table in tables %}<option value="{{ loop.index0 }}">{{ names[table.source_id] }} / {{ table.sheet }}</option>{% endfor %}</select>
+  <label for="grain">What does one case represent?</label><input id="grain" name="grain" required maxlength="200" placeholder="For example, one rental request">
+  <label for="decision_time">When is advice requested?</label><input id="decision_time" name="decision_time" required maxlength="200" placeholder="For example, before handing over the tool">
+  <details><summary>Combine another table using explicit join keys (optional)</summary>
+    <p>Only exact many-to-one matches are supported. The joined key must be unique and every primary row must match. No rows are silently discarded.</p>
+    <label for="join_table">Joined table</label><select id="join_table" name="join_table"><option value="">Do not combine tables</option>{% for table in tables %}<option value="{{ loop.index0 }}">{{ names[table.source_id] }} / {{ table.sheet }}</option>{% endfor %}</select>
+    <label for="left_key">Key in the primary table</label><select id="left_key" name="left_key">{% for field in fields %}<option value="{{ loop.index0 }}">{{ names[field.source_id] }} / {{ field.sheet }} / {{ field.field }}</option>{% endfor %}</select>
+    <label for="right_key">Matching key in the joined table</label><select id="right_key" name="right_key">{% for field in fields %}<option value="{{ loop.index0 }}">{{ names[field.source_id] }} / {{ field.sheet }} / {{ field.field }}</option>{% endfor %}</select>
+  </details>
+  <div class="table-scroll"><table><caption>Choose fields from the primary and explicitly joined tables</caption><thead><tr><th>Source / sheet / field</th><th>Use as</th></tr></thead><tbody>
+    {% for field in fields %}<tr><td>{{ names[field.source_id] }} / {{ field.sheet }} / {{ field.field }}</td><td><select name="role_{{ loop.index0 }}" aria-label="Role for {{ field.field }}"><option value="ignore">Ignore</option><option value="input">Known before advice</option><option value="outcome">Later observed outcome</option><option value="target">Candidate target advice</option></select></td></tr>{% endfor %}
+  </tbody></table></div>
+  <label class="check"><input type="checkbox" name="available" value="yes" required>I checked that the selected inputs and join keys were available at the decision time.</label>
+  <button>Preview cases and warnings</button>
+</form>
+{% else %}<p>Upload a CSV or XLSX labeled observations or examples first.</p>{% endif %}
+{% endblock %}

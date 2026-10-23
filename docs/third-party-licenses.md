@@ -19,7 +19,7 @@ The CPU smoke test checks the SHA-256 digest. When updating, download both the a
 
 [pyproject.toml](../pyproject.toml) pins direct dependencies and [uv.lock](../uv.lock) pins transitive packages and distribution hashes. Each package retains its upstream license. The official Python image includes Python and Debian components with their own terms. Preserve these notices when redistributing an image; the project license alone does not cover them.
 
-Runtime packages are limited to FastAPI/Uvicorn for HTTP, Jinja2 for server-rendered HTML, Pydantic for public validation, pydantic-settings for environment/`.env` loading and secret masking, and python-multipart for browser forms. SQLite uses Python's standard library. Pytest, HTTPX2 (the installed Starlette TestClient's supported client) and Ruff are development-only. There is no GPU or provider SDK dependency in Milestone 0.
+Runtime packages include FastAPI/Uvicorn for HTTP, Jinja2 for server-rendered HTML, Pydantic for public validation, pydantic-settings for environment/`.env` loading and secret masking, and python-multipart for browser forms. Milestone 2 adds [openpyxl 3.1.5](https://pypi.org/project/openpyxl/3.1.5/) (MIT) for bounded read-only XLSX inspection and [defusedxml 0.7.1](https://pypi.org/project/defusedxml/0.7.1/) (PSFL) for XML protection; openpyxl's transitive et-xmlfile 2.0.0 retains its MIT license. These packages include their upstream notices in their distributions. CSV and SQLite/FTS5 use Python's standard library. Pytest, HTTPX2 (the installed Starlette TestClient's supported client) and Ruff are development-only. The web application has no GPU or provider SDK dependency.
 
 ## Models and uploaded materials
 

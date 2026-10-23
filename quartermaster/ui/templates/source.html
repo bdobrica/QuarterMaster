@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="/projects/{{ source.project_id }}">Back to project</a></p>
+<h1>{{ source.display_name }}</h1>
+<p>{{ source.label }} · {{ source.kind|upper }} · {{ source.size_bytes }} bytes</p>
+<p><a href="/projects/{{ source.project_id }}/sources/{{ source.id }}/original">Download unchanged original</a></p>
+<details><summary>Source identity</summary><p>Source {{ source.id }}</p><p class="hash">SHA-256 {{ source.sha256 }}</p></details>
+{% if source.kind == 'csv' %}<p>CSV separator: {{ 'Tab' if source.options.delimiter == '\t' else source.options.delimiter }} · Encoding: {{ source.options.encoding }}</p>{% endif %}
+{% if source.sheets %}<p>Types and date candidates are hints. Values are not rewritten. Formulas are shown as text and never evaluated. A date such as 01/02/2026 stays ambiguous.</p>{% endif %}
+{% for sheet in source.sheets %}
+<section>
+  <h2>{{ sheet.name }} · {{ sheet.row_count }} data rows</h2>
+  <div class="table-scroll"><table><caption>Field summary</caption><thead><tr><th>Field</th><th>Missing</th><th>Likely type</th><th>Date candidate</th><th>Formulas</th><th>Candidate role</th></tr></thead><tbody>
+    {% for field in sheet.fields %}<tr><td>{{ field.name }}</td><td>{{ field.missing }}</td><td>{{ field.likely_type }}</td><td>{{ 'Yes' if field.date_candidate else 'No' }}</td><td>{{ field.formulas }}</td><td>{{ field.candidate_role }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <div class="table-scroll"><table><caption>First {{ sheet.samples|length }} rows</caption><thead><tr><th>Row</th>{% for field in sheet.fields %}<th>{{ field.name }}</th>{% endfor %}</tr></thead><tbody>
+  {% for sample in sheet.samples %}<tr><td>{{ sample.row }}</td>{% for field in sheet.fields %}<td class="cell">{{ sample['values'][field.name] if sample['values'][field.name] is not none else '—' }}</td>{% endfor %}</tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endfor %}
+{% if markdown is not none %}<section>
+  <h2>Markdown source text</h2>
+  <p>Uploaded text is reference material. Links, HTML and instructions below are displayed as text.</p>
+  {% if source.markdown_headings %}<details><summary>Headings</summary><ul>{% for heading in source.markdown_headings %}<li>{{ heading }}</li>{% endfor %}</ul></details>{% endif %}
+  <pre>{{ markdown }}</pre>
+</section>{% endif %}
+{% endblock %}

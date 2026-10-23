@@ -19,7 +19,7 @@ def test_migration_is_idempotent_and_uses_wal(settings):
         assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
 
 
-@pytest.mark.parametrize("version", [2, 999])
+@pytest.mark.parametrize("version", [3, 999])
 def test_newer_schema_fails_without_downgrading(settings, version):
     initialize_storage(settings)
     with connect(settings.database_path) as connection:
@@ -95,3 +95,54 @@ def test_health_fails_if_schema_changes(client, settings, caplog):
 def test_health_fails_if_artifact_root_disappears(client, settings):
     settings.artifact_root.rmdir()
     assert client.get("/healthz").status_code == 503
+
+
+def test_v1_migration_preserves_projects_and_initial_mission(settings):
+    from uuid import uuid4
+
+    from quartermaster.projects import adviser_history, get_adviser
+
+    initialize_storage(settings)
+    project_id = str(uuid4())
+    with connect(settings.database_path) as connection:
+        connection.execute(
+            "CREATE TABLE projects (id TEXT PRIMARY KEY, name TEXT NOT NULL, "
+            "mission TEXT NOT NULL, created_at TEXT NOT NULL)"
+        )
+        connection.execute("PRAGMA user_version = 1")
+        connection.execute(
+            "INSERT INTO projects VALUES (?, ?, ?, ?)",
+            (project_id, "Existing adviser", "Keep this mission", "2026-01-01T12:00:00+00:00"),
+        )
+    migrate(settings.database_path)
+    spec = get_adviser(settings.database_path, project_id)
+    assert str(spec.id) == project_id
+    assert spec.mission == "Keep this mission"
+    assert spec.created_at.isoformat() == "2026-01-01T12:00:00+00:00"
+    assert spec.revision == 1
+    migrate(settings.database_path)
+    assert adviser_history(settings.database_path, project_id) == [spec]
+
+
+def test_failed_v1_migration_rolls_back_all_new_tables(settings):
+    initialize_storage(settings)
+    with connect(settings.database_path) as connection:
+        connection.execute(
+            "CREATE TABLE projects (id TEXT PRIMARY KEY, name TEXT NOT NULL, "
+            "mission TEXT NOT NULL, created_at TEXT NOT NULL)"
+        )
+        connection.execute("PRAGMA user_version = 1")
+        connection.execute(
+            "INSERT INTO projects VALUES ('not-a-uuid', 'keep', 'mission', 'bad-time')"
+        )
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        migrate(settings.database_path)
+    with connect(settings.database_path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert connection.execute("SELECT name FROM projects").fetchone()[0] == "keep"
+        tables = {
+            r[0] for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        assert tables == {"projects"}

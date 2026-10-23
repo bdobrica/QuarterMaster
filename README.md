@@ -4,7 +4,7 @@
 
 QuarterMaster helps a small-business owner turn their knowledge, historical examples, and natural-language feedback into a specialized adviser. Describe what you want advice about, upload spreadsheets and Markdown research, teach the adviser how to handle situations, evaluate its judgment, fine-tune a small language model, and export a standalone Docker-ready adviser.
 
-**Status:** Milestone 0 application skeleton plus the Milestone 1 model-to-export feasibility spike. You can create/list projects with persistent storage, and explicitly run the developer LoRA/GGUF smoke test. Uploads, the teaching loop and application training/export screens remain planned; this is not the `0.1.0` MVP yet. The tiny synthetic spike does not establish adviser quality. QuarterMaster is a standalone project, not a KitchenSoup plugin.
+**Status:** Milestones 0–2: local projects and mission history, CSV/XLSX/Markdown previews, reviewed case mappings, and searchable Markdown knowledge with source citations. The Milestone 1 developer LoRA/GGUF smoke test is also available. The guided interview, advice/correction loop and application training/export screens remain planned; this is not the `0.1.0` MVP yet. The tiny synthetic spike does not establish adviser quality. QuarterMaster is a standalone project, not a KitchenSoup plugin.
 
 ## Why QuarterMaster?
 
@@ -71,7 +71,9 @@ make lint
 uv run --locked uvicorn quartermaster.app:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
-`make help` lists formatting and Compose commands. Startup automatically initializes/checks schema v1; incompatible or unversioned existing databases fail with an actionable error instead of being reset. The [verification record](docs/milestone-0.md) describes the tested scope and bootstrap API.
+Open a project to edit its mission, upload sources, preview and confirm case mappings, and select Markdown for knowledge search. Each upload is limited to 8 MiB; formulas are never evaluated. Outcomes stay separate from decision inputs. See the [Milestone 2 guide and verification](docs/milestone-2.md) for supported mappings, limits and API routes.
+
+`make help` lists formatting and Compose commands. Startup initializes/checks schema v2 and migrates v1 projects while preserving their initial missions. Back up the data volume before upgrading. Incompatible or unversioned existing databases fail with an actionable error instead of being reset.
 
 ## Model feasibility spike and planned workflow
 
@@ -85,7 +87,7 @@ make test-export EXPORT=/absolute/path/to/data/spike/RUN_ID/adviser.tar
 
 These are explicit, bounded local developer checks, not the future no-code training/export UI. See the verification record for exact hardware, package revisions, latency, artifacts and observed regressions. No cloud GPU or builder API is used by the spike.
 
-A supported GPU is required for this LoRA spike. CPU-only installations can create projects and run the explicit base-model text preflight, subject to available memory. Uploading data, knowledge inspection and ordinary adviser testing remain later milestones. Training uses explicitly selected local hardware.
+A supported GPU is required for this LoRA spike. Projects, uploads, case preparation and knowledge search work on CPU without a model. The explicit base-model text preflight also runs on CPU, subject to available memory. Ordinary adviser testing remains a later milestone. Training uses explicitly selected local hardware.
 
 Exported advisers use a separate standard runtime package and run without the QuarterMaster builder or frontier-model API for core advice. The first launch may need to download its prebuilt runtime image; thereafter the model and knowledge are local.
 

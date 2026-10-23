@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="/projects/{{ project_id }}">Back to project</a></p>
+<h1>{{ source.display_name }}</h1>
+<p>{{ chunk.heading }} · Lines {{ chunk.line_start }}–{{ chunk.line_end }}</p>
+<pre>{{ chunk.text }}</pre>
+<p><a href="/projects/{{ project_id }}/sources/{{ source.id }}">Inspect the uploaded source</a> · <a href="/projects/{{ project_id }}/sources/{{ source.id }}/original">Download unchanged original</a></p>
+<details><summary>Evidence identity</summary><p>Citation {{ chunk.citation_id }}</p><p>Knowledge revision {{ revision_id }}</p><p>Characters {{ chunk.start }}–{{ chunk.end }} (end exclusive, decoded text)</p><p class="hash">Source SHA-256 {{ source.sha256 }}</p><p class="hash">Excerpt SHA-256 {{ chunk.sha256 }}</p></details>
+{% endblock %}

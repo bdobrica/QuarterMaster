@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="/">All projects</a></p>
+<h1>{{ project.name }}</h1>
+<p class="eyebrow">Teach · Mission and sources</p>
+<section aria-label="Mission">
+  <h2>What should this adviser help decide?</h2>
+  <form method="post" action="/projects/{{ project.id }}">
+    <input type="hidden" name="expected_revision" value="{{ project.revision }}">
+    <label for="name">Project name</label>
+    <input id="name" name="name" value="{{ project.name }}" required maxlength="120">
+    <label for="mission">Advisory mission</label>
+    <textarea id="mission" name="mission" rows="4" required maxlength="4000">{{ project.mission }}</textarea>
+    <label for="business_goal">Business goal (optional)</label>
+    <textarea id="business_goal" name="business_goal" rows="2" maxlength="4000">{{ project.business_goal or '' }}</textarea>
+    <button>Save mission</button>
+  </form>
+  <details><summary>Mission history · {{ history|length }} revisions</summary>
+    {% for revision in history|reverse %}<article>
+      <strong>{{ revision.name }}</strong> · Revision {{ revision.revision }} · {{ revision.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}
+      <p class="mission">{{ revision.mission }}</p>
+      {% if revision.business_goal %}<p>Goal: {{ revision.business_goal }}</p>{% endif %}
+    </article>{% endfor %}
+  </details>
+</section>
+<section>
+  <h2>Upload source material</h2>
+  <p>Upload CSV, XLSX or Markdown, one file at a time (8 MiB maximum). Originals stay unchanged. Nothing is sent to a model provider. Spreadsheet history does not automatically become ideal advice.</p>
+  <form action="/projects/{{ project.id }}/sources" method="post" enctype="multipart/form-data">
+    <label for="file">File</label><input id="file" type="file" name="file" accept=".csv,.xlsx,.md" required>
+    <label for="label">How should this source be used?</label>
+    <select id="label" name="label" required>
+      <option value="" selected disabled>Choose a role</option>
+      <option value="observations">Historical observations</option>
+      <option value="examples">Examples to inspect and review</option>
+      <option value="knowledge">Knowledge / reference material</option>
+    </select>
+    <label for="encoding">CSV text encoding (Markdown uses UTF-8)</label>
+    <select id="encoding" name="encoding"><option value="utf-8-sig">UTF-8 (with or without BOM)</option><option value="cp1252">Windows-1252</option></select>
+    <label for="delimiter">CSV separator</label>
+    <select id="delimiter" name="delimiter"><option value=",">Comma</option><option value=";">Semicolon</option><option value="&#9;">Tab</option><option value="|">Pipe</option></select>
+    <button>Upload and preview</button>
+  </form>
+  {% for source in sources %}<article>
+    <h3><a href="/projects/{{ project.id }}/sources/{{ source.id }}">{{ source.display_name }}</a></h3>
+    <p>{{ source.label }} · {{ source.kind|upper }} · {{ source.size_bytes }} bytes</p>
+    <small>{{ source.created_at.strftime('%Y-%m-%d %H:%M UTC') }}</small>
+  </article>{% else %}<p>No sources uploaded yet.</p>{% endfor %}
+</section>
+<section>
+  <h2>Build cases from your tables</h2>
+  <p>Choose what one case represents and which facts were known before the decision. Keep later outcomes and possible target advice separate. Joining tables requires explicit keys.</p>
+  <p><a class="button" href="/projects/{{ project.id }}/mappings/new">Review a field mapping</a></p>
+  {% for entry in mappings %}<article>
+    <strong>{{ entry.mapping.grain }}</strong> · {{ entry.case_count }} cases
+    <p>Decision time: {{ entry.mapping.decision_time }}</p>
+    <a href="/api/projects/{{ project.id }}/mappings/{{ entry.id }}/cases">Inspect saved cases and provenance (JSON)</a>
+  </article>{% endfor %}
+</section>
+<section>
+  <h2>Searchable knowledge</h2>
+  <p>Select the Markdown sources to use. Saving replaces the active selection and reindexes it as a new revision. To replace a document, upload its replacement, select it below and deselect the earlier source. Earlier revisions and originals remain available.</p>
+  <form method="post" action="/projects/{{ project.id }}/knowledge">
+    <input type="hidden" name="expected_revision" value="{{ knowledge.id if knowledge else '' }}">
+    {% for source in sources if source.kind == 'md' and source.label == 'knowledge' %}
+    <label class="check"><input type="checkbox" name="source_id" value="{{ source.id }}" {% if knowledge and source.id in knowledge.source_ids %}checked{% endif %}>{{ source.display_name }} · {{ source.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</label>
+    {% else %}<p>Upload Markdown labeled knowledge to make it searchable.</p>{% endfor %}
+    <button>Save selection and reindex</button>
+  </form>
+  <form method="get" action="/projects/{{ project.id }}/knowledge/search">
+    <label for="q">Find uploaded knowledge</label><input id="q" name="q" maxlength="200" required>
+    <button>Search</button>
+  </form>
+  {% if knowledge %}<p>Active selection: {{ knowledge.source_ids|length }} sources.</p>{% endif %}
+  <details><summary>Knowledge history · {{ knowledge_history|length }} revisions</summary>
+    {% for revision in knowledge_history %}<p>{{ revision.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }} · {{ revision.source_ids|length }} sources · <a href="/projects/{{ project.id }}/knowledge/search?revision={{ revision.id }}">Search this revision</a></p>{% endfor %}
+  </details>
+</section>
+{% endblock %}

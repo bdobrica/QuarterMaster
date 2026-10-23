@@ -1,6 +1,6 @@
 # QuarterMaster — MVP Project Plan
 
-**Status:** Milestone 0 implemented; Milestone 1 model lifecycle verified as a developer spike; product milestones pending
+**Status:** Milestones 0–2 implemented; model lifecycle verified as a developer spike; guided interview and advice/teaching loop pending
 
 **Working name:** QuarterMaster (codename; no public branding or trademark claim)  
 **Target:** a focused, self-hosted MVP built in approximately 2–3 weeks of part-time work  
@@ -190,27 +190,23 @@ Use UUIDs and timestamps for records, SHA-256 for source/artifact fingerprints. 
 
 ```yaml
 schema_version: quartermaster.adviser/v1
-id: social-post-adviser
+id: d82d635b-79b1-46ce-a924-c47b0f8094ea
+revision: 1
+created_at: 2026-10-24T00:00:00Z
+name: Social post adviser
 mission: Recommend when to publish a social-media post.
 business_goal: Improve post reach without overclaiming causal lift.
-inputs:
-  situation: required_text_or_json
-  choices: optional_string_list
-outputs:
-  recommendation: required_text
-  explanation: required_text
-  evidence_refs: string_list
-  clarification_question: optional_text
-  limitations: string_list
+inputs: quartermaster.case/v1
+outputs: quartermaster.advice/v1
 model:
   base_model_id: Qwen/Qwen3.5-0.8B
-  base_revision: pinned-at-implementation
-  adapter_artifact: optional
-knowledge_revision: immutable-revision-id
-lessons_revision: immutable-revision-id
+  base_revision: 2fc06364715b967f1860aea9cf38778875588b17
+  adapter_artifact: null
+knowledge_revision: null
+lessons_revision: null
 ```
 
-This adviser configuration remains illustrative. The text-only model lifecycle is tested in the [Milestone 1 record](docs/milestone-1.md); the full adviser configuration and product runtime remain later work. Use versioned Pydantic schemas; reject unknown required semantics and preserve manifest compatibility in the runtime. Avoid asking the model for an uncalibrated `confidence: 0.93` field.
+The [adviser contract](quartermaster/contracts/adviser.py) implements this configuration with UUIDs, append-only revisions and UTC timestamps. `knowledge_revision` becomes a UUID when the owner selects Markdown sources. Adapters and lessons remain null until their respective product milestones; unknown model/contract semantics are rejected. The text-only model lifecycle is tested in the [Milestone 1 record](docs/milestone-1.md); the product inference/runtime remains later work. Avoid asking the model for an uncalibrated `confidence: 0.93` field.
 
 ### Minimal case and feedback
 
@@ -250,6 +246,8 @@ The system must not treat arbitrary natural-language feedback as trusted until t
 9. Markdown supplies reference context and policies. Index headings and chunks with source, location and content hash; for the MVP use FTS5 lexical retrieval with a source link.
 
 The builder can interview the user about available choices and goals. It should not generate arbitrary executable preprocessing code. Support a deliberately small set of deterministic column-to-case mappings with user confirmation.
+
+Milestone 2 implements this manual foundation ([guide](docs/milestone-2.md)). A reviewed mapping creates `quartermaster.derived-case/v1` records wrapping the existing text `Case`, with mapping ID, source hashes, sheet/row and physical CSV line positions. The situation is canonical JSON text containing only selected decision inputs. Observed outcomes and unreviewed target candidates remain separate; no supervision is approved by importing a file. Exact, explicitly keyed many-to-one joins preserve one case per primary row and reject missing or ambiguous matches. Knowledge revisions select Markdown source IDs; lexical retrieval and citation lookup use only the requested revision, defaulting to the current one.
 
 ## 9. Apprentice behavior and two-speed learning
 
