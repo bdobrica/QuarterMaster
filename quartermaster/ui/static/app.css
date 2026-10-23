@@ -1,0 +1,21 @@
+:root { color-scheme: light; font-family: system-ui, sans-serif; color: #233339; background: #f5f5ef; }
+body { margin: 0; }
+header, main, footer { max-width: 56rem; margin: auto; padding: 1.5rem; }
+header { display: flex; gap: 1rem; justify-content: space-between; border-bottom: 1px solid #ccd4ce; }
+header a { color: #245343; font-weight: 700; text-decoration: none; }
+header span, footer, small { color: #53655d; font-size: .9rem; }
+main { padding-top: 3rem; }
+section { margin-bottom: 3rem; }
+h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.15; max-width: 45rem; }
+p { line-height: 1.6; }
+.eyebrow { text-transform: uppercase; letter-spacing: .12em; color: #245343; font-size: .8rem; }
+form { display: grid; gap: .7rem; margin-top: 2rem; }
+label { font-weight: 600; }
+input, textarea, button { font: inherit; padding: .8rem; border-radius: .4rem; border: 1px solid #8a9b91; }
+textarea { resize: vertical; }
+button { justify-self: start; background: #245343; color: white; cursor: pointer; margin-top: .5rem; }
+button:disabled, .htmx-request button { opacity: .6; }
+article { background: white; padding: 1rem 1.5rem; border: 1px solid #ccd4ce; border-radius: .5rem; margin: 1rem 0; }
+.mission { white-space: pre-wrap; overflow-wrap: anywhere; }
+:focus-visible { outline: 3px solid #b26b28; outline-offset: 3px; }
+@media (max-width: 40rem) { header { flex-direction: column; } }

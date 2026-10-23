@@ -1,0 +1,12 @@
+<section id="projects" aria-live="polite" aria-label="Saved projects">
+  <h2>Your projects</h2>
+  {% for project in projects %}
+  <article>
+    <h3>{{ project.name }}</h3>
+    <p class="mission">{{ project.mission }}</p>
+    <small>Created {{ project.created_at.strftime('%Y-%m-%d %H:%M UTC') }}</small>
+  </article>
+  {% else %}
+  <p>No projects yet. Create your first adviser project above.</p>
+  {% endfor %}
+</section>

@@ -1,0 +1,22 @@
+services:
+  web:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      QM_DATA_DIR: /data
+      QM_BUILDER_BASE_URL: ${QM_BUILDER_BASE_URL:-}
+      QM_BUILDER_MODEL: ${QM_BUILDER_MODEL:-}
+      QM_BUILDER_API_KEY: ${QM_BUILDER_API_KEY:-}
+    volumes:
+      - quartermaster-data:/data
+    init: true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+
+volumes:
+  quartermaster-data:
