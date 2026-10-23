@@ -1,0 +1,8 @@
+{
+  "schema_version": "quartermaster.spike-review/v1",
+  "train_sha256": "396400e92e0760b2b6e14b4227498ec064c26ddc77bb1e2ecd025d5040ace9d0",
+  "review_state": "approved",
+  "reviewer": "repository owner",
+  "reviewed_on": "2026-10-24",
+  "scope": "Four AI-drafted synthetic rental-tool supervision pairs, explicitly approved in the implementation conversation. Feasibility testing only; no independent safety or business-quality claim."
+}

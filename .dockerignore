@@ -5,5 +5,10 @@
 !LICENSE
 !quartermaster/
 !quartermaster/**
+!trainer/
+!trainer/Dockerfile
+!trainer/pyproject.toml
+!trainer/uv.lock
+!trainer/worker.py
 **/__pycache__/
 **/*.pyc

@@ -1,6 +1,7 @@
-.PHONY: help setup fmt lint test up down logs migrate
+.PHONY: help setup fmt lint test test-gpu test-export up down logs migrate
 
 UV ?= uv
+GPU_MODE ?= nvidia
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "%-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -18,6 +19,13 @@ lint: ## Check Python lint and formatting
 
 test: ## Run deterministic CPU tests (no GPU or model API calls)
 	$(UV) run --locked pytest
+
+test-gpu: ## Opt in to bounded local LoRA, conversion and isolated CPU runtime spike
+	$(UV) run --locked python -m quartermaster.spike.run --run-gpu --gpu-mode "$(GPU_MODE)"
+
+test-export: ## Recheck an existing spike archive in isolation (EXPORT=/absolute/adviser.tar)
+	test -n "$(EXPORT)"
+	$(UV) run --locked python -m quartermaster.spike.run --export "$(EXPORT)"
 
 up: ## Build and start the local web service
 	docker compose up --build -d --wait

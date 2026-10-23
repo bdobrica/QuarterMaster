@@ -1,6 +1,7 @@
 # QuarterMaster — MVP Project Plan
 
-**Status:** Milestone 0 application skeleton implemented; model/product milestones pending  
+**Status:** Milestone 0 implemented; Milestone 1 model lifecycle verified as a developer spike; product milestones pending
+
 **Working name:** QuarterMaster (codename; no public branding or trademark claim)  
 **Target:** a focused, self-hosted MVP built in approximately 2–3 weeks of part-time work  
 **Companion documents:** [TODO.md](TODO.md), [README.md](README.md), [AGENTS.md](AGENTS.md)
@@ -209,7 +210,7 @@ knowledge_revision: immutable-revision-id
 lessons_revision: immutable-revision-id
 ```
 
-This is illustrative, not a claim that the model/revision/conversion have been tested. Use versioned Pydantic schemas; reject unknown required semantics and preserve manifest compatibility in the runtime. Avoid asking the model for an uncalibrated `confidence: 0.93` field.
+This adviser configuration remains illustrative. The text-only model lifecycle is tested in the [Milestone 1 record](docs/milestone-1.md); the full adviser configuration and product runtime remain later work. Use versioned Pydantic schemas; reject unknown required semantics and preserve manifest compatibility in the runtime. Avoid asking the model for an uncalibrated `confidence: 0.93` field.
 
 ### Minimal case and feedback
 
@@ -280,7 +281,7 @@ The builder converts the comment into a proposed lesson, with applicability and 
 
 - Owner may promote reviewed before/after pairs into supervised training examples.
 - A training job freezes the base model revision, approved examples, knowledge/lesson revisions, train/eval split and training recipe.
-- Train a PEFT LoRA adapter on one pinned, curated Qwen text model. Initial candidate: `Qwen/Qwen3.5-0.8B`; verify text-only training and downstream GGUF compatibility in a spike before committing.
+- Train a PEFT LoRA adapter on the text backbone of pinned `Qwen/Qwen3.5-0.8B`. The [Milestone 1 spike](docs/milestone-1.md) records the tested revision, LoRA merge/GGUF path and hardware limits; it does not establish adviser quality or approve a candidate for active use.
 - Training may run only after hardware and dataset validation. Show rough job time and that a compatible NVIDIA GPU is required in the initial implementation.
 - Preserve the base model and previous successful adapter. A new version is a **candidate** until the owner evaluates/selects it.
 - A correction is not automatically proof that the owner's preferred advice improves business outcomes; retain independent observed outcomes when provided.

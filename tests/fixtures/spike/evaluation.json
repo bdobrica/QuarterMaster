@@ -1,0 +1,46 @@
+{
+  "schema_version": "quartermaster.spike-fixture/v1",
+  "provenance": "AI_DRAFT_SYNTHETIC",
+  "split": "evaluation",
+  "mission": "Advise whether to use a rental tool. Recommend use only when the pre-use inspection is current and no damage is reported. If inspection is overdue or damage is reported, recommend keeping it out of use pending inspection. If inspection status or damage status is missing, ask for it before deciding. Do not perform any action.",
+  "examples": [
+    {
+      "case": {
+        "schema_version": "quartermaster.case/v1",
+        "case_id": "00000000-0000-4000-8000-000000000200",
+        "situation": "A polisher has a current pre-use inspection and no damage is reported.",
+        "choices": [],
+        "observed_outcome": null
+      },
+      "advice": {
+        "schema_version": "quartermaster.advice/v1",
+        "recommendation": "The polisher can be used subject to normal operating checks.",
+        "explanation": "The reported inspection is current and no damage is reported.",
+        "evidence_refs": [],
+        "clarification_question": null,
+        "limitations": [
+          "Synthetic demonstration; no independent inspection evidence."
+        ]
+      }
+    },
+    {
+      "case": {
+        "schema_version": "quartermaster.case/v1",
+        "case_id": "00000000-0000-4000-8000-000000000201",
+        "situation": "A router has no reported damage. The pre-use inspection status is unknown.",
+        "choices": [],
+        "observed_outcome": null
+      },
+      "advice": {
+        "schema_version": "quartermaster.advice/v1",
+        "recommendation": "Wait for inspection information before deciding.",
+        "explanation": "Inspection status is unknown.",
+        "evidence_refs": [],
+        "clarification_question": "Is the router pre-use inspection current or overdue?",
+        "limitations": [
+          "Synthetic demonstration; no independent inspection evidence."
+        ]
+      }
+    }
+  ]
+}

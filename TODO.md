@@ -1,6 +1,7 @@
 # QuarterMaster — Implementation TODO
 
-**Status:** Milestone 0 implemented and locally verified; Milestones 1–8 remain pending.  
+**Status:** Milestones 0 and 1 implemented and locally verified; Milestones 2–8 remain pending.
+
 **Scope:** first self-hosted teachable-adviser MVP (`0.1.0`).  
 **Design authority:** [PLAN.md](PLAN.md); implementation rules: [AGENTS.md](AGENTS.md).
 
@@ -40,27 +41,29 @@ Verification: [Milestone 0 record](docs/milestone-0.md).
 
 ## Milestone 1 — Early model-to-export feasibility spike (critical path)
 
-- [ ] Select one small open-weight Qwen text model; record exact upstream revision and license.
-- [ ] Verify text-only inference on the selected model and record minimum hardware tested.
-- [ ] Create a tiny reviewed `Case` → `Advice` SFT fixture with clarification behavior.
-- [ ] Pin a trainer image containing Transformers, TRL, PEFT and required GPU dependencies.
-- [ ] Run one bounded LoRA training job against the fixture on supported hardware.
-- [ ] Verify generated adapter metadata, expected files and output hashes.
-- [ ] Compare unmodified model and adapter behavior on a separate tiny fixture.
-- [ ] Spike LoRA merge or direct-adapter runtime compatibility.
-- [ ] Convert/export to the chosen GGUF/runtime representation.
-- [ ] Run the exported model in a fresh isolated llama.cpp-based container.
-- [ ] Validate constrained `Advice` JSON for one normal and one missing-information case.
-- [ ] Measure approximate CPU inference latency and artifact size.
-- [ ] Document the exact successful versions and unsupported configurations.
-- [ ] Add an opt-in `make test-gpu` target for the reproducible spike.
-- [ ] Record a fallback decision if the initially selected model cannot be exported safely.
+- [x] Select one small open-weight Qwen text model; record exact upstream revision and license.
+- [x] Verify text-only inference on the selected model and record minimum hardware tested.
+- [x] Create a tiny reviewed `Case` → `Advice` SFT fixture with clarification behavior.
+- [x] Pin a trainer image containing Transformers, TRL, PEFT and required GPU dependencies.
+- [x] Run one bounded LoRA training job against the fixture on supported hardware.
+- [x] Verify generated adapter metadata, expected files and output hashes.
+- [x] Compare unmodified model and adapter behavior on a separate tiny fixture.
+- [x] Spike LoRA merge or direct-adapter runtime compatibility.
+- [x] Convert/export to the chosen GGUF/runtime representation.
+- [x] Run the exported model in a fresh isolated llama.cpp-based container.
+- [x] Validate constrained `Advice` JSON for one normal and one missing-information case.
+- [x] Measure approximate CPU inference latency and artifact size.
+- [x] Document the exact successful versions and unsupported configurations.
+- [x] Add an opt-in `make test-gpu` target for the reproducible spike.
+- [x] Record a fallback decision if the initially selected model cannot be exported safely.
 
 **Acceptance criteria**
 
-- [ ] A real, fine-tuned adapter can be served independently of the trainer and builder.
-- [ ] The runtime can produce a valid advice response and ask a clarification question.
-- [ ] A failed conversion/export is detected, not silently reported as successful.
+- [x] A real, fine-tuned adapter can be served independently of the trainer and builder.
+- [x] The runtime can produce a valid advice response and ask a clarification question.
+- [x] A failed conversion/export is detected, not silently reported as successful.
+
+Implementation and verification: [Milestone 1 record](docs/milestone-1.md).
 
 ---
 

@@ -23,6 +23,22 @@ Runtime packages are limited to FastAPI/Uvicorn for HTTP, Jinja2 for server-rend
 
 ## Models and uploaded materials
 
-Milestone 0 ships **no model weights, adapters, trainer or inference engine**. The Qwen example in [PLAN.md](../PLAN.md) is a candidate, not a verified model/license selection. Milestone 1 must record the exact upstream repository, revision, license and tested redistribution conditions before weights are distributed. Adapter training and format conversion do not remove base-model obligations.
+The repository ships **no model weights or adapters**. The opt-in Milestone 1 spike selects
+`Qwen/Qwen3.5-0.8B`, upstream revision `2fc06364715b967f1860aea9cf38778875588b17`, under
+the upstream Apache-2.0 license. Its downloaded snapshot includes the original license, and the
+spike bundle copies it unchanged as `LICENSE.model`. Model and adapter bytes remain under ignored
+local artifact storage. Training or format conversion does not remove base-model obligations.
+See the [exact pins, reproduction steps and verification scope](milestone-1.md).
+
+The optional trainer has its own [locked dependencies](../trainer/uv.lock), including PyTorch,
+Transformers, TRL and PEFT. CUDA wheels retain NVIDIA licensing; the project license does not
+relicense them or a host GPU driver. Explicit WSL GPU mode mounts the installed host driver
+read-only for local training; those driver bytes are not bundled in an exported model.
+
+The CPU runtime uses llama.cpp revision `1a24df163920a4744a95373d178d790b72a9bb2f` (MIT), built
+from its hashed source archive. The runtime image preserves the upstream license and vendor
+sources/notices, including licenses embedded in headers, under `/licenses/`. Python and Debian
+components keep their own image notices. No NVIDIA runtime or trainer dependencies are installed
+in the standalone CPU runtime.
 
 Future exports must preserve applicable model/runtime license notices and exact revision provenance. Uploaded source materials remain subject to their owners' rights; approving a lesson does not grant redistribution rights over its sources.

@@ -4,7 +4,7 @@
 
 QuarterMaster helps a small-business owner turn their knowledge, historical examples, and natural-language feedback into a specialized adviser. Describe what you want advice about, upload spreadsheets and Markdown research, teach the adviser how to handle situations, evaluate its judgment, fine-tune a small language model, and export a standalone Docker-ready adviser.
 
-**Status:** Milestone 0 application skeleton. You can create and list projects, save their missions, and restart with persistent local storage. Uploads, advice, teaching, evaluation, training and export are planned for later milestones; this is not the `0.1.0` MVP yet. QuarterMaster is a standalone project, not a KitchenSoup plugin.
+**Status:** Milestone 0 application skeleton plus the Milestone 1 model-to-export feasibility spike. You can create/list projects with persistent storage, and explicitly run the developer LoRA/GGUF smoke test. Uploads, the teaching loop and application training/export screens remain planned; this is not the `0.1.0` MVP yet. The tiny synthetic spike does not establish adviser quality. QuarterMaster is a standalone project, not a KitchenSoup plugin.
 
 ## Why QuarterMaster?
 
@@ -73,9 +73,19 @@ uv run --locked uvicorn quartermaster.app:app --host 127.0.0.1 --port 8000 --no-
 
 `make help` lists formatting and Compose commands. Startup automatically initializes/checks schema v1; incompatible or unversioned existing databases fail with an actionable error instead of being reset. The [verification record](docs/milestone-0.md) describes the tested scope and bootstrap API.
 
-## Planned model workflow
+## Model feasibility spike and planned workflow
 
-A supported GPU is required for MVP LoRA fine-tuning. CPU-only installations can create projects, ingest data, inspect knowledge, and (subject to available model resources) test adviser behavior, but should expect slower local inference and cannot complete GPU training. The initial MVP will not silently provision a paid cloud GPU.
+The opt-in [Milestone 1 spike](docs/milestone-1.md) pins Qwen3.5-0.8B, trains a small reviewed synthetic fixture, compares held-out outputs, merges a LoRA adapter into GGUF Q8_0, and tests a fresh extraction in a network-isolated llama.cpp CPU container. It uses separate Trixie-based trainer/runtime images; ordinary web startup and CPU tests do not install ML dependencies or download weights.
+
+```sh
+make test-gpu                 # Requires NVIDIA Container Toolkit
+make test-gpu GPU_MODE=wsl    # Explicit WSL device/read-only driver passthrough
+make test-export EXPORT=/absolute/path/to/data/spike/RUN_ID/adviser.tar
+```
+
+These are explicit, bounded local developer checks, not the future no-code training/export UI. See the verification record for exact hardware, package revisions, latency, artifacts and observed regressions. No cloud GPU or builder API is used by the spike.
+
+A supported GPU is required for this LoRA spike. CPU-only installations can create projects and run the explicit base-model text preflight, subject to available memory. Uploading data, knowledge inspection and ordinary adviser testing remain later milestones. Training uses explicitly selected local hardware.
 
 Exported advisers use a separate standard runtime package and run without the QuarterMaster builder or frontier-model API for core advice. The first launch may need to download its prebuilt runtime image; thereafter the model and knowledge are local.
 

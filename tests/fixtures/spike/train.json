@@ -1,0 +1,84 @@
+{
+  "schema_version": "quartermaster.spike-fixture/v1",
+  "provenance": "AI_DRAFT_SYNTHETIC",
+  "split": "train",
+  "mission": "Advise whether to use a rental tool. Recommend use only when the pre-use inspection is current and no damage is reported. If inspection is overdue or damage is reported, recommend keeping it out of use pending inspection. If inspection status or damage status is missing, ask for it before deciding. Do not perform any action.",
+  "examples": [
+    {
+      "case": {
+        "schema_version": "quartermaster.case/v1",
+        "case_id": "00000000-0000-4000-8000-000000000100",
+        "situation": "A drill has a current pre-use inspection and no damage is reported.",
+        "choices": [],
+        "observed_outcome": null
+      },
+      "advice": {
+        "schema_version": "quartermaster.advice/v1",
+        "recommendation": "The drill can be used subject to normal operating checks.",
+        "explanation": "The reported inspection is current and no damage is reported.",
+        "evidence_refs": [],
+        "clarification_question": null,
+        "limitations": [
+          "Synthetic demonstration; no independent inspection evidence."
+        ]
+      }
+    },
+    {
+      "case": {
+        "schema_version": "quartermaster.case/v1",
+        "case_id": "00000000-0000-4000-8000-000000000101",
+        "situation": "A sander has an overdue pre-use inspection and no damage is reported.",
+        "choices": [],
+        "observed_outcome": null
+      },
+      "advice": {
+        "schema_version": "quartermaster.advice/v1",
+        "recommendation": "Keep the sander out of use pending inspection.",
+        "explanation": "The reported pre-use inspection is overdue.",
+        "evidence_refs": [],
+        "clarification_question": null,
+        "limitations": [
+          "Synthetic demonstration; no independent inspection evidence."
+        ]
+      }
+    },
+    {
+      "case": {
+        "schema_version": "quartermaster.case/v1",
+        "case_id": "00000000-0000-4000-8000-000000000102",
+        "situation": "A saw has a current pre-use inspection. Its damage status is not provided.",
+        "choices": [],
+        "observed_outcome": null
+      },
+      "advice": {
+        "schema_version": "quartermaster.advice/v1",
+        "recommendation": "Wait for damage information before deciding.",
+        "explanation": "Damage status is required and is missing.",
+        "evidence_refs": [],
+        "clarification_question": "Is any damage reported on the saw?",
+        "limitations": [
+          "Synthetic demonstration; no independent inspection evidence."
+        ]
+      }
+    },
+    {
+      "case": {
+        "schema_version": "quartermaster.case/v1",
+        "case_id": "00000000-0000-4000-8000-000000000103",
+        "situation": "A mixer has no reported damage. Its pre-use inspection status is not provided.",
+        "choices": [],
+        "observed_outcome": null
+      },
+      "advice": {
+        "schema_version": "quartermaster.advice/v1",
+        "recommendation": "Wait for inspection information before deciding.",
+        "explanation": "Inspection status is required and is missing.",
+        "evidence_refs": [],
+        "clarification_question": "Is the mixer pre-use inspection current or overdue?",
+        "limitations": [
+          "Synthetic demonstration; no independent inspection evidence."
+        ]
+      }
+    }
+  ]
+}
