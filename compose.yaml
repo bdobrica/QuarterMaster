@@ -8,6 +8,8 @@ services:
       QM_BUILDER_BASE_URL: ${QM_BUILDER_BASE_URL:-}
       QM_BUILDER_MODEL: ${QM_BUILDER_MODEL:-}
       QM_BUILDER_API_KEY: ${QM_BUILDER_API_KEY:-}
+      QM_BUILDER_API_KEY_FILE: ${QM_BUILDER_API_KEY_FILE:-}
+      QM_BUILDER_TIMEOUT_SECONDS: ${QM_BUILDER_TIMEOUT_SECONDS:-20}
     volumes:
       - quartermaster-data:/data
     init: true

@@ -1,6 +1,6 @@
 # QuarterMaster — Implementation TODO
 
-**Status:** Milestones 0–2 implemented and locally verified; Milestones 3–8 remain pending.
+**Status:** Milestones 0–3 implemented and locally verified; Milestones 4–8 remain pending.
 
 **Scope:** first self-hosted teachable-adviser MVP (`0.1.0`).  
 **Design authority:** [PLAN.md](PLAN.md); implementation rules: [AGENTS.md](AGENTS.md).
@@ -106,26 +106,28 @@ Implementation and verification: [Milestone 2 record](docs/milestone-2.md).
 
 ## Milestone 3 — Guided business-problem interview
 
-- [ ] Define a small `BuilderLLM` protocol for structured responses.
-- [ ] Implement one OpenAI-compatible provider with configured model/base URL.
-- [ ] Store API credentials only as environment/secret-file references.
-- [ ] Add provider test/health action with bounded timeout and error copy.
-- [ ] Display external-data disclosure and capture explicit owner consent before sending source excerpts.
-- [ ] Implement interview state for mission, goal, available choices and target behavior.
-- [ ] Include source/schema summaries, not entire spreadsheets, in ordinary interview context.
-- [ ] Ask the owner what constitutes a historical case and what is known before advice.
-- [ ] Ask how business success or harm would be observed, where relevant.
-- [ ] Allow the owner to answer, edit or reject a builder interpretation.
-- [ ] Produce a proposed `AdviserSpec` for review before saving.
-- [ ] Add a visible `needs_examples` state for data without supervised advice.
-- [ ] Implement provider retry/invalid-JSON handling without losing interview state.
-- [ ] Create deterministic fake-provider fixtures for interviews and error cases.
+- [x] Define a small `BuilderLLM` protocol for structured responses.
+- [x] Implement one OpenAI-compatible provider with configured model/base URL.
+- [x] Store API credentials only as environment/secret-file references.
+- [x] Add provider test/health action with bounded timeout and error copy.
+- [x] Display external-data disclosure and capture explicit owner consent before sending source excerpts.
+- [x] Implement interview state for mission, goal, available choices and target behavior.
+- [x] Include source/schema summaries, not entire spreadsheets, in ordinary interview context.
+- [x] Ask the owner what constitutes a historical case and what is known before advice.
+- [x] Ask how business success or harm would be observed, where relevant.
+- [x] Allow the owner to answer, edit or reject a builder interpretation.
+- [x] Produce a proposed `AdviserSpec` for review before saving.
+- [x] Add a visible `needs_examples` state for data without supervised advice.
+- [x] Implement provider retry/invalid-JSON handling without losing interview state.
+- [x] Create deterministic fake-provider fixtures for interviews and error cases.
 
 **Acceptance criteria**
 
-- [ ] The owner can define an adviser through a short conversation and inspect/edit the resulting spec.
-- [ ] Unlabeled historical rows are never silently converted into ground-truth ideal advice.
-- [ ] The guided flow works in mocked offline tests.
+- [x] The owner can define an adviser through a short conversation and inspect/edit the resulting spec.
+- [x] Unlabeled historical rows are never silently converted into ground-truth ideal advice.
+- [x] The guided flow works in mocked offline tests.
+
+Implementation and verification: [Milestone 3 record](docs/milestone-3.md).
 
 ---
 

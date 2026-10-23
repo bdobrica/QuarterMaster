@@ -1,6 +1,6 @@
 # QuarterMaster — MVP Project Plan
 
-**Status:** Milestones 0–2 implemented; model lifecycle verified as a developer spike; guided interview and advice/teaching loop pending
+**Status:** Milestones 0–3 implemented; model lifecycle verified as a developer spike; advice/teaching loop pending
 
 **Working name:** QuarterMaster (codename; no public branding or trademark claim)  
 **Target:** a focused, self-hosted MVP built in approximately 2–3 weeks of part-time work  
@@ -196,6 +196,7 @@ created_at: 2026-10-24T00:00:00Z
 name: Social post adviser
 mission: Recommend when to publish a social-media post.
 business_goal: Improve post reach without overclaiming causal lift.
+decision_definition: null
 inputs: quartermaster.case/v1
 outputs: quartermaster.advice/v1
 model:
@@ -206,7 +207,7 @@ knowledge_revision: null
 lessons_revision: null
 ```
 
-The [adviser contract](quartermaster/contracts/adviser.py) implements this configuration with UUIDs, append-only revisions and UTC timestamps. `knowledge_revision` becomes a UUID when the owner selects Markdown sources. Adapters and lessons remain null until their respective product milestones; unknown model/contract semantics are rejected. The text-only model lifecycle is tested in the [Milestone 1 record](docs/milestone-1.md); the product inference/runtime remains later work. Avoid asking the model for an uncalibrated `confidence: 0.93` field.
+The [adviser contract](quartermaster/contracts/adviser.py) implements this configuration with UUIDs, append-only revisions and UTC timestamps. `knowledge_revision` becomes a UUID when the owner selects Markdown sources. Milestone 3 adds an optional, backward-compatible `decision_definition`: owner-reviewed available choices, target behavior, case grain, decision inputs and success/harm observation. It stays null for projects without an applied interview. Interview answers and AI drafts remain separate append-only records until explicit review; they create no training labels. Adapters and lessons remain null until their respective product milestones; unknown model/contract semantics are rejected. The text-only model lifecycle is tested in the [Milestone 1 record](docs/milestone-1.md); the product inference/runtime remains later work. Avoid asking the model for an uncalibrated `confidence: 0.93` field.
 
 ### Minimal case and feedback
 

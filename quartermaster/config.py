@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from pydantic import HttpUrl, SecretStr, field_validator
+from pydantic import Field, HttpUrl, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,11 +13,36 @@ class Settings(BaseSettings):
     builder_base_url: HttpUrl | None = None
     builder_model: str | None = None
     builder_api_key: SecretStr | None = None
+    builder_api_key_file: Path | None = None
+    builder_timeout_seconds: float = Field(default=20, ge=1, le=30)
 
-    @field_validator("builder_base_url", "builder_model", "builder_api_key", mode="before")
+    @field_validator(
+        "builder_base_url",
+        "builder_model",
+        "builder_api_key",
+        "builder_api_key_file",
+        mode="before",
+    )
     @classmethod
     def empty_is_unconfigured(cls, value):
         return None if value == "" else value
+
+    @field_validator("builder_base_url")
+    @classmethod
+    def provider_url(cls, value):
+        if value is not None:
+            if value.username or value.password or value.query or value.fragment:
+                raise ValueError("Provider URL cannot contain credentials, query or fragment")
+            if value.scheme != "https" and value.host not in {"localhost", "127.0.0.1", "[::1]"}:
+                raise ValueError("Use HTTPS for remote providers")
+        return value
+
+    @field_validator("builder_model")
+    @classmethod
+    def model_name(cls, value):
+        if value is not None and (not value.strip() or len(value) > 200):
+            raise ValueError("Set a model name of at most 200 characters")
+        return value
 
     @property
     def database_path(self) -> Path:

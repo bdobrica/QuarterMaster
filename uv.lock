@@ -339,6 +339,7 @@ source = { editable = "." }
 dependencies = [
     { name = "defusedxml" },
     { name = "fastapi" },
+    { name = "httpx2" },
     { name = "jinja2" },
     { name = "openpyxl" },
     { name = "pydantic" },
@@ -349,7 +350,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx2" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -358,6 +358,7 @@ dev = [
 requires-dist = [
     { name = "defusedxml", specifier = "==0.7.1" },
     { name = "fastapi", specifier = "==0.162.0" },
+    { name = "httpx2", specifier = "==2.16.0" },
     { name = "jinja2", specifier = "==3.1.6" },
     { name = "openpyxl", specifier = "==3.1.5" },
     { name = "pydantic", specifier = "==2.14.1" },
@@ -368,7 +369,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx2", specifier = "==2.16.0" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "ruff", specifier = "==0.17.2" },
 ]

@@ -1,0 +1,24 @@
+{
+  "provenance": "AI_DRAFT synthetic software-test fixture; not approved training data",
+  "answers": {
+    "mission": "Advise whether a rental tool may be used.",
+    "business_goal": "Reduce unsafe use; do not infer business lift from owner preference.",
+    "available_choices": "Recommend use, withhold use, or ask for missing information.",
+    "target_behavior": "Require a current inspection and no reported damage; ask when either is unknown.",
+    "case_grain": "One rental-tool request.",
+    "decision_inputs": "Tool, current inspection status and reported damage before use. Later incident counts are outcomes.",
+    "success_and_harm": "Record later incidents separately over 30 days. Owner preference is not independent safety evidence."
+  },
+  "interpretation": {
+    "name": "Rental tool adviser",
+    "mission": "Advise on rental-tool use using inspection and reported damage.",
+    "business_goal": "Support safe use; no causal business-lift claim.",
+    "decision_definition": {
+      "available_choices": "Recommend use, withhold use, or ask.",
+      "target_behavior": "Ask if inspection or damage is unknown. Require current inspection and no reported damage before recommending use.",
+      "case_grain": "One rental-tool request.",
+      "decision_inputs": "Inspection and damage status known before use; exclude later incidents.",
+      "success_and_harm": "Observe later incidents separately for 30 days; owner preference is not factual correctness."
+    }
+  }
+}

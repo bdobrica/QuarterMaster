@@ -19,7 +19,7 @@ def test_migration_is_idempotent_and_uses_wal(settings):
         assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
 
 
-@pytest.mark.parametrize("version", [3, 999])
+@pytest.mark.parametrize("version", [SCHEMA_VERSION + 1, 999])
 def test_newer_schema_fails_without_downgrading(settings, version):
     initialize_storage(settings)
     with connect(settings.database_path) as connection:

@@ -18,6 +18,16 @@ class ModelSpec(BaseModel):
     adapter_artifact: None = None
 
 
+class DecisionDefinition(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    available_choices: Mission
+    target_behavior: Mission
+    case_grain: Mission
+    decision_inputs: Mission
+    success_and_harm: Mission
+
+
 class AdviserSpec(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
@@ -28,6 +38,7 @@ class AdviserSpec(BaseModel):
     name: Name
     mission: Mission
     business_goal: Mission | None = None
+    decision_definition: DecisionDefinition | None = None
     inputs: Literal["quartermaster.case/v1"] = "quartermaster.case/v1"
     outputs: Literal["quartermaster.advice/v1"] = "quartermaster.advice/v1"
     model: ModelSpec = Field(default_factory=ModelSpec)

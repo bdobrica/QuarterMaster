@@ -16,6 +16,8 @@ def offline_environment(monkeypatch):
         "QM_BUILDER_BASE_URL",
         "QM_BUILDER_MODEL",
         "QM_BUILDER_API_KEY",
+        "QM_BUILDER_API_KEY_FILE",
+        "QM_BUILDER_TIMEOUT_SECONDS",
     ):
         monkeypatch.delenv(name, raising=False)
     original = socket.socket.connect

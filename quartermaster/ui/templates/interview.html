@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="/projects/{{ project.id }}">{{ project.name }} · Teach</a></p>
+<h1>Define your adviser</h1>
+<p>Answer a few questions, then review a proposed specification. Answers save locally. Nothing goes to a provider until you preview and approve a request.</p>
+<p class="notice"><strong>needs_examples · Reviewed examples still needed.</strong> Uploaded history, example labels and target columns are unreviewed material. This interview creates no ideal-advice labels, training examples or weight updates.</p>
+<p>Status: {{ state.status }} · Interview revision {{ state.revision }}</p>
+{% if state.error %}<p role="alert" class="notice">{{ state.error }}</p>{% endif %}
+{% if state.status == 'sending' %}<p>A provider request is in progress. It has a bounded timeout. Reload shortly; another request will not be sent automatically.</p>{% endif %}
+{% if state.status == 'applied' %}<p class="notice">Your reviewed specification was saved as adviser revision {{ state.proposal.revision }}. You can revisit the answers to create a new draft.</p>{% endif %}
+<section>
+  <h2>Your answers</h2>
+  {% for topic, question in questions.items() %}
+  {% set value = state.answers|attr(topic) %}
+  {% if topic == next_topic %}<article><h3>Next question</h3><p>{{ question }}</p>{% else %}<details><summary>{{ topic|replace('_', ' ')|capitalize }}{% if value %} · Answer saved{% else %} · Not answered{% endif %}</summary><p>{{ question }}</p>{% endif %}
+  <form method="post" action="/projects/{{ project.id }}/interview/answers">
+    <input type="hidden" name="expected_revision" value="{{ state.revision }}">
+    <input type="hidden" name="topic" value="{{ topic }}">
+    <label for="answer_{{ topic }}">Your answer</label>
+    <textarea id="answer_{{ topic }}" name="answer" rows="3" maxlength="4000" required>{{ value or '' }}</textarea>
+    <button {% if state.status == 'sending' %}disabled{% endif %}>Save answer{% if value %} changes{% endif %}</button>
+  </form>
+  {% if topic == next_topic %}</article>{% else %}</details>{% endif %}
+  {% endfor %}
+</section>
+{% if complete and state.status != 'sending' %}
+<section>
+  <h2>Create a draft for review</h2>
+  <form method="post" action="/projects/{{ project.id }}/interview/manual">
+    <input type="hidden" name="expected_revision" value="{{ state.revision }}">
+    <button>Review a draft from my answers · no provider</button>
+  </form>
+  {% if endpoint %}
+  <h3>Optional builder interpretation</h3>
+  <p>Provider endpoint: <strong>{{ endpoint }}</strong><br>Model: <strong>{{ model }}</strong></p>
+  <p>This sends your mission, answers, project name and limited source/schema summaries outside this application. It can incur provider charges and is subject to that provider's retention policy. Ordinary context contains no spreadsheet cell values. Optional excerpts contain the first 1,000 characters of each selected Markdown source (up to three). Review the exact preview before approving.</p>
+  <form method="post" action="/projects/{{ project.id }}/interview/prepare">
+    <input type="hidden" name="expected_revision" value="{{ state.revision }}">
+    {% for index in range(3) %}
+    <label for="excerpt_{{ index }}">Optional knowledge excerpt {{ index + 1 }}</label>
+    <select id="excerpt_{{ index }}" name="excerpt_{{ index }}">
+      <option value="">None</option>
+      {% for source in sources if source.kind == 'md' and source.label == 'knowledge' %}<option value="{{ source.id }}">{{ source.display_name }} · {{ source.created_at.strftime('%Y-%m-%d %H:%M UTC') }}</option>{% endfor %}
+    </select>
+    {% endfor %}
+    <button>Prepare exact request preview · nothing sent yet</button>
+  </form>
+  {% else %}<p>To enable optional builder interpretation, configure QM_BUILDER_BASE_URL and QM_BUILDER_MODEL, plus an API key environment variable or secret-file reference if required. Use the manual draft meanwhile.</p>{% endif %}
+</section>
+{% endif %}
+{% if state.status == 'prepared' %}
+<section>
+  <h2>Review external-data disclosure</h2>
+  <p>Destination: {{ state.prepared.endpoint }} · Model: {{ state.prepared.model }} · Preview: {{ state.prepared.input_bytes }} UTF-8 bytes. The request also includes JSON schema and a 2,048 output-token limit. One request only; retries require a new preview and consent.</p>
+  <details open><summary>Exact business context</summary><pre>{{ state.prepared.context }}</pre></details>
+  <details><summary>System instruction and response schema</summary><pre>{{ state.prepared.system }}</pre><pre>{{ state.prepared.response_schema|tojson(indent=2) }}</pre></details>
+  <small class="hash">Disclosure SHA-256: {{ state.prepared.disclosure_sha256 }}</small>
+  <form method="post" action="/projects/{{ project.id }}/interview/send">
+    <input type="hidden" name="expected_revision" value="{{ state.revision }}">
+    <input type="hidden" name="turn_id" value="{{ state.prepared.id }}">
+    <input type="hidden" name="disclosure_sha256" value="{{ state.prepared.disclosure_sha256 }}">
+    <label class="check"><input type="checkbox" name="consent" value="yes" required>I consent to sending this exact context, including any selected source excerpts, to the displayed provider and model.</label>
+    <button>Send once and draft interpretation</button>
+  </form>
+</section>
+{% endif %}
+{% if state.status == 'review' %}
+<section>
+  <h2>Review the proposed AdviserSpec</h2>
+  <p>{{ state.proposal_origin }} · No changes are active until you apply this review. Edit the interpretation or reject it. Rejecting leaves your active adviser unchanged.</p>
+  <form method="post" action="/projects/{{ project.id }}/interview/review">
+    <input type="hidden" name="expected_revision" value="{{ state.revision }}">
+    <label for="draft_name">Name</label><input id="draft_name" name="name" value="{{ state.proposal.name }}" required maxlength="120">
+    <label for="draft_mission">Mission</label><textarea id="draft_mission" name="mission" maxlength="4000" required>{{ state.proposal.mission }}</textarea>
+    <label for="draft_goal">Business goal (optional)</label><textarea id="draft_goal" name="business_goal" maxlength="4000">{{ state.proposal.business_goal or '' }}</textarea>
+    {% for key, value in state.proposal.decision_definition.model_dump().items() %}
+    <label for="draft_{{ key }}">{{ key|replace('_', ' ')|capitalize }}</label><textarea id="draft_{{ key }}" name="{{ key }}" maxlength="4000" required>{{ value }}</textarea>
+    {% endfor %}
+    <button name="action" value="apply">Apply reviewed specification</button>
+    <button name="action" value="reject" formnovalidate>Reject interpretation</button>
+  </form>
+  <details><summary>Full proposed spec (JSON)</summary><pre>{{ state.proposal.model_dump_json(indent=2) }}</pre></details>
+</section>
+{% endif %}
+<section>
+  <h2>Provider connection</h2>
+  <p>Testing sends one generic structured-response request and no business data. It may incur a provider charge. Health checks never call the provider.</p>
+  {% if provider_message %}<p role="status" class="notice">{{ provider_message }}</p>{% endif %}
+  {% if endpoint %}<p>{{ endpoint }} · {{ model }}</p><form method="post" action="/projects/{{ project.id }}/interview/provider-test">
+    <button name="consent" value="yes">Send generic provider test</button>
+  </form>{% endif %}
+</section>
+<details><summary>Interview history · {{ history|length }} saved transitions</summary>
+{% for entry in history|reverse %}<p>Revision {{ entry.revision }} · {{ entry.status }} · {{ entry.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}{% if entry.proposal_origin %} · {{ entry.proposal_origin }}{% endif %}</p>{% endfor %}
+<p><a href="/api/projects/{{ project.id }}/interview/revisions">Inspect full interview history (JSON)</a></p>
+</details>
+{% endblock %}

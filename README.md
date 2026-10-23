@@ -4,7 +4,7 @@
 
 QuarterMaster helps a small-business owner turn their knowledge, historical examples, and natural-language feedback into a specialized adviser. Describe what you want advice about, upload spreadsheets and Markdown research, teach the adviser how to handle situations, evaluate its judgment, fine-tune a small language model, and export a standalone Docker-ready adviser.
 
-**Status:** Milestones 0–2: local projects and mission history, CSV/XLSX/Markdown previews, reviewed case mappings, and searchable Markdown knowledge with source citations. The Milestone 1 developer LoRA/GGUF smoke test is also available. The guided interview, advice/correction loop and application training/export screens remain planned; this is not the `0.1.0` MVP yet. The tiny synthetic spike does not establish adviser quality. QuarterMaster is a standalone project, not a KitchenSoup plugin.
+**Status:** Milestones 0–3: local projects and mission history, CSV/XLSX/Markdown previews, reviewed case mappings, searchable Markdown knowledge with citations, and a guided interview with editable spec review. The interview works manually offline or through an optional provider after explicit disclosure/consent. The Milestone 1 developer LoRA/GGUF smoke test is also available. Advice/correction and application training/export screens remain planned; this is not the `0.1.0` MVP yet. The tiny synthetic spike does not establish adviser quality. QuarterMaster is a standalone project, not a KitchenSoup plugin.
 
 ## Why QuarterMaster?
 
@@ -73,7 +73,9 @@ uv run --locked uvicorn quartermaster.app:app --host 127.0.0.1 --port 8000 --no-
 
 Open a project to edit its mission, upload sources, preview and confirm case mappings, and select Markdown for knowledge search. Each upload is limited to 8 MiB; formulas are never evaluated. Outcomes stay separate from decision inputs. See the [Milestone 2 guide and verification](docs/milestone-2.md) for supported mappings, limits and API routes.
 
-`make help` lists formatting and Compose commands. Startup initializes/checks schema v2 and migrates v1 projects while preserving their initial missions. Back up the data volume before upgrading. Incompatible or unversioned existing databases fail with an actionable error instead of being reset.
+Choose **Define the adviser through a guided interview** to describe choices, desired behavior, case grain, decision-time information and observable success/harm. Review, edit or reject the resulting spec before saving it. The manual path needs no provider. Optional provider setup, exact-context consent and failure recovery are described in the [Milestone 3 guide](docs/milestone-3.md). Historical rows remain unreviewed; the interview visibly reports `needs_examples`.
+
+`make help` lists formatting and Compose commands. Startup initializes/checks schema v3 and transactionally migrates v1/v2 databases, preserving existing missions and source metadata. Back up the data volume before upgrading. Incompatible or unversioned existing databases fail with an actionable error instead of being reset.
 
 ## Model feasibility spike and planned workflow
 
