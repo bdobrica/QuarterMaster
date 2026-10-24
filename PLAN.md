@@ -1,6 +1,6 @@
 # QuarterMaster — MVP Project Plan
 
-**Status:** Milestones 0–5 locally verified; Milestone 6 implemented and CPU verified, new live GPU workflow awaiting owner opt-in; application export pending
+**Status:** Milestones 0–7 locally verified, including owner-approved real GPU training and standalone export inference; no quality gain shown by the tiny fixture; Milestone 8 pending
 
 **Working name:** QuarterMaster (codename; no public branding or trademark claim)  
 **Target:** a focused, self-hosted MVP built in approximately 2–3 weeks of part-time work  
@@ -207,7 +207,7 @@ knowledge_revision: null
 lessons_revision: null
 ```
 
-The [adviser contract](quartermaster/contracts/adviser.py) implements this configuration with UUIDs, append-only revisions and UTC timestamps. `knowledge_revision` becomes a UUID when the owner selects Markdown sources. Milestone 3 adds an optional, backward-compatible `decision_definition`: owner-reviewed available choices, target behavior, case grain, decision inputs and success/harm observation. It stays null for projects without an applied interview. Interview answers and AI drafts remain separate append-only records until explicit review; they create no training labels. Milestone 4 allows `lessons_revision` to identify the last applied lesson, with each test additionally freezing the selected lesson IDs, revisions and text. Milestone 6 permits a verified candidate UUID in `model.adapter_artifact`, selected only by explicit owner promotion; null retains the original base. Unknown model/contract semantics are rejected. The text-only model lifecycle is tested in the [Milestone 1 record](docs/milestone-1.md); the optional local CPU inference service and reviewed context loop are documented in the [Milestone 4 record](docs/milestone-4.md). Standalone product export remains later work. Avoid asking the model for an uncalibrated `confidence: 0.93` field.
+The [adviser contract](quartermaster/contracts/adviser.py) implements this configuration with UUIDs, append-only revisions and UTC timestamps. `knowledge_revision` becomes a UUID when the owner selects Markdown sources. Milestone 3 adds an optional, backward-compatible `decision_definition`: owner-reviewed available choices, target behavior, case grain, decision inputs and success/harm observation. It stays null for projects without an applied interview. Interview answers and AI drafts remain separate append-only records until explicit review; they create no training labels. Milestone 4 allows `lessons_revision` to identify the last applied lesson, with each test additionally freezing the selected lesson IDs, revisions and text. Milestone 6 permits a verified candidate UUID in `model.adapter_artifact`, selected only by explicit owner promotion; null retains the original base. Unknown model/contract semantics are rejected. The text-only model lifecycle is tested in the [Milestone 1 record](docs/milestone-1.md); the optional local CPU inference service and reviewed context loop are documented in the [Milestone 4 record](docs/milestone-4.md). Standalone candidate packaging and its verification limits are documented in [Milestone 7](docs/milestone-7.md). Avoid asking the model for an uncalibrated `confidence: 0.93` field.
 
 ### Minimal case and feedback
 
@@ -348,7 +348,7 @@ The worker verifies adapter metadata/hashes, merges/converts using the M1 path, 
 selected suite's identical frozen B context in the same pinned CPU runtime for base/candidate arms.
 An optional standard-library candidate gateway serves explicitly selected weights to Test without
 adding ML packages to the web app. Dataset review, lexical holdout guards, operator setup and honest
-verification limits are described in [Milestone 6](docs/milestone-6.md). Product export remains M7.
+verification limits are described in [Milestone 6](docs/milestone-6.md).
 
 ## 12. Export and independent runtime
 
@@ -382,6 +382,18 @@ Export steps:
 6. Present approximate hardware, runtime size and disk needs, then offer download.
 
 “Standalone” means independent execution **after** the appropriate runtime image and model artifact have been obtained. The install may require an initial image pull; routine advice cannot depend on QuarterMaster's database, its API token, or an online LLM. It will be slower on CPU than on suitable GPUs. Offline image-bundle distribution itself is deferred.
+
+M7 packages completed M6 candidates using their evaluated historical context and already
+merged/converted model bytes. The versioned JSON manifest fingerprints every payload, source,
+model, lesson selection and pinned local runtime image. Selected original Markdown and excerpts
+are copied; runtime FTS5 is rebuilt in memory, so no builder database or derived SQLite file is
+needed. Shared context assembly must reproduce all frozen evaluation inputs before packaging.
+One disclosed decision-time reference case is included without rubric or outcome. The operator's
+`make test-export` extracts into a new directory and checks the standard non-root CPU runtime in
+an offline Compose project. A separate report records verification without mutating the export.
+After explicit owner approval, a real M6 candidate completed the GPU workflow and its M7 export
+passed fresh offline runtime inference with matching model/context fingerprints. This tiny fixture
+verifies the path and shows no advice-quality gain. See [M7](docs/milestone-7.md).
 
 ## 13. Security and privacy baseline
 

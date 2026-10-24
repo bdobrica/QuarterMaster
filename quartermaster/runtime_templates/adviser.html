@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ config.adviser.name }}</title>
+<style>body{font:18px system-ui;max-width:850px;margin:2rem auto;padding:0 1rem;line-height:1.5}textarea{display:block;width:100%;box-sizing:border-box;margin:.5rem 0 1.5rem}button{padding:.7rem 1rem}article{border:1px solid #aaa;padding:1rem;margin:1rem 0}pre,p,blockquote{white-space:pre-wrap;overflow-wrap:anywhere}.error{color:#a11}</style>
+</head><body>
+<h1>{{ config.adviser.name }}</h1><p>{{ config.adviser.mission }}</p>
+<p>Local CPU adviser · Supply only facts known before the decision.</p>
+{% if message %}<p class="error" role="alert">{{ message }}</p>{% endif %}
+<form action="/advise" method="post"><label for="situation">Situation</label>
+<textarea id="situation" name="situation" rows="5" maxlength="4000" required>{{ situation or '' }}</textarea>
+<label for="choices">Available choices (optional, one per line, up to ten)</label>
+<textarea id="choices" name="choices" rows="3" maxlength="16000"></textarea>
+<button>Ask for advice</button><p>One request at a time; CPU advice can take up to three minutes.</p></form>
+{% if result %}<article><h2>Recommendation</h2><p>{{ result.advice.recommendation }}</p>
+<h2>Supporting explanation</h2><p>{{ result.advice.explanation }}</p>
+{% if result.advice.clarification_question %}<h2>Missing information</h2><p>{{ result.advice.clarification_question }}</p>{% endif %}
+{% for limitation in result.advice.limitations %}<p>{{ limitation }}</p>{% endfor %}
+<h2>Accessible evidence</h2>{% for item in result.evidence %}<details><summary>{{ item.source_name }} · lines {{ item.line_start }}–{{ item.line_end }}{% if item.citation_id|string in result.advice.evidence_refs %} · cited{% endif %}</summary><blockquote>{{ item.text }}</blockquote><small>{{ item.citation_id }}</small></details>{% else %}<p>No uploaded excerpts retrieved.</p>{% endfor %}
+<small>Export {{ result.export_id }} · Candidate {{ result.candidate_id }}</small></article>{% endif %}
+<p>Advice is limited by the supplied evidence. Clarification and abstention are valid results. No business actions are performed.</p>
+</body></html>

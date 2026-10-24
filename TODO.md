@@ -1,6 +1,6 @@
 # QuarterMaster — Implementation TODO
 
-**Status:** Milestones 0–5 implemented and locally verified; Milestone 6 implemented and CPU verified, with live GPU acceptance pending owner opt-in. Milestones 7–8 remain pending.
+**Status:** Milestones 0–7 implemented and locally verified, including one owner-approved real M6 GPU run and independent M7 export inference. The tiny fixture shows no adviser-quality improvement. Milestone 8 remains pending.
 
 **Scope:** first self-hosted teachable-adviser MVP (`0.1.0`).  
 **Design authority:** [PLAN.md](PLAN.md); implementation rules: [AGENTS.md](AGENTS.md).
@@ -221,45 +221,53 @@ synthetic rubric was not satisfied. No weight or business-lift improvement is cl
 - [x] Run a smoke inference and selected frozen evaluation suite on that candidate.
 - [x] Require explicit owner promotion; never auto-replace the active version.
 - [x] Mock trainer transitions and failure recovery in CPU-only tests.
-- [ ] Run live `make test-gpu` on a reviewed synthetic fixture.
+- [x] Run live `make test-gpu` on a reviewed synthetic fixture.
 
 **Acceptance criteria**
 
-- [ ] An owner can train from reviewed lessons without writing JSONL or Python.
+- [x] An owner can train from reviewed lessons without writing JSONL or Python.
 - [x] Base and fine-tuned models remain distinct; artifact lineage is inspectable.
 - [x] A canceled/failed training job cannot be mistaken for a deployable model.
 
-Implementation and CPU verification: [Milestone 6 record](docs/milestone-6.md). The reviewed-example, frozen dataset, queue/failure/cancellation, candidate comparison and explicit selection paths are verified offline. Live training through this new application workflow remains pending explicit owner review and GPU opt-in; the earlier M1 spike does not satisfy this acceptance check.
+Implementation and verification: [Milestone 6 record](docs/milestone-6.md). After explicit owner approval, one bounded 12-step WSL GPU run completed through the application workflow, verified/converted the adapter and compared the real candidate on identical frozen inputs. The candidate remains unpromoted. Both models missed the complete-case rubric and over-asked on the incomplete case; this verifies the workflow and shows no quality gain.
 
 ---
 
 ## Milestone 7 — Standalone adviser export
 
-- [ ] Define versioned `ExportManifest` with model, source, knowledge and runtime fingerprints.
-- [ ] Create one standard runtime application independent of the builder database.
-- [ ] Implement runtime `GET /healthz`.
-- [ ] Implement runtime `POST /v1/advise` with validated `Advice` response.
-- [ ] Add a minimal standalone browser interface for entering a case and reading advice.
-- [ ] Load selected `AdviserSpec`, approved lessons and knowledge index at runtime.
-- [ ] Implement the verified LoRA merge/convert/quantization path from Milestone 1.
-- [ ] Check model format compatibility before packaging.
-- [ ] Include copied model and knowledge bytes with hashes in the export.
-- [ ] Generate `compose.yaml` with a pinned runtime image version.
-- [ ] Generate an operator README with CPU/RAM/disk requirements and localhost endpoint.
-- [ ] Package output as a downloadable archive with deterministic paths.
-- [ ] Exclude builder credentials, raw owner secrets and unselected sources.
-- [ ] Extract an export into a fresh temporary directory for validation.
-- [ ] Start its runtime in an isolated Compose environment.
-- [ ] Query a reference advice case and verify response schema and citations.
-- [ ] Verify the exported runtime makes no builder/frontier-provider calls for core advice.
-- [ ] Surface clear errors for missing image, incompatible model or corrupt artifact.
-- [ ] Add `make test-export` for the integration smoke.
+- [x] Define versioned `ExportManifest` with model, source, knowledge and runtime fingerprints.
+- [x] Create one standard runtime application independent of the builder database.
+- [x] Implement runtime `GET /healthz`.
+- [x] Implement runtime `POST /v1/advise` with validated `Advice` response.
+- [x] Add a minimal standalone browser interface for entering a case and reading advice.
+- [x] Load selected `AdviserSpec`, approved lessons and knowledge index at runtime.
+- [x] Implement the verified LoRA merge/convert/quantization path from Milestone 1.
+- [x] Check model format compatibility before packaging.
+- [x] Include copied model and knowledge bytes with hashes in the export.
+- [x] Generate `compose.yaml` with a pinned runtime image version.
+- [x] Generate an operator README with CPU/RAM/disk requirements and localhost endpoint.
+- [x] Package output as a downloadable archive with deterministic paths.
+- [x] Exclude builder credentials, raw owner secrets and unselected sources.
+- [x] Extract an export into a fresh temporary directory for validation.
+- [x] Start its runtime in an isolated Compose environment.
+- [x] Query a reference advice case and verify response schema and citations.
+- [x] Verify the exported runtime makes no builder/frontier-provider calls for core advice.
+- [x] Surface clear errors for missing image, incompatible model or corrupt artifact.
+- [x] Add `make test-export` for the integration smoke.
 
 **Acceptance criteria**
 
-- [ ] A chosen fine-tuned adviser runs without a QuarterMaster container or database.
-- [ ] The exported package can be started using documented Docker Compose commands.
-- [ ] The model, lesson and knowledge versions match the selected evaluated candidate.
+- [x] A chosen fine-tuned adviser runs without a QuarterMaster container or database.
+- [x] The exported package can be started using documented Docker Compose commands.
+- [x] The model, lesson and knowledge versions match the selected evaluated candidate.
+
+Implementation and verification: [Milestone 7 record](docs/milestone-7.md).
+After the separate M1-based fixture check, a real newly trained M6 candidate was
+exported through the app API and served from a fresh offline Compose extraction.
+Model and frozen context fingerprints matched; no builder, database, frontier API
+or GPU was available to the exported runtime. The evaluated knowledge/lesson snapshot
+was empty by design and was preserved. The candidate remains unpromoted; no quality
+gain is claimed. Documented localhost startup was also tested with the M1 runtime fixture.
 
 ---
 

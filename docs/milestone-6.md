@@ -3,7 +3,7 @@
 The Train screen turns applied corrections into separately reviewed supervised examples. It
 freezes a dataset and queues one bounded local training attempt, records immutable candidates,
 compares base/candidate advice on identical frozen context, and requires explicit owner selection.
-Application export remains Milestone 7. Workflow verification does not establish adviser quality.
+Application export is described in [Milestone 7](milestone-7.md). Workflow verification does not establish adviser quality.
 
 ## Owner workflow
 
@@ -197,10 +197,10 @@ Executed locally on 2026-10-24:
 - Temporary smoke containers were removed. No data-volume migration to host storage or
   optional training-profile activation was performed on the existing installation.
 
-The live M6 GPU workflow remains **unrun**, awaiting explicit owner fixture review and GPU opt-in.
-The M1 GPU result is separate and does not prove this new application path. No new training,
-real candidate-model inference, model-quality improvement, cloud job, external builder request,
-application export or visual browser check is claimed by the CPU checks above.
+The CPU checks above do not establish real GPU training or candidate-model inference.
+The repository owner subsequently approved the exact fixture and one bounded local run;
+the live result below verifies this new application path separately from M1. No model-quality
+improvement, cloud job, external builder request or visual browser check is claimed.
 
 The opt-in end-to-end command and exact synthetic review are in
 [the fixture review](milestone-6-fixture-review.md):
@@ -214,3 +214,76 @@ requires the exact fixture hash to have a separate human approval record, create
 synthetic project under `data/training-smoke/<uuid>`, and never promotes the candidate or changes
 the ordinary Compose data volume. CPU mock-generated tensors/GGUF headers are software fixtures,
 not real model artifacts or evidence of training success.
+
+## Live GPU workflow verification — 2026-10-24
+
+After explicit owner approval, the following command completed successfully once, with
+no training retry or recipe change:
+
+```sh
+make test-gpu GPU_WORKFLOW=training GPU_MODE=wsl
+```
+
+The four targets retain AI-drafted synthetic provenance and the review SHA-256
+`37372a59a51d08134c5f2f284c22c334a194a38f118dfd1d740565963286cbb8`.
+The helper created a separate synthetic project, used the public correction/lesson/example
+review and dataset-freezing services, then ran the real Docker trainer, adapter verifier,
+merge/converter and identical-input CPU comparison. Fixture setup Test records are explicitly
+labeled placeholders; the four comparison outputs are real model inferences. The existing
+Compose project data was not migrated or modified. The candidate remains unpromoted.
+
+| Check | Observed result |
+| --- | --- |
+| Hardware | NVIDIA GeForce GTX 1660 Ti, 6,442,123,264 VRAM bytes, compute capability 7.5, WSL passthrough |
+| Libraries | PyTorch 2.11.0+cu126 / CUDA 12.6, Transformers 5.20.2, TRL 0.29.0, PEFT 0.21.2 |
+| Preset | quick, 12 completed steps, float32, completion-only, rank 4 / alpha 8, LR 1e-5, seed 17 |
+| Bounds | Four CPUs, 10 GiB RAM/swap limit, offline stages, 1200-second training deadline |
+| GPU observation | 100% utilization and 5953 MiB used at one sampled instant; not a measured peak |
+| Training stage | About 107 seconds including loading/setup/saving; finite training loss 2.3105412324269614 |
+| Adapter | safetensors checked, finite tensors, nonzero LoRA update, exact files/config/hashes |
+| Conversion | Real safe merge and GGUF Q8_0 conversion; 811,843,232-byte model and unchanged model license |
+| Comparison | Both cases/arms passed JSON, accessible-citation and supporting-fact checks on identical frozen B inputs |
+| Registration | Completed candidate stored immutably; original base and active project selection unchanged |
+
+The tiny evaluation **does not show improved advice**. Both the base and candidate abstained
+on the complete polisher case, failing its expected-recommendation check. Both asked about
+inspection on the incomplete router case, passing the narrow clarification check, but also
+asked about damage already supplied as absent. That extra question misses the full written
+rubric. Rendered base/candidate advice was identical on these two cases. No owner preference
+rating, factual correctness, useful generalization or business lift follows from this run.
+The candidate's distinct model hash proves different bytes, not better judgment.
+
+The suite was frozen **before** the four teaching lessons were applied, deliberately keeping
+comparison inputs constant. Its adviser snapshot has no knowledge selection or applied lessons.
+The training examples separately retain their applied-lesson context; holdout cases and rubrics
+never entered trainer inputs. Export must preserve the evaluated empty knowledge/lesson
+snapshot rather than silently adding the later teaching lessons.
+
+Exact local artifacts, under ignored data storage:
+
+```text
+data root: data/training-smoke/1c147c6c-8987-4886-8b66-573437fb589a
+project: dcfbb238-e827-4fd2-9b28-d0bb213995c7
+training run: 55a81cec-48f7-45dc-bad7-212d97629458
+candidate: fcafe3ff-139f-4b6b-9f0f-2ba81b3a1409
+suite: 51afacfa-7353-4cb4-b958-3cd58e9486e2 revision 4
+suite SHA-256: 8e4d0bbec685f583e3610ceec4ac6a5b6593beef91a9bd404321ee1ee49f6466
+job SHA-256: eb60a68b86b01697ccecd77c9895bb4a1ae9522f0b461041689ae50604f36cf2
+training manifest SHA-256: df8d88f3b8187a40df62b080890af4632538c00a826f6dde2cc74165049c1c89
+adapter SHA-256: 4ca4e66ea1d1ba3a5445fb8ef1743c2c30f45361769a3e25d239156618cf7beb
+model SHA-256: 8774d0caa5e571f55eb97f2fe3853b67e1377bb444077496fa23f39b67199188
+trainer image: sha256:e9c014a9a20dcae4a2ef0bad9554922808ef093ebff25dcdcf2ac2745e4f6ed8
+comparison runtime image: sha256:52af5dc170f9b43344961c994c82e637f0c2d04df10c80a10f4201b736d08690
+```
+
+Run status progressed queued → preflight → training → verifying → converting → evaluating →
+completed between 06:52:34 and 06:57:53 UTC. `verification.json`, the append-only SQLite run
+revisions, `output/preflight.json`, `output/training.json` and `comparison.jsonl` retain the
+details. No mock adapter, conversion or inference was used for this run. Standard-preset
+training, other GPUs and a full manual visual-browser demo remain untested.
+
+After this live run, `make test` passed **419 CPU tests** and `make lint` passed for
+**89 Python files**. The original base GGUF and model-license hashes were rechecked
+unchanged. All temporary training/export containers were removed; the ordinary
+builder and base inference services remained healthy. The real candidate's independent
+export verification is recorded in [Milestone 7](milestone-7.md).

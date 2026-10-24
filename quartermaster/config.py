@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     local_model_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     local_timeout_seconds: float = Field(default=120, ge=1, le=180)
     candidate_base_url: HttpUrl = HttpUrl("http://candidate:8080")
+    export_runtime_image: str | None = Field(default=None, pattern=r"^sha256:[a-f0-9]{64}$")
 
     @field_validator(
         "builder_base_url",
@@ -27,6 +28,7 @@ class Settings(BaseSettings):
         "builder_api_key_file",
         "local_base_url",
         "local_model_sha256",
+        "export_runtime_image",
         mode="before",
     )
     @classmethod

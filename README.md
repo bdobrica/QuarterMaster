@@ -4,7 +4,7 @@
 
 QuarterMaster helps a small-business owner turn their knowledge, historical examples, and natural-language feedback into a specialized adviser. Describe what you want advice about, upload spreadsheets and Markdown research, teach the adviser how to handle situations, evaluate its judgment, fine-tune a small language model, and export a standalone Docker-ready adviser.
 
-**Status:** Milestones 0–5 are locally verified. Milestone 6 adds reviewed SFT examples, a bounded local GPU job queue, candidate comparison and explicit weight selection; CPU verification is complete, with the new live GPU workflow awaiting owner opt-in. Optional builder requests require preview and consent. See the [training setup and limits](docs/milestone-6.md). Application export remains planned; this is not the `0.1.0` MVP yet. The separate Milestone 1 LoRA/GGUF spike proves model portability, not adviser quality. QuarterMaster is a standalone project, not a KitchenSoup plugin.
+**Status:** Milestones 0–7 are implemented and locally verified, including a real owner-approved LoRA run on a laptop GTX 1660 Ti and fresh offline inference from its standalone export. The tiny synthetic evaluation showed no quality gain; the candidate remains unpromoted. See [training results](docs/milestone-6.md) and [export setup and verification](docs/milestone-7.md). Milestone 8 remains pending, so this is not the `0.1.0` MVP yet. QuarterMaster is a standalone project, not a KitchenSoup plugin.
 
 ## Why QuarterMaster?
 
@@ -79,6 +79,8 @@ For **Test advice and teach a lesson**, first run `make model-setup`, configure 
 
 Choose **Evaluate frozen situations side by side**, create a suite, and save new Test situations with your expected behavior. Freeze the suite to capture exact inputs, then compare the same base model without and with custom context. Rate cases as A better, B better, same or both bad; wins, regressions and unreviewed cases remain separate. Saved holdouts cannot become teaching examples. See the [Milestone 5 guide and verification](docs/milestone-5.md) for limits, reproducibility and real-model failures.
 
+Choose **Export a standalone adviser** after a reviewed training run produces an evaluated candidate. Your operator first builds the standard runtime and sets its exact image ID. Packaging freezes the evaluated mission, knowledge, lessons and merged model; review the business content before downloading. Run `make test-export EXPORT=/absolute/adviser.tar` for a fresh offline Compose check, then start the extracted package using its README. See the [Milestone 7 guide](docs/milestone-7.md).
+
 `make help` lists formatting and Compose commands. Startup initializes/checks schema v6 and transactionally migrates v1–v5 databases, preserving existing records and source metadata. Back up the data volume before upgrading. Incompatible or unversioned existing databases fail with an actionable error instead of being reset.
 
 ## Model feasibility spike and planned workflow
@@ -88,14 +90,14 @@ The opt-in [Milestone 1 spike](docs/milestone-1.md) pins Qwen3.5-0.8B, trains a 
 ```sh
 make test-gpu                 # Requires NVIDIA Container Toolkit
 make test-gpu GPU_MODE=wsl    # Explicit WSL device/read-only driver passthrough
-make test-export EXPORT=/absolute/path/to/data/spike/RUN_ID/adviser.tar
+uv run --locked python -m quartermaster.spike.run --export /absolute/path/to/data/spike/RUN_ID/adviser.tar
 ```
 
-These are explicit, bounded local developer checks, not the future no-code training/export UI. See the verification record for exact hardware, package revisions, latency, artifacts and observed regressions. No cloud GPU or builder API is used by the spike.
+These are explicit, bounded developer checks, separate from the Train/Export screens. See the verification record for hardware, package revisions, latency, artifacts and observed regressions. No cloud GPU or builder API is used by the spike.
 
 A supported GPU is required for this LoRA spike. Projects, uploads, case preparation and knowledge search work on CPU without a model. The explicit base-model text preflight also runs on CPU, subject to available memory. The Test screen uses the separate local CPU model service configured above. Training uses explicitly selected local hardware.
 
-Exported advisers use a separate standard runtime package and run without the QuarterMaster builder or frontier-model API for core advice. The first launch may need to download its prebuilt runtime image; thereafter the model and knowledge are local.
+Exported advisers use one standard runtime image and run without the QuarterMaster builder or frontier-model API for core advice. Obtain the exact image first; generated Compose files never silently pull a replacement. The model and knowledge are local.
 
 ## Architecture at a glance
 

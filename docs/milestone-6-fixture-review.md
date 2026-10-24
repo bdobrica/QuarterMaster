@@ -6,6 +6,10 @@ previously reviewed for the Milestone 1 spike and adds the current structured re
 Approval for this new workflow is recorded separately against the fixture's SHA-256 in
 [review.json](../tests/fixtures/training/review.json). Pending review blocks the real smoke run.
 
+The repository owner explicitly approved these four hash-matched targets and one bounded
+WSL GPU workflow check on 2026-10-24. The review record preserves that approval and exact scope.
+Execution results are recorded in [Milestone 6](milestone-6.md); approval itself is not a result.
+
 Mission: advise on rental-tool use; require a current pre-use inspection and no reported damage.
 Keep overdue or damaged tools out of use pending inspection. Ask for missing inspection or damage
 status. Advise only; perform no action. All examples have empty citations and the limitation

@@ -30,9 +30,9 @@ else
 	$(error GPU_WORKFLOW must be spike or training)
 endif
 
-test-export: ## Recheck an existing spike archive in isolation (EXPORT=/absolute/adviser.tar)
+test-export: ## Check standalone export in fresh offline Compose (EXPORT=/absolute/adviser.tar)
 	test -n "$(EXPORT)"
-	$(UV) run --locked python -m quartermaster.spike.run --export "$(EXPORT)"
+	$(UV) run --locked python -m quartermaster.export_smoke --archive "$(EXPORT)"
 
 model-setup: ## Explicitly prepare the pinned local CPU base model (download/build if absent)
 	$(UV) run --locked python -m quartermaster.setup_local

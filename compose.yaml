@@ -14,6 +14,7 @@ services:
       QM_LOCAL_MODEL_SHA256: ${QM_LOCAL_MODEL_SHA256:-}
       QM_LOCAL_TIMEOUT_SECONDS: ${QM_LOCAL_TIMEOUT_SECONDS:-120}
       QM_CANDIDATE_BASE_URL: ${QM_CANDIDATE_BASE_URL:-http://candidate:8080}
+      QM_EXPORT_RUNTIME_IMAGE: ${QM_EXPORT_RUNTIME_IMAGE:-}
     volumes:
       - quartermaster-data:/data
     init: true

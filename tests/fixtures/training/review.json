@@ -1,7 +1,8 @@
 {
   "schema_version": "quartermaster.training-fixture-review/v1",
   "fixture_sha256": "37372a59a51d08134c5f2f284c22c334a194a38f118dfd1d740565963286cbb8",
-  "review_state": "pending",
-  "reviewer": null,
-  "scope": "Four synthetic training targets, not observed ground truth. Awaiting explicit owner review for the Milestone 6 workflow check."
+  "review_state": "approved",
+  "reviewer": "Repository owner; explicit approval in conversation on 2026-10-24",
+  "scope": "Four AI-drafted synthetic targets reviewed in docs/milestone-6-fixture-review.md; one bounded local quick LoRA workflow check via make test-gpu GPU_WORKFLOW=training GPU_MODE=wsl, followed by standalone CPU export verification. No claim of observed ground truth or business lift.",
+  "reviewed_at": "2026-10-24T06:51:51Z"
 }

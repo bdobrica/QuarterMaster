@@ -37,6 +37,11 @@ Upstream references: [pinned model and license](https://huggingface.co/Qwen/Qwen
 
 ## Reproduction
 
+M7 changes `make test-export` to the application package format. To recheck this
+older spike archive, use `uv run --locked python -m quartermaster.spike.run --export
+/absolute/path/to/adviser.tar`; the historical verification commands below describe
+the target at the time they ran. See [standalone application export](milestone-7.md).
+
 Prerequisites: Docker Engine with local NVIDIA GPU passthrough, Python 3.13/uv, at least 6 GB VRAM,
 12 GB free artifact disk plus Docker image/build space, and enough host RAM for a 10 GiB trainer
 container. Ordinary `make test` never builds images, downloads weights or starts GPU work.

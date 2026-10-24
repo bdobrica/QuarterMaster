@@ -32,6 +32,25 @@ COPY quartermaster/local_runtime.py quartermaster/candidate_runtime.py /opt/quar
 COPY LICENSE /licenses/QuarterMaster-LICENSE
 ENTRYPOINT ["python", "/opt/quartermaster/candidate_runtime.py"]
 
+FROM runtime AS standalone-runtime
+USER root
+LABEL io.quartermaster.export-contract="quartermaster.export/v1"
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 UV_PYTHON_DOWNLOADS=never \
+    UV_LINK_MODE=copy PATH="/opt/runtime/.venv/bin:$PATH"
+WORKDIR /opt/runtime
+RUN python -m pip install --no-cache-dir uv==0.12.19
+COPY pyproject.toml uv.lock README.md LICENSE ./
+RUN uv sync --locked --no-dev --no-install-project --no-cache
+COPY quartermaster/__init__.py quartermaster/advice_context.py quartermaster/config.py \
+     quartermaster/errors.py quartermaster/export_package.py quartermaster/inference.py \
+     quartermaster/standalone_runtime.py ./quartermaster/
+COPY quartermaster/contracts ./quartermaster/contracts
+COPY quartermaster/spike/__init__.py quartermaster/spike/spec.py ./quartermaster/spike/
+COPY quartermaster/runtime_templates ./quartermaster/runtime_templates
+COPY LICENSE /licenses/QuarterMaster-LICENSE
+USER 10001:10001
+ENTRYPOINT ["python", "-m", "quartermaster.standalone_runtime"]
+
 FROM python:3.13-slim-trixie@sha256:57b29a7c050c4e679e4bea572e14b3965cf4b5839de2da49d55e49ffc4024f39 AS trainer
 LABEL io.quartermaster.training-contract="quartermaster.training-job/v1"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
