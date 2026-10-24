@@ -1,0 +1,7 @@
+# Apply after `make model-setup`; plain Teach startup needs no model directory.
+services:
+  web:
+    environment:
+      QM_LOCAL_MODEL_DIR: /model
+    volumes:
+      - ./data/local-model:/model:ro

@@ -12,8 +12,13 @@ from quartermaster.config import Settings
 from quartermaster.contracts.advice import CompactAdvice, DecisionOnly
 from quartermaster.contracts.teaching import GroundedAdvice
 from quartermaster.errors import DomainError
+from quartermaster.generation import (
+    ADVICE_PARAMETERS,
+    checked_parameters,
+    completed_choice,
+    unambiguous_json,
+)
 from quartermaster.generation import PARAMETERS as PARAMETERS
-from quartermaster.generation import checked_parameters, completed_choice
 from quartermaster.spike.spec import MODEL_REVISION
 
 
@@ -29,7 +34,7 @@ def identity(settings: Settings) -> str:
     return model_alias(settings.local_model_sha256)
 
 
-def response_schema(context: str) -> dict:
+def response_schema(context: str, *, bounded=False) -> dict:
     """Constrain citations and align behavior/question fields during generation too."""
     schema = GroundedAdvice.model_json_schema()
     advice = schema["$defs"]["Advice"]
@@ -44,6 +49,22 @@ def response_schema(context: str) -> dict:
         refs["items"] = {"type": "string", "enum": accessible}
     else:
         refs["maxItems"] = 0
+    if bounded:
+        # A flat schema leaves action selection to the model; application validation
+        # still enforces behavior/question consistency. Historical schemas are unchanged.
+        refs["maxItems"] = min(refs.get("maxItems", 3), 3)
+        advice["properties"]["recommendation"]["maxLength"] = 400
+        advice["properties"]["explanation"]["maxLength"] = 600
+        advice["properties"]["limitations"]["maxItems"] = 3
+        advice["properties"]["limitations"]["items"]["maxLength"] = 200
+        advice["properties"]["clarification_question"] = {
+            "anyOf": [{"type": "string", "minLength": 1, "maxLength": 240}, {"type": "null"}]
+        }
+        schema["properties"]["supporting_quotes"]["maxItems"] = 2
+        schema["properties"]["supporting_quotes"]["items"]["maxLength"] = 240
+        schema["properties"]["missing_information"]["maxItems"] = 1
+        schema["properties"]["missing_information"]["items"]["maxLength"] = 160
+        return schema
     branches = []
     for behavior in ("recommend", "clarify", "abstain"):
         branch = deepcopy(schema)
@@ -139,13 +160,15 @@ class LocalInference:
             if decision_only
             else compact_response_schema(schema_context if schema_context is not None else context)
             if compact
-            else response_schema(context)
+            else response_schema(context, bounded=parameters == ADVICE_PARAMETERS)
         )
         content, tokens = await self._completion(system, context, parameters, schema)
         try:
+            if parameters == ADVICE_PARAMETERS:
+                unambiguous_json(content)
             model = DecisionOnly if decision_only else CompactAdvice if compact else GroundedAdvice
             return model.model_validate_json(content), tokens
-        except (ValueError, ValidationError):
+        except (ValueError, ValidationError, TypeError, RecursionError):
             raise CompletionError(
                 "LOCAL_JSON: Model returned invalid or incomplete advice; retry.",
                 completion_tokens=tokens,

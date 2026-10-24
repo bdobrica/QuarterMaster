@@ -9,15 +9,15 @@
   <script src="{{ url_for('static', path='/vendor/htmx.min.js') }}" defer></script>
 </head>
 <body>
-  <header><a href="/">QuarterMaster</a><span>Local adviser workshop · Teach · Test · Evaluate · Train · Export</span></header>
+  <header><a href="/">QuarterMaster</a><span>Local adviser workshop · Teach → Test → Correct → Export</span></header>
   <nav aria-label="Workshop help"><a href="/examples">Synthetic examples</a> · <a href="/help">Help and troubleshooting</a></nav>
   <main>
     {% if project is defined %}<nav aria-label="Adviser workflow" class="project-tabs">
       <a href="/projects/{{ project.id }}">Teach</a>
-      <a href="/projects/{{ project.id }}/train">Train</a>
-      <a href="/projects/{{ project.id }}/evaluations">Evaluate</a>
       <a href="/projects/{{ project.id }}/test">Test</a>
+      <a href="/projects/{{ project.id }}/test#lessons">Correct</a>
       <a href="/projects/{{ project.id }}/export">Export</a>
+      <details><summary>Advanced</summary><a href="/projects/{{ project.id }}/train">Train</a> · <a href="/projects/{{ project.id }}/evaluations">Evaluate</a> · <a href="/projects/{{ project.id }}/reliability">Saved diagnostics</a></details>
     </nav>{% endif %}
     {% block content %}{% endblock %}
   </main>

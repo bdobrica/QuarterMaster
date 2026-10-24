@@ -304,6 +304,18 @@ Implementation and verification: [Milestone 8 record](docs/milestone-8.md); oper
 
 ---
 
+## Working adviser follow-up
+
+- [x] Enable bounded thinking for new ordinary tests while preserving historical generation profiles and all existing supervision/weights.
+- [x] Include the selected knowledge revision, business goal, decision definition and approved context lessons; verify selected excerpts and disclose budget omissions.
+- [x] Add a simple paired base/existing-LoRA option using one captured situation/context, with durable failures and no model promotion.
+- [x] Make Teach → Test → Correct → Export the primary navigation; keep training and diagnostics under Advanced.
+- [x] Add tested-base standalone export with explicit acknowledgement, exact context/settings and no fabricated candidate/evaluation lineage; preserve historical candidate exports.
+- [x] Verify the final fresh-container export and browser deployment; record actual commands/results in the working adviser guide.
+- [ ] Establish useful, correctly cited advice with only necessary questions on the real bank situations; bounded thinking alone has not met this gate.
+
+Verification and operation: [working adviser](docs/working-adviser.md).
+
 ## Inference reliability follow-up — before another bank LoRA attempt
 
 The earlier owner reviews prioritized inference design over another GPU run. The

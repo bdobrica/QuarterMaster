@@ -13,6 +13,7 @@ from quartermaster.contracts.sources import Contract, UUIDValue
 class TestInput(Contract):
     situation: Text
     choices: list[Text] = Field(default_factory=list, max_length=10)
+    compare_existing: bool = False
 
 
 class GroundedAdvice(Contract):
@@ -53,7 +54,7 @@ class TestRun(Contract):
     created_at: AwareDatetime
     case: Case
     adviser: AdviserSpec
-    prompt_version: Literal["context/v1", "context/v2"] = "context/v1"
+    prompt_version: Literal["context/v1", "context/v2", "context/v3"] = "context/v1"
     engine_revision: Literal["1a24df163920a4744a95373d178d790b72a9bb2f"] = (
         "1a24df163920a4744a95373d178d790b72a9bb2f"
     )
@@ -67,6 +68,9 @@ class TestRun(Contract):
     draft: GroundedAdvice | None
     advice: Advice | None
     error: str | None
+    model_role: Literal["active", "base", "existing_lora"] = "active"
+    comparison_of: UUIDValue | None = None
+    comparison_model_sha256: str | None = None
 
 
 Category = Literal["good", "wrong_call", "missing_knowledge", "should_ask", "weak_explanation"]

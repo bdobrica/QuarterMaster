@@ -6,7 +6,12 @@ import re
 import sqlite3
 import tarfile
 
-from quartermaster.advice_context import PROMPT_VERSION, assemble_context
+from quartermaster.advice_context import (
+    ADVICE_PROMPT_VERSION,
+    PROMPT_VERSION,
+    assemble_context,
+    knowledge_order,
+)
 from quartermaster.contracts.export import (
     ExportKnowledge,
     ExportManifest,
@@ -157,7 +162,12 @@ class PackageContext:
     def assemble(self, case):
         terms = re.findall(r"\w+", case.situation[:200], re.UNICODE)[:16]
         evidence = []
-        if terms:
+        if self.prompt_version == ADVICE_PROMPT_VERSION:
+            evidence = [
+                {"chunk": chunk, "source": self.sources[chunk.source_id]}
+                for chunk in knowledge_order(self.chunks.values(), case, self.config.adviser)
+            ]
+        elif terms:
             match = " OR ".join('"' + t + '"' for t in terms)
             ids = self.index.execute(
                 "SELECT citation_id FROM chunks_fts WHERE chunks_fts MATCH ? "

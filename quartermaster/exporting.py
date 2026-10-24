@@ -158,14 +158,20 @@ def compose_text(image):
 
 
 def operator_readme(manifest, size):
+    lineage = (
+        f"Unchanged base; tested snapshot {manifest.source_test_id}.\n"
+        "This is a working-adviser snapshot, not a claim of evaluated model improvement.\n"
+        "Bounded local thinking is enabled; no training occurred during export."
+        if manifest.schema_version == "quartermaster.export/v3"
+        else f"Candidate {manifest.candidate_id}; evaluated suite {manifest.suite_id} "
+        f"revision {manifest.suite_revision}."
+    )
     return f"""# Standalone adviser
 
-Export {manifest.id}; candidate {manifest.candidate_id}.
-Evaluated adviser revision {manifest.evaluated_adviser_revision}; suite
-{manifest.suite_id} revision {manifest.suite_revision}.
-The package freezes the evaluated context, including its historical knowledge and
-approved lessons. Later builder edits are absent. The weights were already merged
-and converted by the fixed training worker; exporting never trains or converts again.
+Export {manifest.id}; adviser revision {manifest.evaluated_adviser_revision}.
+{lineage}
+The package freezes tested context, including its selected knowledge and approved
+lessons. Later builder edits are absent. Exporting never trains or converts weights.
 
 ## Start
 
@@ -303,9 +309,165 @@ def create_export(settings, project_id, selection):
         context_sha256=content_hash(suite.inputs[0].b.context),
         evidence_ids=[e.citation_id for e in suite.inputs[0].b.evidence],
     )
-    export_id = uuid4()
+    data = dict(
+        schema_version="quartermaster.export/v2",
+        prompt_version=prompt_version,
+        inference_parameters=parameters,
+        id=uuid4(),
+        project_id=UUID(str(project_id)),
+        created_at=datetime.now(UTC),
+        candidate_id=version.id,
+        training_run_id=version.training_run_id,
+        candidate_sha256=content_hash(version.model_dump_json()),
+        job_sha256=version.job_sha256,
+        training_manifest_sha256=version.training_manifest_sha256,
+        suite_id=version.suite_id,
+        suite_revision=version.suite_revision,
+        suite_sha256=version.suite_sha256,
+        evaluated_adviser_revision=spec.revision,
+        knowledge_revision=spec.knowledge_revision,
+        lessons_revision=spec.lessons_revision,
+        source_hashes=suite.source_hashes,
+        runtime_image=settings.export_runtime_image,
+        files={},
+    )
+    return write_package(
+        settings,
+        project_id,
+        config,
+        material,
+        sources,
+        reference,
+        portable,
+        data,
+        version.model_sha256,
+        version.license_sha256,
+    )
+
+
+def create_base_export(settings, project_id, selection):
+    """Package a successful base test, without inventing candidate/evaluation lineage."""
+    from quartermaster.advice_context import ADVICE_PROMPT_VERSION, system_for
+    from quartermaster.generation import ADVICE_PARAMETERS
+    from quartermaster.inference import model_alias
+    from quartermaster.local_runtime import verify
+
+    if settings.export_runtime_image is None:
+        raise DomainError("EXPORT_IMAGE: Configure the pinned standalone runtime image.", 409)
+    run = teaching.get_test(settings, project_id, selection.test_id)
+    portable = settings.local_model_dir
+    try:
+        base = verify(portable)
+    except (OSError, ValueError, KeyError, TypeError):
+        raise DomainError(
+            "EXPORT_BASE: Restore the pinned base bundle and model directory.", 409
+        ) from None
+    if (
+        run.error
+        or run.advice is None
+        or run.draft is None
+        or run.prompt_version != ADVICE_PROMPT_VERSION
+        or run.model_alias != model_alias(base["sha256"])
+        or run.model_role == "existing_lora"
+        or run.parameters != ADVICE_PARAMETERS
+        or run.system != system_for(run.prompt_version)
+        or run.response_schema != response_schema(run.context, bounded=True)
+    ):
+        raise DomainError("EXPORT_TEST: Choose a successful bounded-thinking base test first.", 409)
+    spec = run.adviser.model_copy(update={"model": ModelSpec()})
+    with connect(settings.database_path) as connection:
+        lessons = frozen_lessons(connection, project_id, spec)
+        revision = (
+            knowledge.read_revision(connection, project_id, spec.knowledge_revision)
+            if spec.knowledge_revision
+            else None
+        )
+        sources = (
+            [read_source(connection, project_id, s) for s in revision.source_ids]
+            if revision
+            else []
+        )
+        chunks = []
+        for source in sources:
+            rows = connection.execute(
+                "SELECT document FROM chunks WHERE source_id=? ORDER BY id", (str(source.id),)
+            )
+            chunks.extend(Chunk.model_validate_json(row[0]) for row in rows)
+    config = RuntimeConfiguration(adviser=spec, lessons=lessons)
+    material = ExportKnowledge(
+        sources=[
+            ExportSource(id=s.id, display_name=s.display_name, sha256=s.sha256) for s in sources
+        ],
+        chunks=chunks,
+    )
+    context = PackageContext(config, material, prompt_version=run.prompt_version)
+    try:
+        _, text, evidence, selected, _ = context.assemble(run.case)
+        if text != run.context or evidence != run.evidence or selected != run.lessons:
+            raise DomainError("EXPORT_CONTEXT: Restore the tested knowledge and lessons.", 409)
+    finally:
+        context.close()
+    reference = ExportReference(
+        case=RuntimeInput(
+            situation=run.case.situation, choices=run.case.choices, case_id=run.case.case_id
+        ),
+        context_sha256=content_hash(run.context),
+        evidence_ids=[e.citation_id for e in run.evidence],
+    )
+    data = dict(
+        schema_version="quartermaster.export/v3",
+        id=uuid4(),
+        project_id=UUID(str(project_id)),
+        created_at=datetime.now(UTC),
+        candidate_id=None,
+        training_run_id=None,
+        candidate_sha256=None,
+        job_sha256=None,
+        training_manifest_sha256=None,
+        suite_id=None,
+        suite_revision=None,
+        suite_sha256=None,
+        source_test_id=run.id,
+        source_test_sha256=content_hash(run.model_dump_json()),
+        evaluated_adviser_revision=spec.revision,
+        knowledge_revision=spec.knowledge_revision,
+        lessons_revision=spec.lessons_revision,
+        source_hashes={str(s.id): s.sha256 for s in sources},
+        runtime_image=settings.export_runtime_image,
+        prompt_version=run.prompt_version,
+        inference_parameters=run.parameters,
+        files={},
+    )
+    return write_package(
+        settings,
+        project_id,
+        config,
+        material,
+        sources,
+        reference,
+        portable,
+        data,
+        base["sha256"],
+        base["license_sha256"],
+    )
+
+
+def write_package(
+    settings,
+    project_id,
+    config,
+    material,
+    sources,
+    reference,
+    portable,
+    data,
+    model_sha256,
+    license_sha256,
+):
+    export_id = data["id"]
+    model_size = (portable / "model.gguf").stat().st_size
     root = directory(settings, project_id, export_id)
-    required = version.model_size_bytes * 2 + 64_000_000
+    required = model_size * 2 + 64_000_000
     if shutil.disk_usage(settings.data_dir).free < required:
         raise DomainError(
             "EXPORT_DISK: Free space for two copies of the model plus 64 MB metadata.", 409
@@ -325,33 +487,11 @@ def create_export(settings, project_id, selection):
         (root / "reference.json").write_text(reference.model_dump_json(indent=2) + "\n")
         for source in sources:
             (root / f"knowledge/sources/{source.id}.md").write_bytes(source_bytes(settings, source))
-            for chunk in (c for c in chunks if c.source_id == source.id):
+            for chunk in (c for c in material.chunks if c.source_id == source.id):
                 knowledge.verify_excerpt(settings, source, chunk)
         (root / "compose.yaml").write_text(compose_text(settings.export_runtime_image))
-        data = dict(
-            schema_version="quartermaster.export/v2",
-            prompt_version=prompt_version,
-            inference_parameters=parameters,
-            id=export_id,
-            project_id=UUID(str(project_id)),
-            created_at=datetime.now(UTC),
-            candidate_id=version.id,
-            training_run_id=version.training_run_id,
-            candidate_sha256=content_hash(version.model_dump_json()),
-            job_sha256=version.job_sha256,
-            training_manifest_sha256=version.training_manifest_sha256,
-            suite_id=version.suite_id,
-            suite_revision=version.suite_revision,
-            suite_sha256=version.suite_sha256,
-            evaluated_adviser_revision=spec.revision,
-            knowledge_revision=spec.knowledge_revision,
-            lessons_revision=spec.lessons_revision,
-            source_hashes=suite.source_hashes,
-            runtime_image=settings.export_runtime_image,
-            files={},
-        )
         placeholder = ExportManifest(**data)
-        (root / "README.md").write_text(operator_readme(placeholder, version.model_size_bytes))
+        (root / "README.md").write_text(operator_readme(placeholder, model_size))
         names = FIXED | {f"knowledge/sources/{s.id}.md" for s in sources}
         data["files"] = {
             name: {"sha256": sha256(root / name), "size_bytes": (root / name).stat().st_size}
@@ -361,8 +501,8 @@ def create_export(settings, project_id, selection):
         (root / MANIFEST).write_text(manifest.model_dump_json(indent=2) + "\n")
         verify_package(root)
         if (
-            manifest.files["model/model.gguf"].sha256 != version.model_sha256
-            or manifest.files["model/LICENSE.model"].sha256 != version.license_sha256
+            manifest.files["model/model.gguf"].sha256 != model_sha256
+            or manifest.files["model/LICENSE.model"].sha256 != license_sha256
         ):
             raise DomainError("EXPORT_MODEL: Candidate bytes changed while copying.", 409)
         archive = root / "adviser.tar"

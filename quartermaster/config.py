@@ -18,8 +18,11 @@ class Settings(BaseSettings):
     builder_max_input_bytes: int = Field(default=49152, ge=4096, le=65536)
     local_base_url: HttpUrl | None = None
     local_model_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
-    local_timeout_seconds: float = Field(default=120, ge=1, le=180)
+    local_timeout_seconds: float = Field(default=180, ge=1, le=180)
     candidate_base_url: HttpUrl = HttpUrl("http://candidate:8080")
+    comparison_base_url: HttpUrl | None = None
+    comparison_model_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    local_model_dir: Path = Path("data/local-model")
     export_runtime_image: str | None = Field(default=None, pattern=r"^sha256:[a-f0-9]{64}$")
 
     @field_validator(
@@ -30,6 +33,8 @@ class Settings(BaseSettings):
         "local_base_url",
         "local_model_sha256",
         "export_runtime_image",
+        "comparison_base_url",
+        "comparison_model_sha256",
         mode="before",
     )
     @classmethod
@@ -46,12 +51,13 @@ class Settings(BaseSettings):
                 raise ValueError("Use HTTPS for remote providers")
         return value
 
-    @field_validator("local_base_url", "candidate_base_url")
+    @field_validator("local_base_url", "candidate_base_url", "comparison_base_url")
     @classmethod
     def local_url(cls, value):
         if value is not None and (
             value.scheme != "http"
-            or value.host not in {"localhost", "127.0.0.1", "[::1]", "inference", "candidate"}
+            or value.host
+            not in {"localhost", "127.0.0.1", "[::1]", "inference", "candidate", "comparison"}
             or value.username
             or value.password
             or value.query

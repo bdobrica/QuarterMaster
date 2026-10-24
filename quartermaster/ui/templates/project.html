@@ -4,10 +4,8 @@
 <h1>{{ project.name }}</h1>
 <p class="eyebrow">Teach · Mission and sources</p>
 <p><a class="button" href="/projects/{{ project.id }}/test">Test advice and teach a lesson</a></p>
-<p><a class="button" href="/projects/{{ project.id }}/evaluations">Evaluate frozen situations side by side</a></p>
-<p><a class="button" href="/projects/{{ project.id }}/train">Review examples, train and choose a candidate</a></p>
 <p><a class="button" href="/projects/{{ project.id }}/export">Export a standalone adviser</a></p>
-<p><a class="button" href="/projects/{{ project.id }}/interview">Define the adviser through a guided interview</a></p>
+<details><summary>Advanced setup and model training</summary><p><a href="/projects/{{ project.id }}/interview">Guided interview</a> · <a href="/projects/{{ project.id }}/evaluations">Frozen evaluations</a> · <a href="/projects/{{ project.id }}/train">Reviewed training and candidates</a></p></details>
 {% if project.decision_definition %}<details><summary>Reviewed decision definition</summary>
 {% for key, value in project.decision_definition.model_dump().items() %}<h3>{{ key|replace('_', ' ')|capitalize }}</h3><p class="mission">{{ value }}</p>{% endfor %}
 </details>{% endif %}

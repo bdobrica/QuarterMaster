@@ -178,8 +178,8 @@ def test_complete_builder_correction_review_unseen_loop(workshop):
     client, project, inference, builder, config = workshop
     original = client.get(base(project)).json()
     run = ask(workshop)
-    assert run["response_schema"] == response_schema(run["context"])
-    assert run["parameters"]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert run["response_schema"] == response_schema(run["context"], bounded=True)
+    assert run["parameters"]["chat_template_kwargs"] == {"enable_thinking": True}
     assert run["advice"]["clarification_question"] is None
     lesson = correct(workshop, run)
     assert lesson["status"] == "pending" and builder.calls == []
@@ -701,6 +701,7 @@ def test_abstention_is_valid_without_support_or_a_question(workshop):
     result = ask(workshop)
     assert result["error"] is None
     assert result["advice"]["recommendation"].startswith("Unable to recommend")
+    assert result["advice"]["explanation"] == "Insufficient evidence."
 
 
 def test_question_with_decisive_draft_is_withheld(workshop):

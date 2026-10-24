@@ -1,5 +1,6 @@
 """Finite, replayable generation profiles shared by advice, evaluation and export."""
 
+import json
 from copy import deepcopy
 
 from quartermaster.errors import DomainError
@@ -11,15 +12,21 @@ LEGACY_PARAMETERS = {
     "chat_template_kwargs": {"enable_thinking": False},
 }
 PARAMETERS = {**LEGACY_PARAMETERS, "max_tokens": 1024}
+# Product advice only. Historical experiments and supervised rows retain PARAMETERS.
+ADVICE_PARAMETERS = {
+    **PARAMETERS,
+    "max_tokens": 2048,
+    "chat_template_kwargs": {"enable_thinking": True},
+    "reasoning_budget_tokens": 512,
+    "reasoning_format": "deepseek",
+}
 
 
 def checked_parameters(value=None):
     """Never substitute today's defaults for a captured historical request."""
     value = PARAMETERS if value is None else value
-    if value not in (LEGACY_PARAMETERS, PARAMETERS):
-        raise DomainError(
-            "LOCAL_PARAMETERS: Use the supported 512- or 1024-token generation profile.", 409
-        )
+    if value not in (LEGACY_PARAMETERS, PARAMETERS, ADVICE_PARAMETERS):
+        raise DomainError("LOCAL_PARAMETERS: Use a supported, bounded generation profile.", 409)
     return deepcopy(value)
 
 
@@ -38,3 +45,17 @@ def completed_choice(response):
     if message.get("tool_calls") or message.get("refusal"):
         raise ValueError
     return message["content"]
+
+
+def unambiguous_json(content):
+    """Reject repeated keys instead of silently accepting the final conflicting value."""
+
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("Repeated JSON key")
+            result[key] = value
+        return result
+
+    return json.loads(content, object_pairs_hook=unique)

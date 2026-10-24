@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import AwareDatetime, Field, field_validator, model_validator
+from pydantic import AwareDatetime, Field, field_validator, model_serializer, model_validator
 
 from quartermaster.contracts.advice import Advice, Text
 from quartermaster.contracts.adviser import AdviserSpec
@@ -11,11 +11,23 @@ from quartermaster.contracts.sources import Chunk, Contract, UUIDValue
 from quartermaster.contracts.teaching import AppliedLesson, EvidenceSnapshot
 from quartermaster.contracts.training import ArtifactFile
 from quartermaster.errors import DomainError
-from quartermaster.generation import LEGACY_PARAMETERS, checked_parameters
+from quartermaster.generation import LEGACY_PARAMETERS, PARAMETERS, checked_parameters
 
 
 class ExportSelection(Contract):
     candidate_id: UUIDValue
+    acknowledge_contents: Literal[True]
+
+    @field_validator("acknowledge_contents", mode="before")
+    @classmethod
+    def explicit(cls, value):
+        if value is not True:
+            raise ValueError("Explicit acknowledgement required")
+        return value
+
+
+class BaseExportSelection(Contract):
+    test_id: UUIDValue
     acknowledge_contents: Literal[True]
 
     @field_validator("acknowledge_contents", mode="before")
@@ -42,20 +54,22 @@ class ExportKnowledge(Contract):
 
 
 class ExportManifest(Contract):
-    schema_version: Literal["quartermaster.export/v1", "quartermaster.export/v2"] = (
-        "quartermaster.export/v1"
-    )
+    schema_version: Literal[
+        "quartermaster.export/v1", "quartermaster.export/v2", "quartermaster.export/v3"
+    ] = "quartermaster.export/v1"
     id: UUIDValue
     project_id: UUIDValue
     created_at: AwareDatetime
-    candidate_id: UUIDValue
-    training_run_id: UUIDValue
-    candidate_sha256: Digest
-    job_sha256: Digest
-    training_manifest_sha256: Digest
-    suite_id: UUIDValue
-    suite_revision: int = Field(ge=1)
-    suite_sha256: Digest
+    candidate_id: UUIDValue | None
+    training_run_id: UUIDValue | None
+    candidate_sha256: Digest | None
+    job_sha256: Digest | None
+    training_manifest_sha256: Digest | None
+    suite_id: UUIDValue | None
+    suite_revision: int | None = Field(ge=1)
+    suite_sha256: Digest | None
+    source_test_id: UUIDValue | None = None
+    source_test_sha256: Digest | None = None
     evaluated_adviser_revision: int = Field(ge=1)
     knowledge_revision: UUIDValue | None
     lessons_revision: UUIDValue | None
@@ -65,11 +79,19 @@ class ExportManifest(Contract):
         "1a24df163920a4744a95373d178d790b72a9bb2f"
     )
     model_format: Literal["GGUF-Q8_0"] = "GGUF-Q8_0"
-    prompt_version: Literal["context/v1", "context/v2"] = "context/v1"
+    prompt_version: Literal["context/v1", "context/v2", "context/v3"] = "context/v1"
     files: dict[str, ArtifactFile]
     inference_parameters: dict = Field(
         default_factory=lambda: checked_parameters(LEGACY_PARAMETERS)
     )
+
+    @model_serializer(mode="wrap")
+    def preserve_historical_wire(self, handler):
+        data = handler(self)
+        if self.schema_version != "quartermaster.export/v3":
+            data.pop("source_test_id", None)
+            data.pop("source_test_sha256", None)
+        return data
 
     @model_validator(mode="after")
     def generation_profile(self):
@@ -77,6 +99,36 @@ class ExportManifest(Contract):
             checked_parameters(self.inference_parameters)
         except DomainError:
             raise ValueError("Unsupported inference parameters") from None
+        lineage = (
+            self.candidate_id,
+            self.training_run_id,
+            self.candidate_sha256,
+            self.job_sha256,
+            self.training_manifest_sha256,
+            self.suite_id,
+            self.suite_revision,
+            self.suite_sha256,
+        )
+        if self.schema_version == "quartermaster.export/v3":
+            from quartermaster.generation import ADVICE_PARAMETERS
+
+            if (
+                any(v is not None for v in lineage)
+                or self.source_test_id is None
+                or self.source_test_sha256 is None
+                or self.prompt_version != "context/v3"
+                or self.inference_parameters != ADVICE_PARAMETERS
+            ):
+                raise ValueError(
+                    "Version 3 base export requires the tested bounded-thinking context"
+                )
+        elif (
+            any(v is None for v in lineage)
+            or self.source_test_id
+            or self.source_test_sha256
+            or self.prompt_version == "context/v3"
+        ):
+            raise ValueError("Historical candidate exports require their evaluated lineage")
         if self.schema_version == "quartermaster.export/v1":
             if (
                 self.inference_parameters != LEGACY_PARAMETERS
@@ -85,6 +137,11 @@ class ExportManifest(Contract):
                 raise ValueError("Version 1 exports use the historical 512-token profile")
         elif "inference_parameters" not in self.model_fields_set:
             raise ValueError("Version 2 exports require explicit inference parameters")
+        elif self.schema_version == "quartermaster.export/v2" and self.inference_parameters not in (
+            LEGACY_PARAMETERS,
+            PARAMETERS,
+        ):
+            raise ValueError("Version 2 preserves its historical non-thinking profiles")
         return self
 
 
@@ -98,7 +155,7 @@ class RuntimeAdvice(Contract):
     advice: Advice
     evidence: list[EvidenceSnapshot]
     export_id: UUIDValue
-    candidate_id: UUIDValue
+    candidate_id: UUIDValue | None
     context_sha256: Digest
 
 

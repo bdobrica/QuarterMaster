@@ -6,11 +6,11 @@ from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, RedirectResponse
 from starlette.concurrency import run_in_threadpool
 
-from quartermaster import exporting, training
+from quartermaster import exporting, teaching, training
 from quartermaster.api.foundation import page, settings, validate_form
 from quartermaster.api.interview import form_values
 from quartermaster.api.routes import require_same_origin
-from quartermaster.contracts.export import ExportManifest, ExportSelection
+from quartermaster.contracts.export import BaseExportSelection, ExportManifest, ExportSelection
 from quartermaster.projects import get_adviser
 
 router = APIRouter()
@@ -28,6 +28,15 @@ def export_page(project_id: UUID, request: Request):
         candidates=training.versions(config, project_id),
         exports=exporting.list_exports(config, project_id),
         image=config.export_runtime_image,
+        base_tests=[
+            t
+            for t in teaching.list_tests(config, project_id)
+            if t.advice
+            and not t.error
+            and t.prompt_version == "context/v3"
+            and t.model_role != "existing_lora"
+            and t.model_alias.startswith("qm-base-")
+        ],
     )
 
 
@@ -48,6 +57,21 @@ async def create_form(project_id: UUID, request: Request):
     data["acknowledge_contents"] = data.get("acknowledge_contents") == "on"
     action = validate_form(ExportSelection, data)
     await run_in_threadpool(exporting.create_export, settings(request), project_id, action)
+    return RedirectResponse(f"/projects/{project_id}/export", status_code=303)
+
+
+@router.post(API + "/base", response_model=ExportManifest, status_code=201)
+def create_base(project_id: UUID, action: BaseExportSelection, request: Request):
+    require_same_origin(request)
+    return exporting.create_base_export(settings(request), project_id, action)
+
+
+@router.post(WEB + "/base")
+async def create_base_form(project_id: UUID, request: Request):
+    data = await form_values(request, {"test_id", "acknowledge_contents"})
+    data["acknowledge_contents"] = data.get("acknowledge_contents") == "on"
+    action = validate_form(BaseExportSelection, data)
+    await run_in_threadpool(exporting.create_base_export, settings(request), project_id, action)
     return RedirectResponse(f"/projects/{project_id}/export", status_code=303)
 
 

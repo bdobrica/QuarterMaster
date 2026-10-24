@@ -2,10 +2,19 @@
 {% block content %}
 <p><a href="/projects/{{ project.id }}">{{ project.name }}</a> · <a href="/projects/{{ project.id }}/train">Train and compare</a></p>
 <h1>Export a standalone adviser</h1>
-<p>Choose an evaluated candidate. The package uses that candidate's frozen mission, knowledge and approved lessons, including historical versions. Later edits and the current active selection do not alter this export. No new training runs.</p>
+<p>Export a tested base adviser with its knowledge and approved corrections. No training is required. The package freezes the selected test's mission, business rules, knowledge and lessons.</p>
+{% if base_tests %}
+<form action="/projects/{{ project.id }}/export/base" method="post">
+<label>Successful base test<select name="test_id" required>{% for test in base_tests %}<option value="{{ test.id }}">{{ test.created_at.strftime('%Y-%m-%d %H:%M UTC') }} · {{ test.case.situation[:100] }}</option>{% endfor %}</select></label>
+<label class="check"><input type="checkbox" name="acknowledge_contents" required>I reviewed this advice. Include its selected knowledge documents, approved lessons and reference situation. Exclude training rows, outcomes, raw corrections and credentials.</label>
+<button {% if not image %}disabled{% endif %}>Export tested base adviser</button>
+</form>
+{% else %}<p><a href="/projects/{{ project.id }}/test">Test the base adviser</a> to enable export. Check its advice and evidence first.</p>{% endif %}
 <p>The standard CPU runtime provides its own browser interface and advice API. It needs Docker, 4 GiB RAM and four CPU threads. Allow space for the archive, its extracted model and the runtime image. CPU advice can take minutes.</p>
 <p>Fresh runtime verification is a separate operator check after packaging.</p>
 {% if image %}<p>Runtime pinned to <code>{{ image }}</code>.</p>{% else %}<p role="alert">EXPORT_IMAGE: Your operator must build the standalone-runtime target in trainer/Dockerfile and configure QM_EXPORT_RUNTIME_IMAGE with its exact sha256 image ID. See docs/milestone-7.md.</p>{% endif %}
+<details><summary>Advanced: export an existing evaluated training candidate</summary>
+<p>This preserves the candidate's historical evaluated context and settings.</p>
 <form action="/projects/{{ project.id }}/export" method="post">
 <label for="candidate_id">Evaluated weights and context</label>
 <select id="candidate_id" name="candidate_id" required>{% for candidate in candidates if candidate.smoke_passed %}<option value="{{ candidate.id }}">{{ candidate.created_at.strftime('%Y-%m-%d %H:%M UTC') }} · {{ candidate.id }} · {{ candidate.model_size_bytes }} model bytes · suite revision {{ candidate.suite_revision }}</option>{% endfor %}</select>
@@ -13,9 +22,10 @@
 <button {% if not image or not candidates %}disabled{% endif %}>Create immutable package</button>
 </form>
 {% if not candidates %}<p>No evaluated candidates yet. On <a href="/projects/{{ project.id }}/train">Train</a>, review examples, choose a frozen suite and complete an explicitly enabled local GPU job. Inspect the candidate comparison before packaging. You can keep using context advice on Test while preparing training data.</p>{% endif %}
+</details>
 <h2>Packages</h2>
 {% for export in exports %}<article><h3>Export {{ export.id }}</h3>
-<p>{{ export.created_at.strftime('%Y-%m-%d %H:%M UTC') }} · candidate {{ export.candidate_id }} · evaluated adviser revision {{ export.evaluated_adviser_revision }}</p>
+<p>{{ export.created_at.strftime('%Y-%m-%d %H:%M UTC') }} · {% if export.candidate_id %}candidate {{ export.candidate_id }}{% else %}unchanged base · tested snapshot {{ export.source_test_id }}{% endif %} · adviser revision {{ export.evaluated_adviser_revision }}</p>
 <p>Bytes and frozen reference context checked during packaging. Fresh runtime verification is a separate operator check; creating or downloading a package does not establish that it started.</p>
 <a class="button" href="/api/projects/{{ project.id }}/exports/{{ export.id }}/download">Download adviser archive</a> · <a href="/api/projects/{{ project.id }}/exports/{{ export.id }}">Inspect manifest</a>
 <p>After download, the operator runs <code>make test-export EXPORT=/absolute/adviser-{{ export.id }}.tar</code>. Keep the verification report with the archive. Extract into a new directory, ensure the pinned runtime image is installed, then run <code>docker compose up -d --wait --wait-timeout 360</code>. The browser interface is at <code>http://127.0.0.1:8081</code>.</p>

@@ -17,7 +17,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from quartermaster.advice_context import SYSTEM, validate_advice
+from quartermaster.advice_context import system_for, validate_advice
 from quartermaster.contracts.advice import Advice, Case
 from quartermaster.contracts.export import RuntimeAdvice, RuntimeInput
 from quartermaster.errors import DomainError
@@ -89,7 +89,11 @@ def start_engine(root, manifest):
         "1",
         "--jinja",
         "--chat-template-kwargs",
-        '{"enable_thinking":false}',
+        json.dumps(checked_parameters(manifest.inference_parameters)["chat_template_kwargs"]),
+        "--reasoning-budget",
+        str(manifest.inference_parameters.get("reasoning_budget_tokens", 0)),
+        "--reasoning-format",
+        "deepseek",
         "--no-webui",
         "--log-disable",
         "-n",
@@ -202,7 +206,9 @@ def create_runtime(root: Path, *, inference=None, launch_engine=True):
         return {
             "status": "ok",
             "export_id": str(app.state.manifest.id),
-            "candidate_id": str(app.state.manifest.candidate_id),
+            "candidate_id": str(app.state.manifest.candidate_id)
+            if app.state.manifest.candidate_id
+            else None,
         }
 
     @app.get("/")
@@ -219,13 +225,15 @@ def create_runtime(root: Path, *, inference=None, launch_engine=True):
         try:
             async with asyncio.timeout(180):
                 result = await app.state.inference.advise(
-                    system=SYSTEM,
+                    system=system_for(app.state.manifest.prompt_version),
                     context=context,
                     parameters=app.state.manifest.inference_parameters,
                 )
         except TimeoutError:
             raise DomainError("LOCAL_TIMEOUT: Advice timed out; retry explicitly.", 503) from None
-        _, advice = validate_advice(result, case, evidence)
+        _, advice = validate_advice(
+            result, case, evidence, bounded=app.state.manifest.prompt_version == "context/v3"
+        )
         if any(omitted):
             advice = Advice.model_validate(
                 {

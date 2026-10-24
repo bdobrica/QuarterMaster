@@ -63,6 +63,7 @@ def test_page(project_id: UUID, request: Request, test_id: UUID | None = None):
             for lesson in lessons
         },
         local_ready=config.local_base_url is not None and config.local_model_sha256 is not None,
+        comparison_ready=bool(config.comparison_base_url and config.comparison_model_sha256),
     )
 
 
@@ -84,7 +85,8 @@ async def advise(project_id: UUID, action: TestInput, request: Request):
 
 @router.post("/projects/{project_id}/test")
 async def advise_form(project_id: UUID, request: Request):
-    data = await form_values(request, {"situation"})
+    data = await form_values(request, {"situation", "compare_existing"})
+    data["compare_existing"] = data.get("compare_existing") == "on"
     await teaching.advise(
         settings(request), request.app.state.inference, project_id, validate_form(TestInput, data)
     )

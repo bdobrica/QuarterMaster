@@ -40,11 +40,15 @@ def verify_image(image, contract="quartermaster.export/v1"):
             result["Id"] != image
             or labels.get("org.opencontainers.image.revision") != LLAMA_REVISION
             or labels.get("io.quartermaster.export-contract")
-            not in (
-                {"quartermaster.export/v1", "quartermaster.export/v2"}
-                if contract == "quartermaster.export/v1"
-                else {contract}
-            )
+            not in {
+                "quartermaster.export/v1": {
+                    "quartermaster.export/v1",
+                    "quartermaster.export/v2",
+                    "quartermaster.export/v3",
+                },
+                "quartermaster.export/v2": {"quartermaster.export/v2", "quartermaster.export/v3"},
+                "quartermaster.export/v3": {"quartermaster.export/v3"},
+            }.get(contract, set())
         ):
             raise ValueError
     except (DomainError, ValueError, KeyError, TypeError, IndexError):

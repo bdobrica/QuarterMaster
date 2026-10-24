@@ -9,8 +9,15 @@ from uuid import uuid4
 from pydantic import ValidationError
 
 from quartermaster import knowledge
+from quartermaster.advice_context import (
+    ADVICE_PROMPT_VERSION,
+    PROMPT_VERSION,
+    assemble_context,
+    system_for,
+    validate_advice,
+)
 from quartermaster.advice_context import MAX_CONTEXT_BYTES as MAX_CONTEXT_BYTES
-from quartermaster.advice_context import PROMPT_VERSION, SYSTEM, assemble_context, validate_advice
+from quartermaster.advice_context import SYSTEM as SYSTEM
 from quartermaster.builder import check_input, provider_identity
 from quartermaster.contracts.advice import Advice, Case
 from quartermaster.contracts.teaching import (
@@ -23,8 +30,10 @@ from quartermaster.contracts.teaching import (
 )
 from quartermaster.db import connect
 from quartermaster.errors import DomainError
+from quartermaster.generation import ADVICE_PARAMETERS
 from quartermaster.holdouts import require_eligible
-from quartermaster.inference import PARAMETERS, identity, response_schema
+from quartermaster.inference import PARAMETERS as PARAMETERS
+from quartermaster.inference import identity, response_schema
 from quartermaster.projects import append_spec, read_spec
 
 LESSON_SYSTEM = """Draft a reusable advisory lesson from an owner's correction for human review.
@@ -141,23 +150,63 @@ def assemble(settings, project_id, case):
             for lesson in read_latest_lessons(connection, project_id)
             if lesson.status == "applied"
         ]
-    return assemble_snapshot(settings, spec, active, case)
+    return assemble_snapshot(settings, spec, active, case, prompt_version=ADVICE_PROMPT_VERSION)
 
 
 def assemble_snapshot(settings, spec, active, case, *, prompt_version=PROMPT_VERSION):
     """Assemble from one captured adviser/lesson snapshot, also used by suite freeze."""
     evidence = []
     if spec.knowledge_revision is not None:
-        evidence = knowledge.search(
-            settings, spec.id, case.situation[:200], spec.knowledge_revision
+        evidence = (
+            knowledge.advice_search(settings, spec, case)
+            if prompt_version == ADVICE_PROMPT_VERSION
+            else knowledge.search(settings, spec.id, case.situation[:200], spec.knowledge_revision)
         )
-    return assemble_context(spec, active, case, evidence, prompt_version=prompt_version)
+    result = assemble_context(spec, active, case, evidence, prompt_version=prompt_version)
+    if prompt_version == ADVICE_PROMPT_VERSION:
+        selected = {snapshot.citation_id for snapshot in result[2]}
+        for item in evidence:
+            if item["chunk"].citation_id in selected:
+                knowledge.verify_excerpt(settings, item["source"], item["chunk"])
+    return result
 
 
-async def advise(settings, inference, project_id, action):
-    case = Case(case_id=uuid4(), situation=action.situation, choices=action.choices)
-    spec, context, evidence, lessons, omitted = assemble(settings, project_id, case)
-    if spec.model.adapter_artifact:
+async def advise(
+    settings, inference, project_id, action, *, _snapshot=None, _role="active", _comparison_of=None
+):
+    from quartermaster.inference import LocalInference
+
+    if action.compare_existing and not (
+        settings.comparison_base_url and settings.comparison_model_sha256
+    ):
+        raise DomainError(
+            "COMPARISON_CONFIG: Configure the existing LoRA service before comparing.", 409
+        )
+    if _snapshot is None:
+        case = Case(case_id=uuid4(), situation=action.situation, choices=action.choices)
+        snapshot = (case, assemble(settings, project_id, case))
+    else:
+        snapshot = _snapshot
+    case, assembled = snapshot
+    spec, context, evidence, lessons, omitted = assembled
+    if action.compare_existing:
+        single = action.model_copy(update={"compare_existing": False})
+        base = await advise(
+            settings, inference, project_id, single, _snapshot=snapshot, _role="base"
+        )
+        return await advise(
+            settings,
+            inference,
+            project_id,
+            single,
+            _snapshot=snapshot,
+            _role="existing_lora",
+            _comparison_of=base.id,
+        )
+    if _role == "existing_lora":
+        alias = f"qm-comparison-{settings.comparison_model_sha256}"
+        inference = LocalInference(settings, alias=alias, base_url=settings.comparison_base_url)
+    elif spec.model.adapter_artifact and _role != "base":
         from quartermaster.inference import LocalInference
         from quartermaster.training import get_run, get_version
 
@@ -177,9 +226,13 @@ async def advise(settings, inference, project_id, action):
     canceled = False
     try:
         async with asyncio.timeout(settings.local_timeout_seconds + 1):
-            result = await inference.advise(system=SYSTEM, context=context, parameters=PARAMETERS)
+            result = await inference.advise(
+                system=system_for(ADVICE_PROMPT_VERSION),
+                context=context,
+                parameters=ADVICE_PARAMETERS,
+            )
         draft = GroundedAdvice.model_validate_json(result.model_dump_json())
-        draft, advice = validate_advice(draft, case, evidence)
+        draft, advice = validate_advice(draft, case, evidence, bounded=True)
         if any(omitted):
             advice = Advice.model_validate(
                 {
@@ -203,17 +256,22 @@ async def advise(settings, inference, project_id, action):
         created_at=datetime.now(UTC),
         case=case,
         adviser=spec,
-        prompt_version=PROMPT_VERSION,
-        system=SYSTEM,
+        prompt_version=ADVICE_PROMPT_VERSION,
+        system=system_for(ADVICE_PROMPT_VERSION),
         context=context,
         model_alias=alias,
-        parameters=PARAMETERS,
-        response_schema=response_schema(context),
+        parameters=ADVICE_PARAMETERS,
+        response_schema=response_schema(context, bounded=True),
         evidence=evidence,
         lessons=lessons,
         draft=draft,
         advice=advice,
         error=error,
+        model_role=_role,
+        comparison_of=_comparison_of,
+        comparison_model_sha256=settings.comparison_model_sha256
+        if _role == "existing_lora"
+        else None,
     )
     with connect(settings.database_path) as connection:
         connection.execute(

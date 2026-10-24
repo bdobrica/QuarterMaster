@@ -2,8 +2,7 @@
 {% block content %}
 <p><a href="/projects/{{ project.id }}">Teach · {{ project.name }}</a></p>
 <h1>Test the adviser</h1>
-<p><a href="/projects/{{ project.id }}/reliability">Try the inference reliability development comparison</a></p>
-<p><a href="/projects/{{ project.id }}/evaluations">Frozen evaluations and comparisons</a> · <a href="/projects/{{ project.id }}/train">Reviewed training and candidates</a></p>
+<p>Teach → Test → Correct → Export. Ask a real question, check the evidence, then approve a reusable correction.</p>
 {% if selected_test %}<p><a href="/projects/{{ project.id }}/test">Back to recent tests</a> · Viewing a saved original test</p>{% endif %}
 <p>Advice uses the selected active weights, current knowledge and approved lessons. Active weights: <strong>{{ project.model.adapter_artifact or 'unmodified base model' }}</strong>. Reviewed lessons change <strong>context, not model weights</strong>. No training job runs here.</p>
 {% if not local_ready %}<p role="status">Local inference is not configured. Follow the local model setup in docs/milestone-4.md, then return here. Teaching and lesson review remain available.</p>{% endif %}
@@ -11,11 +10,15 @@
 <label for="situation">What situation do you want advice about?</label>
 <textarea id="situation" name="situation" rows="4" required maxlength="4000"></textarea>
 <p>Include facts known before deciding. Leave later outcomes out of this field. Advice is sent only to this installation's local model service.</p>
+<p>Allow up to three minutes per response. Check facts and citations: a valid response can still be wrong.</p>
+{% if comparison_ready %}<label class="check"><input type="checkbox" name="compare_existing">Compare the unchanged base and existing LoRA on this same situation and knowledge. This saves both responses and changes no weights or active model.</label>{% endif %}
 <button {% if not local_ready %}disabled{% endif %}>Ask for advice</button>
 </form>
 <section><h2>Test responses</h2>
 {% for run in runs %}<article id="test-{{ run.id }}">
 <p>{{ run.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }} · Adviser revision {{ run.adviser.revision }} · {{ run.lessons|length }} context lessons</p>
+{% if run.model_role == 'existing_lora' %}<h2>Existing LoRA · comparison only</h2><p><a href="/projects/{{ project.id }}/test?test_id={{ run.comparison_of }}">View the paired base response</a>. Identical situation, knowledge, lessons and inference settings. No promotion.</p>{% elif run.model_role == 'base' %}<h2>Unmodified base · comparison</h2>{% endif %}
+<p>{{ run.evidence|length }} knowledge excerpts supplied{% if run.prompt_version == 'context/v3' %} · bounded local thinking enabled{% endif %}</p>
 <h3>Situation</h3><p class="mission">{{ run.case.situation }}</p>
 {% if run.id|string in held_out_tests %}<p><strong>Held out for evaluation.</strong> Teaching feedback and training selection are blocked for this situation. Rate comparisons on the evaluation screen.</p>{% endif %}
 {% if suites %}<details><summary>Save as evaluation case</summary>
@@ -36,6 +39,7 @@
 {% for ref in run.advice.evidence_refs %}{% for item in run.evidence if item.citation_id|string == ref %}
 <li><a href="/projects/{{ project.id }}/citations/{{ ref }}?revision={{ run.adviser.knowledge_revision }}">{{ item.source_name }} · lines {{ item.line_start }}–{{ item.line_end }}</a><blockquote class="mission">{{ item.text }}</blockquote></li>
 {% endfor %}{% else %}<li>No uploaded excerpts cited.</li>{% endfor %}</ul>
+{% if run.prompt_version == 'context/v3' and run.model_alias.startswith('qm-base-') %}<p><a class="button" href="/projects/{{ project.id }}/export">Export this tested adviser</a></p>{% endif %}
 {% if run.id|string not in held_out_tests %}<form method="post" action="/projects/{{ project.id }}/tests/{{ run.id }}/feedback">
 <label for="category-{{ run.id }}">How was this advice?</label><select name="category" id="category-{{ run.id }}" required>{% for key, title in categories.items() %}<option value="{{ key }}">{{ title }}</option>{% endfor %}</select>
 <label for="correction-{{ run.id }}">What should it keep or change?</label><textarea name="correction" id="correction-{{ run.id }}" rows="3" maxlength="4000" required></textarea>
@@ -43,9 +47,11 @@
 </form>{% endif %}
 {% endif %}
 <details><summary>Saved context and model details</summary><p>{{ run.model_alias }}</p><p>Knowledge revision: {{ run.adviser.knowledge_revision or 'none' }} · Lesson selection revision: {{ run.adviser.lessons_revision or 'none' }}</p><pre>{{ run.context }}</pre></details>
+{% if run.evidence %}<details><summary>Knowledge supplied to this response · {{ run.evidence|length }} excerpts</summary><p>These excerpts were available to the model. Only the citations listed above were selected by it; availability alone does not establish support for a claim.</p>
+{% for item in run.evidence %}<p><a href="/projects/{{ project.id }}/citations/{{ item.citation_id }}?revision={{ run.adviser.knowledge_revision }}">{{ item.source_name }} · lines {{ item.line_start }}–{{ item.line_end }}</a></p><blockquote class="mission">{{ item.text }}</blockquote>{% endfor %}</details>{% endif %}
 </article>{% else %}<p>No test responses yet. Enter a situation with facts known before deciding to get a baseline response, then give a correction and retest a similar new situation. <a href="/examples">Try a synthetic situation</a>. A request for missing information is a valid result.</p>{% endfor %}
 </section>
-<section><h2>Lessons to review</h2>
+<section id="lessons"><h2>Lessons to review</h2>
 {% for lesson in lessons %}{% set record = feedback[lesson.id|string] %}<article id="lesson-{{ lesson.id }}">
 <p><strong>{{ lesson.status }}</strong> · {{ lesson.origin }} · Revision {{ lesson.revision }}</p>
 <p>From <a href="/projects/{{ project.id }}/test?test_id={{ record.test_id }}#test-{{ record.test_id }}">the original test</a> · Case {{ lesson.case_id }} · {{ categories[record.category] }}</p>

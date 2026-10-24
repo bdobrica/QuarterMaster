@@ -9,7 +9,11 @@ import pytest
 from pydantic import ValidationError
 
 from quartermaster import evaluations, export_smoke, teaching, training_worker
-from quartermaster.advice_context import PROMPT_VERSION, encoded, render_context
+from quartermaster.advice_context import (
+    ADVICE_PROMPT_VERSION,
+    encoded,
+    render_context,
+)
 from quartermaster.contracts.advice import Case
 from quartermaster.contracts.export import ExportManifest
 from quartermaster.errors import DomainError
@@ -20,7 +24,12 @@ from quartermaster.export_package import (
     sha256,
     verify_package,
 )
-from quartermaster.generation import LEGACY_PARAMETERS, PARAMETERS, checked_parameters
+from quartermaster.generation import (
+    ADVICE_PARAMETERS,
+    LEGACY_PARAMETERS,
+    PARAMETERS,
+    checked_parameters,
+)
 from quartermaster.inference import LocalInference, model_alias
 from quartermaster.standalone_runtime import create_runtime
 from tests import test_export, test_teaching
@@ -78,9 +87,9 @@ def test_profiles_are_copied_and_new_tests_record_larger_budget(workshop):
     copied["chat_template_kwargs"]["enable_thinking"] = True
     assert PARAMETERS["chat_template_kwargs"] == {"enable_thinking": False}
     run = test_teaching.ask(workshop)
-    assert run["parameters"] == PARAMETERS
-    assert run["parameters"]["max_tokens"] == 1024
-    assert workshop[2].parameters[-1] == PARAMETERS
+    assert run["parameters"] == ADVICE_PARAMETERS
+    assert run["parameters"]["max_tokens"] == 2048
+    assert workshop[2].parameters[-1] == ADVICE_PARAMETERS
 
 
 def test_historical_suite_replays_512_and_keeps_frozen_hash(workshop, monkeypatch):
@@ -91,7 +100,7 @@ def test_historical_suite_replays_512_and_keeps_frozen_hash(workshop, monkeypatc
         old.setattr(
             teaching,
             "assemble_snapshot",
-            lambda *args: assemble(*args, prompt_version="context/v1"),
+            lambda *args, **kwargs: assemble(*args, prompt_version="context/v1"),
         )
         suite = freeze(workshop, save(workshop, create(workshop)))
     assert suite["inputs"][0]["b"]["parameters"] == LEGACY_PARAMETERS
@@ -130,7 +139,7 @@ def test_compact_prompt_keeps_exact_text_and_full_provenance_in_snapshots(worksh
         prompt_version="context/v1",
     )
     compact, legacy = json.loads(current["context"]), json.loads(old[1])
-    assert current["prompt_version"] == PROMPT_VERSION
+    assert current["prompt_version"] == ADVICE_PROMPT_VERSION
     assert old[1] == encoded(legacy)
     assert len(current["context"]) < len(old[1])
     for before, after in zip(
@@ -172,8 +181,10 @@ def test_export_captures_budget_and_rejects_missing_or_unknown_v2_profile(worksh
     manifest, _ = test_export.package(workshop, candidate)
     assert manifest.schema_version == "quartermaster.export/v2"
     assert manifest.inference_parameters == PARAMETERS
+    assert "source_test_id" not in manifest.model_dump()
+    assert "source_test_sha256" not in manifest.model_dump()
     document = manifest.model_dump()
-    for value in (None, {**PARAMETERS, "max_tokens": 100000}, {}):
+    for value in (None, {**PARAMETERS, "max_tokens": 100000}, {}, ADVICE_PARAMETERS):
         with pytest.raises(ValidationError):
             ExportManifest.model_validate({**document, "inference_parameters": value})
     document.pop("inference_parameters")

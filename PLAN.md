@@ -266,6 +266,19 @@ Validate the schema. Verify citations refer to retrieved material; reject or rem
 
 ### Immediate learning (lesson/context)
 
+The [working adviser follow-up](docs/working-adviser.md) makes Teach → Test → Correct
+→ Export the primary journey. New ordinary tests use `context/v3`, a finite 512-token
+thinking budget within 2,048 total generated tokens, and the current selected knowledge,
+business goal, decision definition and approved lessons. Selected reference excerpts
+are verified before inference; context remains bounded and omissions are disclosed.
+Small selected knowledge bases include nonmatching policy excerpts as well as lexical
+matches. Historical contexts, frozen suites, training data and weights remain unchanged.
+An optional comparison captures one context for both base and existing LoRA, without
+promotion. New `export/v3` packages freeze a successful base test, preserving its settings
+without inventing training or evaluation lineage; existing candidate exports remain intact.
+These product changes do not establish useful advice: the live bank comparison still
+over-asks and omits citations. The quality/release gate remains open.
+
 The owner chooses a feedback type:
 
 1. Good advice.

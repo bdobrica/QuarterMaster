@@ -2,7 +2,7 @@
 
 **A local factory for teachable AI advisers.** Describe a recurring decision, upload reference
 material, test the adviser, review corrections, evaluate frozen situations, explicitly train a
-small model, and export it with an independent browser interface and advice API.
+small model when explicitly requested, and export it with an independent browser interface and advice API.
 
 **Status:** Milestones 0–7 are implemented and locally verified; Milestone 8 adds onboarding,
 three synthetic domains, provider limits and operating guidance. This is a development build,
@@ -10,6 +10,9 @@ not a tagged `0.1.0` release. A real laptop GPU run and offline standalone infer
 but the tiny synthetic evaluation showed **no quality gain**. The candidate remains unpromoted.
 See [M8 verification and release checks](docs/milestone-8.md), [training results](docs/milestone-6.md)
 and [export verification](docs/milestone-7.md).
+The [working adviser follow-up](docs/working-adviser.md) enables bounded thinking,
+project knowledge/rules and export of a tested base adviser without training.
+The live bank comparison still fails the advice-quality gate; useful advice is not yet established.
 
 ## Quick start
 
@@ -33,29 +36,31 @@ For actual advice, run `make model-setup`, set the printed `QM_LOCAL_MODEL_SHA25
 `QM_LOCAL_BASE_URL=http://inference:8080/v1` in `.env`, then start:
 
 ```sh
-docker compose --profile advice up -d --build --wait
+docker compose -f compose.yaml -f compose.advice.yaml --profile advice up -d --build --wait
 ```
 
 This explicitly prepares the pinned unmodified Qwen3.5-0.8B model; it does not train it. The GGUF
 is approximately 812 MB; the tested CPU service uses a 4 GiB memory limit/four threads and can take
 minutes per response. See [model setup](docs/milestone-4.md) for resources and limitations.
 
-## Teach → test → correct → evaluate → train → export
+## Teach → Test → Correct → Export
 
 - **Teach:** describe the mission; upload CSV/XLSX observations and Markdown knowledge, up to
   8 MiB per file. Inspect mappings, confirm any joins and keep outcomes separate from inputs.
 - **Test:** enter a situation, inspect advice/citations/questions and give a plain-language
   correction. Review and approve the reusable lesson, then try a related unseen situation.
   Lessons change **context immediately**; weights stay unchanged.
+- **Export:** select a successful base test and review the included knowledge, lessons and
+  reference situation. Build/pin the standard runtime first; no LoRA or GPU is required.
+  Run `make test-export EXPORT=/absolute/adviser.tar`, then follow the archive's Compose instructions.
+  See [setup and current quality limits](docs/working-adviser.md).
 - **Evaluate:** save separate unseen cases with owner rubrics and freeze the suite. Compare
   saved outputs, inspect mistakes and rate preferences. Holdouts are blocked from teaching/SFT.
 - **Train:** separately review complete prompts/desired responses, including AI drafts. Queue
   a bounded LoRA job; an operator explicitly starts the local GPU worker. Compare the candidate
   with base weights on identical frozen inputs. Active weights change only by explicit selection.
-- **Export:** choose an evaluated candidate and review its disclosed contents. An operator
-  builds/pins the standard runtime first. Run `make test-export EXPORT=/absolute/adviser.tar`,
-  then follow the archive's Compose instructions. The CPU adviser runs independently of
-  QuarterMaster, its database, training GPU and builder API.
+- Evaluated training candidates retain their existing export path under **Advanced**.
+  Both export paths run independently of QuarterMaster's database, training GPU and builder API.
 
 Optional builder interpretation/drafting uses a configured OpenAI-compatible provider. Every
 business-content request has an exact preview and explicit consent. Preview shows file/request
@@ -70,7 +75,7 @@ Compose keeps SQLite and artifacts in the `quartermaster-data` named volume at `
 stopped**, plus secrets separately, before upgrading. An adviser archive is not a project backup.
 See the [operator guide](docs/operator-guide.md) for tested backup/restore steps, optional host-worker
 storage, GPU prerequisites, unsupported hardware, licensing and failure recovery. Startup checks
-schema v6 and preserves versioned records; incompatible databases fail instead of being reset.
+schema compatibility and preserves versioned records; incompatible databases fail instead of being reset.
 
 The web app has no Docker socket, ML dependencies or automatic cloud fallback. Local CPU inference,
 explicit GPU training and independent export serving use separate pinned images. Application code

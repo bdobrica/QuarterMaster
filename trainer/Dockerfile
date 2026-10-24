@@ -34,7 +34,7 @@ ENTRYPOINT ["python", "/opt/quartermaster/candidate_runtime.py"]
 
 FROM runtime AS standalone-runtime
 USER root
-LABEL io.quartermaster.export-contract="quartermaster.export/v2"
+LABEL io.quartermaster.export-contract="quartermaster.export/v3"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 UV_PYTHON_DOWNLOADS=never \
     UV_LINK_MODE=copy PATH="/opt/runtime/.venv/bin:$PATH"
 WORKDIR /opt/runtime

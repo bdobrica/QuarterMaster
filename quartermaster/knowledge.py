@@ -182,3 +182,23 @@ def search(settings: Settings, project_id, query: str, revision_id=None):
             (match, str(project_id), str(revision.id)),
         ).fetchall()
     return [citation(settings, project_id, row["id"], revision.id) for row in rows]
+
+
+def advice_search(settings, spec, case):
+    """Selected knowledge, including policies without lexical matches to the question."""
+    from quartermaster.advice_context import knowledge_order
+
+    if spec.knowledge_revision is None:
+        return []
+    with connect(settings.database_path) as connection:
+        revision = read_revision(connection, spec.id, spec.knowledge_revision)
+        rows = connection.execute(
+            "SELECT chunks.document FROM chunks JOIN knowledge_members ON "
+            "knowledge_members.source_id=chunks.source_id WHERE chunks.project_id=? "
+            "AND knowledge_members.revision_id=?",
+            (str(spec.id), str(revision.id)),
+        ).fetchall()
+        chunks = knowledge_order([Chunk.model_validate_json(r[0]) for r in rows], case, spec)
+        sources = {sid: read_source(connection, spec.id, sid) for sid in revision.source_ids}
+    # Verify the actually selected excerpts after context budgeting, before inference.
+    return [{"chunk": chunk, "source": sources[chunk.source_id]} for chunk in chunks]
