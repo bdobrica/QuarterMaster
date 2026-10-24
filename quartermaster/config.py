@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     local_base_url: HttpUrl | None = None
     local_model_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     local_timeout_seconds: float = Field(default=120, ge=1, le=180)
+    candidate_base_url: HttpUrl = HttpUrl("http://candidate:8080")
 
     @field_validator(
         "builder_base_url",
@@ -42,12 +43,12 @@ class Settings(BaseSettings):
                 raise ValueError("Use HTTPS for remote providers")
         return value
 
-    @field_validator("local_base_url")
+    @field_validator("local_base_url", "candidate_base_url")
     @classmethod
     def local_url(cls, value):
         if value is not None and (
             value.scheme != "http"
-            or value.host not in {"localhost", "127.0.0.1", "[::1]", "inference"}
+            or value.host not in {"localhost", "127.0.0.1", "[::1]", "inference", "candidate"}
             or value.username
             or value.password
             or value.query

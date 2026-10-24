@@ -75,16 +75,18 @@ class Inference(Protocol):
 
 
 class LocalInference:
-    def __init__(self, settings: Settings, *, transport=None):
+    def __init__(self, settings: Settings, *, transport=None, alias=None, base_url=None):
         self.settings = settings
         self.transport = transport
         self.lock = asyncio.Lock()
+        self.alias = alias
+        self.base_url = base_url
 
     async def advise(self, *, system: str, context: str) -> GroundedAdvice:
-        alias = identity(self.settings)
+        alias = self.alias or identity(self.settings)
         if self.lock.locked():
             raise DomainError("LOCAL_BUSY: One local request is running; try again afterward.", 409)
-        base = str(self.settings.local_base_url).rstrip("/")
+        base = str(self.base_url or self.settings.local_base_url).rstrip("/")
         payload = {
             "model": alias,
             "messages": [

@@ -658,6 +658,9 @@ def test_v2_migration_preserves_existing_documents(guided):
         raw = connection.execute("SELECT document FROM adviser_revisions").fetchall()[0][0]
         connection.execute("DROP TABLE interview_revisions")
         for table in (
+            "training_examples",
+            "training_runs",
+            "adviser_versions",
             "test_runs",
             "feedback",
             "lesson_revisions",

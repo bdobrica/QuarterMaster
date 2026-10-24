@@ -8,6 +8,7 @@ from uuid import uuid4
 from pydantic import ValidationError
 
 from quartermaster import knowledge, teaching
+from quartermaster.contracts.adviser import ModelSpec
 from quartermaster.contracts.evaluation import (
     ComparisonRating,
     DeterministicChecks,
@@ -21,7 +22,7 @@ from quartermaster.contracts.evaluation import (
 from quartermaster.contracts.teaching import GroundedAdvice, TestRun
 from quartermaster.db import connect
 from quartermaster.errors import DomainError
-from quartermaster.holdouts import case_fingerprint
+from quartermaster.holdouts import case_fingerprint, near_duplicate
 from quartermaster.inference import PARAMETERS, identity, response_schema
 from quartermaster.projects import read_spec
 
@@ -147,10 +148,16 @@ def save_case(settings, project_id, suite_id, action):
             "ON json_extract(f.document, '$.test_id')=t.id WHERE t.project_id=?",
             (str(project_id),),
         ).fetchall()
-        if any(
-            case_fingerprint(TestRun.model_validate_json(row[0]).case) == fingerprint
-            for row in taught
-        ):
+        from quartermaster.contracts.training import TrainingExample
+
+        training_cases = [
+            TrainingExample.model_validate_json(row[0]).case
+            for row in connection.execute(
+                "SELECT document FROM training_examples WHERE project_id=?", (str(project_id),)
+            )
+        ]
+        prior_cases = [TestRun.model_validate_json(row[0]).case for row in taught]
+        if any(near_duplicate(run.case, case) for case in [*prior_cases, *training_cases]):
             raise DomainError(
                 "EVALUATION_TAUGHT: This situation already has teaching feedback. "
                 "Save a new, unseen situation.",
@@ -210,6 +217,9 @@ def freeze_suite(settings, project_id, suite_id, action):
         if not suite.cases:
             raise DomainError("EVALUATION_EMPTY: Save at least one situation before freezing.")
         spec = read_spec(connection, project_id)
+        # This screen always compares base weights with/without context. Active
+        # candidate weights are compared separately on Train with the same B input.
+        spec = type(spec).model_validate({**spec.model_dump(), "model": ModelSpec()})
         active = [
             lesson
             for lesson in teaching.read_latest_lessons(connection, project_id)

@@ -4,7 +4,7 @@
 
 QuarterMaster helps a small-business owner turn their knowledge, historical examples, and natural-language feedback into a specialized adviser. Describe what you want advice about, upload spreadsheets and Markdown research, teach the adviser how to handle situations, evaluate its judgment, fine-tune a small language model, and export a standalone Docker-ready adviser.
 
-**Status:** Milestones 0–5: local projects, uploads and reviewed case mappings, searchable Markdown knowledge, a guided interview, local base-model advice with reviewed context lessons, and frozen evaluations with side-by-side comparisons. Optional builder requests require preview and consent. Application training/export screens remain planned; this is not the `0.1.0` MVP yet. The separate Milestone 1 LoRA/GGUF spike proves model portability, not adviser quality. QuarterMaster is a standalone project, not a KitchenSoup plugin.
+**Status:** Milestones 0–5 are locally verified. Milestone 6 adds reviewed SFT examples, a bounded local GPU job queue, candidate comparison and explicit weight selection; CPU verification is complete, with the new live GPU workflow awaiting owner opt-in. Optional builder requests require preview and consent. See the [training setup and limits](docs/milestone-6.md). Application export remains planned; this is not the `0.1.0` MVP yet. The separate Milestone 1 LoRA/GGUF spike proves model portability, not adviser quality. QuarterMaster is a standalone project, not a KitchenSoup plugin.
 
 ## Why QuarterMaster?
 
@@ -21,7 +21,7 @@ QuarterMaster turns that correction into a reviewed lesson, applies it immediate
 1. **Teach** — Describe the advisory job. Upload CSV/XLSX observations, Markdown knowledge, and examples. Answer a short guided interview.
 2. **Test** — Ask the base-model apprentice for advice. Inspect supporting evidence and correct mistakes in plain English.
 3. **Evaluate** — Save representative situations and compare advisers side by side, including cases where they should ask for more information.
-4. **Train** — Review the training examples, fine-tune a curated small Qwen model with LoRA, and compare the candidate against the current adviser.
+4. **Train** — Review supervised examples, queue an explicitly enabled local LoRA run, and compare the candidate against base weights with identical frozen context.
 5. **Export** — Package the chosen version with its model, lessons, knowledge index, local UI and `/v1/advise` API.
 
 The primary UI tabs are **Teach · Train · Evaluate · Test · Export**. The order above reflects how a first-time owner discovers the product: try it and teach it before committing to a training run.
@@ -79,7 +79,7 @@ For **Test advice and teach a lesson**, first run `make model-setup`, configure 
 
 Choose **Evaluate frozen situations side by side**, create a suite, and save new Test situations with your expected behavior. Freeze the suite to capture exact inputs, then compare the same base model without and with custom context. Rate cases as A better, B better, same or both bad; wins, regressions and unreviewed cases remain separate. Saved holdouts cannot become teaching examples. See the [Milestone 5 guide and verification](docs/milestone-5.md) for limits, reproducibility and real-model failures.
 
-`make help` lists formatting and Compose commands. Startup initializes/checks schema v5 and transactionally migrates v1–v4 databases, preserving existing missions and source metadata. Back up the data volume before upgrading. Incompatible or unversioned existing databases fail with an actionable error instead of being reset.
+`make help` lists formatting and Compose commands. Startup initializes/checks schema v6 and transactionally migrates v1–v5 databases, preserving existing records and source metadata. Back up the data volume before upgrading. Incompatible or unversioned existing databases fail with an actionable error instead of being reset.
 
 ## Model feasibility spike and planned workflow
 

@@ -27,7 +27,13 @@ COPY quartermaster/local_runtime.py /opt/quartermaster/local_runtime.py
 COPY LICENSE /licenses/QuarterMaster-LICENSE
 ENTRYPOINT ["python", "/opt/quartermaster/local_runtime.py"]
 
+FROM runtime AS candidate-runtime
+COPY quartermaster/local_runtime.py quartermaster/candidate_runtime.py /opt/quartermaster/
+COPY LICENSE /licenses/QuarterMaster-LICENSE
+ENTRYPOINT ["python", "/opt/quartermaster/candidate_runtime.py"]
+
 FROM python:3.13-slim-trixie@sha256:57b29a7c050c4e679e4bea572e14b3965cf4b5839de2da49d55e49ffc4024f39 AS trainer
+LABEL io.quartermaster.training-contract="quartermaster.training-job/v1"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     UV_PYTHON_DOWNLOADS=never UV_LINK_MODE=copy PATH="/opt/trainer/.venv/bin:$PATH" \
     HF_HUB_DISABLE_TELEMETRY=1 DO_NOT_TRACK=1 HF_HOME=/tmp/huggingface \
@@ -41,6 +47,7 @@ COPY quartermaster/contracts /opt/trainer/quartermaster/contracts
 COPY quartermaster/spike /opt/trainer/quartermaster/spike
 COPY quartermaster/__init__.py /opt/trainer/quartermaster/__init__.py
 COPY trainer/worker.py /opt/trainer/worker.py
+COPY trainer/job_worker.py /opt/trainer/job_worker.py
 COPY LICENSE /licenses/QuarterMaster-LICENSE
 ENV HF_HUB_DISABLE_XET=1 TORCHINDUCTOR_CACHE_DIR=/tmp/torchinductor \
     TORCH_EXTENSIONS_DIR=/tmp/torch-extensions TRITON_CACHE_DIR=/tmp/triton

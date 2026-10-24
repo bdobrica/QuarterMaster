@@ -15,6 +15,7 @@ from quartermaster.api.interview import router as interview_router
 from quartermaster.api.limits import BodyLimitMiddleware
 from quartermaster.api.routes import router, validation_error
 from quartermaster.api.teaching import router as teaching_router
+from quartermaster.api.training import router as training_router
 from quartermaster.builder import BuilderLLM, OpenAICompatible
 from quartermaster.config import Settings, initialize_storage
 from quartermaster.db import SchemaError, migrate
@@ -23,6 +24,7 @@ from quartermaster.evaluations import recover_evaluations
 from quartermaster.inference import Inference, LocalInference
 from quartermaster.interviews import recover_interviews
 from quartermaster.teaching import recover_lessons
+from quartermaster.training import recover_examples
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,7 @@ def create_app(
             recover_interviews(app.state.settings)
             recover_lessons(app.state.settings)
             recover_evaluations(app.state.settings)
+            recover_examples(app.state.settings)
             app.state.inference = (
                 inference if inference is not None else LocalInference(app.state.settings)
             )
@@ -62,6 +65,7 @@ def create_app(
     app.include_router(interview_router)
     app.include_router(teaching_router)
     app.include_router(evaluation_router)
+    app.include_router(training_router)
     app.add_middleware(BodyLimitMiddleware)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "ui" / "static"), "static")
     app.add_exception_handler(RequestValidationError, validation_error)

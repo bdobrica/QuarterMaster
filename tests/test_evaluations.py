@@ -519,6 +519,9 @@ def test_populated_v4_migration_preserves_all_old_rows_and_originals(workshop):
     with connect(config.database_path) as connection:
         before = snapshot(connection)
         for table in (
+            "training_examples",
+            "training_runs",
+            "adviser_versions",
             "evaluation_suites",
             "evaluation_runs",
             "evaluation_ratings",
@@ -530,7 +533,7 @@ def test_populated_v4_migration_preserves_all_old_rows_and_originals(workshop):
     migrate(config.database_path)
     with connect(config.database_path) as connection:
         assert snapshot(connection) == before
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 5
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 6
     assert blob_path(config.artifact_root, source["sha256"]).read_bytes() == original
 
 

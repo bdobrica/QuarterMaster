@@ -2,9 +2,9 @@
 {% block content %}
 <p><a href="/projects/{{ project.id }}">Teach · {{ project.name }}</a></p>
 <h1>Test the adviser</h1>
-<p><a href="/projects/{{ project.id }}/evaluations">Frozen evaluations and comparisons</a></p>
+<p><a href="/projects/{{ project.id }}/evaluations">Frozen evaluations and comparisons</a> · <a href="/projects/{{ project.id }}/train">Reviewed training and candidates</a></p>
 {% if selected_test %}<p><a href="/projects/{{ project.id }}/test">Back to recent tests</a> · Viewing a saved original test</p>{% endif %}
-<p>Advice uses the pinned local base model, selected knowledge and approved lessons. Reviewed lessons change <strong>context, not model weights</strong>. No training job runs here.</p>
+<p>Advice uses the selected active weights, current knowledge and approved lessons. Active weights: <strong>{{ project.model.adapter_artifact or 'unmodified base model' }}</strong>. Reviewed lessons change <strong>context, not model weights</strong>. No training job runs here.</p>
 {% if not local_ready %}<p role="status">Local inference is not configured. Follow the local model setup in docs/milestone-4.md, then return here. Teaching and lesson review remain available.</p>{% endif %}
 <form method="post" action="/projects/{{ project.id }}/test">
 <label for="situation">What situation do you want advice about?</label>
@@ -79,7 +79,7 @@
 {% endif %}
 {% if not lesson.text %}<form method="post" action="/projects/{{ project.id }}/lessons/{{ lesson.id }}/review"><input type="hidden" name="expected_revision" value="{{ lesson.revision }}"><button name="action" value="reject">Reject correction lesson</button></form>{% endif %}
 {% elif lesson.text %}<p><strong>Applies when:</strong> {{ lesson.text.applicability }}</p><p class="mission">{{ lesson.text.instruction }}</p>{% endif %}
-{% if lesson.status == 'applied' %}<p>Available to the next test through context retrieval. Model weights are unchanged.</p>{% endif %}
+{% if lesson.status == 'applied' %}<p>Available to the next test through context retrieval. Model weights are unchanged. <a href="/projects/{{ project.id }}/train">Create a separately reviewed training example</a>.</p>{% endif %}
 </article>{% else %}<p>No lessons yet. Give feedback on a test response to start teaching.</p>{% endfor %}
 </section>
 {% endblock %}

@@ -1,6 +1,6 @@
 # QuarterMaster — Implementation TODO
 
-**Status:** Milestones 0–5 implemented and locally verified; Milestones 6–8 remain pending.
+**Status:** Milestones 0–5 implemented and locally verified; Milestone 6 implemented and CPU verified, with live GPU acceptance pending owner opt-in. Milestones 7–8 remain pending.
 
 **Scope:** first self-hosted teachable-adviser MVP (`0.1.0`).  
 **Design authority:** [PLAN.md](PLAN.md); implementation rules: [AGENTS.md](AGENTS.md).
@@ -200,34 +200,36 @@ synthetic rubric was not satisfied. No weight or business-lift improvement is cl
 
 ## Milestone 6 — Reviewed examples and real LoRA training
 
-- [ ] Define versioned `TrainingExample`, `TrainingRun` and artifact-manifest schemas.
-- [ ] Add UI to promote an approved correction into a supervised example.
-- [ ] Offer builder-drafted examples with clearly marked `AI_DRAFT` provenance.
-- [ ] Require human approval before an AI-drafted example enters SFT data.
-- [ ] Show full training prompt and target response for each selected example.
-- [ ] Deduplicate exact and near-duplicate training cases.
-- [ ] Enforce locked evaluation suite exclusion before dataset freeze.
-- [ ] Snapshot selected source, lesson, base model and recipe revisions.
-- [ ] Implement train-data JSONL serialization with stable order and IDs.
-- [ ] Add data sufficiency warning instead of implying that five examples ensure quality.
-- [ ] Define one bounded `quick` LoRA preset and one `standard` preset.
-- [ ] Add GPU capability preflight, disk estimate and user-visible resource warning.
-- [ ] Implement persisted single-job queue without a distributed queue service.
-- [ ] Start the pinned trainer container with scoped mounts and explicit GPU opt-in.
-- [ ] Record status transitions, bounded logs, failure code and cancellation intent.
-- [ ] Detect interrupted runs after application restart without automatic billable retry.
-- [ ] Verify adapter files, hashes, base revision and training manifest on completion.
-- [ ] Register a new immutable **candidate** adviser version.
-- [ ] Run a smoke inference and selected frozen evaluation suite on that candidate.
-- [ ] Require explicit owner promotion; never auto-replace the active version.
-- [ ] Mock trainer transitions and failure recovery in CPU-only tests.
+- [x] Define versioned `TrainingExample`, `TrainingRun` and artifact-manifest schemas.
+- [x] Add UI to promote an approved correction into a supervised example.
+- [x] Offer builder-drafted examples with clearly marked `AI_DRAFT` provenance.
+- [x] Require human approval before an AI-drafted example enters SFT data.
+- [x] Show full training prompt and target response for each selected example.
+- [x] Deduplicate exact and near-duplicate training cases.
+- [x] Enforce locked evaluation suite exclusion before dataset freeze.
+- [x] Snapshot selected source, lesson, base model and recipe revisions.
+- [x] Implement train-data JSONL serialization with stable order and IDs.
+- [x] Add data sufficiency warning instead of implying that five examples ensure quality.
+- [x] Define one bounded `quick` LoRA preset and one `standard` preset.
+- [x] Add GPU capability preflight, disk estimate and user-visible resource warning.
+- [x] Implement persisted single-job queue without a distributed queue service.
+- [x] Start the pinned trainer container with scoped mounts and explicit GPU opt-in.
+- [x] Record status transitions, bounded logs, failure code and cancellation intent.
+- [x] Detect interrupted runs after application restart without automatic billable retry.
+- [x] Verify adapter files, hashes, base revision and training manifest on completion.
+- [x] Register a new immutable **candidate** adviser version.
+- [x] Run a smoke inference and selected frozen evaluation suite on that candidate.
+- [x] Require explicit owner promotion; never auto-replace the active version.
+- [x] Mock trainer transitions and failure recovery in CPU-only tests.
 - [ ] Run live `make test-gpu` on a reviewed synthetic fixture.
 
 **Acceptance criteria**
 
 - [ ] An owner can train from reviewed lessons without writing JSONL or Python.
-- [ ] Base and fine-tuned models remain distinct; artifact lineage is inspectable.
-- [ ] A canceled/failed training job cannot be mistaken for a deployable model.
+- [x] Base and fine-tuned models remain distinct; artifact lineage is inspectable.
+- [x] A canceled/failed training job cannot be mistaken for a deployable model.
+
+Implementation and CPU verification: [Milestone 6 record](docs/milestone-6.md). The reviewed-example, frozen dataset, queue/failure/cancellation, candidate comparison and explicit selection paths are verified offline. Live training through this new application workflow remains pending explicit owner review and GPU opt-in; the earlier M1 spike does not satisfy this acceptance check.
 
 ---
 

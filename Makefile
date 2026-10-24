@@ -2,6 +2,7 @@
 
 UV ?= uv
 GPU_MODE ?= nvidia
+GPU_WORKFLOW ?= spike
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "%-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -20,8 +21,14 @@ lint: ## Check Python lint and formatting
 test: ## Run deterministic CPU tests (no GPU or model API calls)
 	$(UV) run --locked pytest
 
-test-gpu: ## Opt in to bounded local LoRA, conversion and isolated CPU runtime spike
+test-gpu: ## Opt in to local LoRA (GPU_WORKFLOW=spike or training; GPU_MODE=nvidia or wsl)
+ifeq ($(GPU_WORKFLOW),training)
+	$(UV) run --locked python -m quartermaster.training_smoke --run-gpu --gpu-mode "$(GPU_MODE)"
+else ifeq ($(GPU_WORKFLOW),spike)
 	$(UV) run --locked python -m quartermaster.spike.run --run-gpu --gpu-mode "$(GPU_MODE)"
+else
+	$(error GPU_WORKFLOW must be spike or training)
+endif
 
 test-export: ## Recheck an existing spike archive in isolation (EXPORT=/absolute/adviser.tar)
 	test -n "$(EXPORT)"

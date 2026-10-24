@@ -260,8 +260,23 @@ def validate_advice(draft, case, evidence):
 
 async def advise(settings, inference, project_id, action):
     case = Case(case_id=uuid4(), situation=action.situation, choices=action.choices)
-    alias = identity(settings)
     spec, context, evidence, lessons, omitted = assemble(settings, project_id, case)
+    if spec.model.adapter_artifact:
+        from quartermaster.inference import LocalInference
+        from quartermaster.training import get_run, get_version
+
+        version = get_version(settings, project_id, spec.model.adapter_artifact)
+        run = get_run(settings, project_id, version.training_run_id)
+        if run.status != "completed" or not version.smoke_passed:
+            raise DomainError("CANDIDATE_STATE: Select a verified version on the Train screen.")
+        alias = f"qm-candidate-{version.model_sha256}"
+        inference = LocalInference(
+            settings,
+            alias=alias,
+            base_url=str(settings.candidate_base_url).rstrip("/") + f"/{version.id}/v1",
+        )
+    else:
+        alias = identity(settings)
     draft, advice, error = None, None, None
     canceled = False
     try:

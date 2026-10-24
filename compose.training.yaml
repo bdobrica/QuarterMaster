@@ -1,0 +1,32 @@
+# Optional host-worker deployment: both app and host CLI see this SAME directory.
+# Existing named-volume users: back up and copy data first; see docs/milestone-6.md.
+services:
+  web:
+    user: "${QM_LOCAL_UID:-1000}:${QM_LOCAL_GID:-1000}"
+    volumes: !override
+      - ${QM_TRAINING_DATA_DIR:-./data/training-app}:/data
+  candidate:
+    profiles: ["training"]
+    user: "${QM_LOCAL_UID:-1000}:${QM_LOCAL_GID:-1000}"
+    build:
+      context: .
+      dockerfile: trainer/Dockerfile
+      target: candidate-runtime
+    image: quartermaster-candidate-runtime:m6
+    pull_policy: never
+    volumes:
+      - ${QM_TRAINING_DATA_DIR:-./data/training-app}:/data:ro
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,nosuid,nodev,size=64m"]
+    init: true
+    mem_limit: 4g
+    cpus: 4
+    pids_limit: 128
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 5

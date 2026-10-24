@@ -1,6 +1,6 @@
 # QuarterMaster — MVP Project Plan
 
-**Status:** Milestones 0–3 implemented; model lifecycle verified as a developer spike; advice/teaching loop pending
+**Status:** Milestones 0–5 locally verified; Milestone 6 implemented and CPU verified, new live GPU workflow awaiting owner opt-in; application export pending
 
 **Working name:** QuarterMaster (codename; no public branding or trademark claim)  
 **Target:** a focused, self-hosted MVP built in approximately 2–3 weeks of part-time work  
@@ -207,7 +207,7 @@ knowledge_revision: null
 lessons_revision: null
 ```
 
-The [adviser contract](quartermaster/contracts/adviser.py) implements this configuration with UUIDs, append-only revisions and UTC timestamps. `knowledge_revision` becomes a UUID when the owner selects Markdown sources. Milestone 3 adds an optional, backward-compatible `decision_definition`: owner-reviewed available choices, target behavior, case grain, decision inputs and success/harm observation. It stays null for projects without an applied interview. Interview answers and AI drafts remain separate append-only records until explicit review; they create no training labels. Milestone 4 allows `lessons_revision` to identify the last applied lesson, with each test additionally freezing the selected lesson IDs, revisions and text. Adapters remain null until the training milestone; unknown model/contract semantics are rejected. The text-only model lifecycle is tested in the [Milestone 1 record](docs/milestone-1.md); the optional local CPU inference service and reviewed context loop are documented in the [Milestone 4 record](docs/milestone-4.md). Standalone product export remains later work. Avoid asking the model for an uncalibrated `confidence: 0.93` field.
+The [adviser contract](quartermaster/contracts/adviser.py) implements this configuration with UUIDs, append-only revisions and UTC timestamps. `knowledge_revision` becomes a UUID when the owner selects Markdown sources. Milestone 3 adds an optional, backward-compatible `decision_definition`: owner-reviewed available choices, target behavior, case grain, decision inputs and success/harm observation. It stays null for projects without an applied interview. Interview answers and AI drafts remain separate append-only records until explicit review; they create no training labels. Milestone 4 allows `lessons_revision` to identify the last applied lesson, with each test additionally freezing the selected lesson IDs, revisions and text. Milestone 6 permits a verified candidate UUID in `model.adapter_artifact`, selected only by explicit owner promotion; null retains the original base. Unknown model/contract semantics are rejected. The text-only model lifecycle is tested in the [Milestone 1 record](docs/milestone-1.md); the optional local CPU inference service and reviewed context loop are documented in the [Milestone 4 record](docs/milestone-4.md). Standalone product export remains later work. Avoid asking the model for an uncalibrated `confidence: 0.93` field.
 
 ### Minimal case and feedback
 
@@ -338,6 +338,17 @@ Training flow:
 7. Keep original examples, recipe, base revision, engine/image digest and reproducibility metadata.
 
 Only one curated model family and a small preset selection (`quick`, `standard`) are in scope. No arbitrary hyperparameter sweeps. GPU training must be opt-in; the web UI and base-model/context exploration should run without it (CPU inference may be slow). If the required GPU is unavailable, clearly explain the blocker rather than silently initiating a cloud job.
+
+Milestone 6 uses a separate explicit Linux host worker and an optional Compose bind-mount override
+so the worker and web share one local SQLite/artifact directory. The web never receives the Docker
+socket. Each worker invocation processes one queued job; a file lock and transactional global claim
+enforce single concurrency, and worker recovery stops orphan containers before marking jobs interrupted.
+Quick/standard are fixed 12/48-step float32 completion-only LoRA presets with finite deadlines.
+The worker verifies adapter metadata/hashes, merges/converts using the M1 path, and replays the
+selected suite's identical frozen B context in the same pinned CPU runtime for base/candidate arms.
+An optional standard-library candidate gateway serves explicitly selected weights to Test without
+adding ML packages to the web app. Dataset review, lexical holdout guards, operator setup and honest
+verification limits are described in [Milestone 6](docs/milestone-6.md). Product export remains M7.
 
 ## 12. Export and independent runtime
 

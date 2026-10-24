@@ -10,5 +10,6 @@
 !trainer/pyproject.toml
 !trainer/uv.lock
 !trainer/worker.py
+!trainer/job_worker.py
 **/__pycache__/
 **/*.pyc

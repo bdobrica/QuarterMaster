@@ -155,13 +155,13 @@ def preflight(base, fixture_path, output):
     )
 
 
-def training_args(output, *, cpu=False):
+def training_args(output, *, cpu=False, recipe=None):
     from trl import SFTConfig
 
     return SFTConfig(
         output_dir=str(output / "scratch"),
-        max_steps=MAX_STEPS,
-        max_length=MAX_LENGTH,
+        max_steps=recipe.steps if recipe else MAX_STEPS,
+        max_length=recipe.max_length if recipe else MAX_LENGTH,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=1,
         learning_rate=LEARNING_RATE,

@@ -481,6 +481,9 @@ def test_recovery_and_v3_migration_preserve_history(workshop):
     before = client.get(base(project)).json()
     with connect(config.database_path) as connection:
         for table in (
+            "training_examples",
+            "training_runs",
+            "adviser_versions",
             "evaluation_suites",
             "evaluation_runs",
             "evaluation_ratings",
@@ -871,6 +874,9 @@ def test_v3_upgrade_preserves_populated_teaching_metadata_and_originals(workshop
         }
         assert all(before.values())
         for table in (
+            "training_examples",
+            "training_runs",
+            "adviser_versions",
             "test_runs",
             "feedback",
             "lesson_revisions",

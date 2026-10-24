@@ -2,7 +2,9 @@
 
 import hashlib
 import json
+import re
 import unicodedata
+from difflib import SequenceMatcher
 
 from quartermaster.errors import DomainError
 
@@ -37,3 +39,33 @@ def require_eligible(connection, project_id, cases):
             "use a different teaching example. It cannot enter training or builder lesson prompts.",
             409,
         )
+    # A conservative lexical guard, not semantic paraphrase detection. Fetch only
+    # decision-time cases; targets, rubrics and outcomes never become prompt context.
+    rows = connection.execute(
+        "SELECT t.document FROM test_runs t JOIN evaluation_holdouts h "
+        "ON t.id=h.test_id WHERE h.project_id=?",
+        (str(project_id),),
+    ).fetchall()
+    from quartermaster.contracts.teaching import TestRun
+
+    reserved = [TestRun.model_validate_json(row[0]).case for row in rows]
+    if any(near_duplicate(case, other) for case in cases for other in reserved):
+        raise DomainError(
+            "EVALUATION_NEAR_DUPLICATE: This case is too similar to a holdout. "
+            "Use a distinct teaching situation.",
+            409,
+        )
+
+
+def near_duplicate(first, second):
+    def tokens(case):
+        text = unicodedata.normalize("NFKC", case.situation).casefold()
+        return re.findall(r"\w+", text)
+
+    a, b = tokens(first), tokens(second)
+    if not a or not b:
+        return False
+    # Preserve order and compare token sets to catch minor edits and reordered copies.
+    return SequenceMatcher(None, a, b, autojunk=False).ratio() >= 0.9 or (
+        len(set(a) & set(b)) / len(set(a) | set(b)) >= 0.9
+    )

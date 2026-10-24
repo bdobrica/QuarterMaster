@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from quartermaster.contracts.project import Mission, Name
+from quartermaster.contracts.sources import UUIDValue
 
 
 class ModelSpec(BaseModel):
@@ -15,7 +16,7 @@ class ModelSpec(BaseModel):
     base_revision: Literal["2fc06364715b967f1860aea9cf38778875588b17"] = (
         "2fc06364715b967f1860aea9cf38778875588b17"
     )
-    adapter_artifact: None = None
+    adapter_artifact: UUIDValue | None = None
 
 
 class DecisionDefinition(BaseModel):
