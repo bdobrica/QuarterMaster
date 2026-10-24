@@ -306,15 +306,25 @@ Implementation and verification: [Milestone 8 record](docs/milestone-8.md); oper
 
 ## MVP release gate — explicit owner journey
 
+The owner-approved [bank-marketing acceptance session](docs/bank-marketing-acceptance.md)
+uses isolated storage, provenance and separate later evaluation inputs. Mission, uploads,
+mapping and manual interview are applied through the public API after owner review.
+The first four live baseline requests failed JSON validation; explicit diagnostics found
+output truncation and a separate semantic failure. Operator assistance does not establish
+independent UI usability, and setup acceptance does not establish a useful learning loop.
+Five later cases are frozen and their ten-output baseline is saved: A produced valid JSON
+in 5/5 cases, B in 1/5, with irrelevant questions in valid outputs. Rubrics remain explicitly
+AI-drafted and there are no human ratings, approved lessons or new training jobs.
+
 - [ ] Start builder with `docker compose up -d` and open its local web UI.
-- [ ] Create a mission in ordinary language.
-- [ ] Upload a CSV/XLSX observations file and a Markdown knowledge file.
-- [ ] Inspect case schema and confirm what was known at decision time.
-- [ ] Complete the guided interview and review adviser specification.
+- [x] Create a mission in ordinary language.
+- [x] Upload a CSV/XLSX observations file and a Markdown knowledge file.
+- [x] Inspect case schema and confirm what was known at decision time.
+- [x] Complete the guided interview and review adviser specification.
 - [ ] Ask the context-only adviser a situation question and receive cited advice.
 - [ ] Give an “ask for missing evidence” correction; approve the lesson.
 - [ ] Retest a related unseen case and observe the lesson in effect.
-- [ ] Freeze a separate evaluation suite and capture baseline results.
+- [x] Freeze a separate evaluation suite and capture baseline results.
 - [ ] Approve a set of SFT examples and submit a local GPU LoRA job.
 - [ ] Obtain a verified candidate version and evaluate against the baseline.
 - [ ] Inspect visible improvements and regressions, then select the active version.
