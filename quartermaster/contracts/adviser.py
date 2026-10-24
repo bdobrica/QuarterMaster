@@ -43,7 +43,7 @@ class AdviserSpec(BaseModel):
     outputs: Literal["quartermaster.advice/v1"] = "quartermaster.advice/v1"
     model: ModelSpec = Field(default_factory=ModelSpec)
     knowledge_revision: UUID | None = None
-    lessons_revision: None = None
+    lessons_revision: UUID | None = None
 
 
 class ProjectEdit(BaseModel):

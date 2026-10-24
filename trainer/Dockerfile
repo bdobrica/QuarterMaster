@@ -22,6 +22,11 @@ COPY --from=source /llama/vendor /licenses/llama.cpp-vendor
 USER 10001:10001
 ENTRYPOINT ["llama-server"]
 
+FROM runtime AS adviser-runtime
+COPY quartermaster/local_runtime.py /opt/quartermaster/local_runtime.py
+COPY LICENSE /licenses/QuarterMaster-LICENSE
+ENTRYPOINT ["python", "/opt/quartermaster/local_runtime.py"]
+
 FROM python:3.13-slim-trixie@sha256:57b29a7c050c4e679e4bea572e14b3965cf4b5839de2da49d55e49ffc4024f39 AS trainer
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     UV_PYTHON_DOWNLOADS=never UV_LINK_MODE=copy PATH="/opt/trainer/.venv/bin:$PATH" \

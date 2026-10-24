@@ -4,7 +4,7 @@
 
 QuarterMaster helps a small-business owner turn their knowledge, historical examples, and natural-language feedback into a specialized adviser. Describe what you want advice about, upload spreadsheets and Markdown research, teach the adviser how to handle situations, evaluate its judgment, fine-tune a small language model, and export a standalone Docker-ready adviser.
 
-**Status:** Milestones 0–3: local projects and mission history, CSV/XLSX/Markdown previews, reviewed case mappings, searchable Markdown knowledge with citations, and a guided interview with editable spec review. The interview works manually offline or through an optional provider after explicit disclosure/consent. The Milestone 1 developer LoRA/GGUF smoke test is also available. Advice/correction and application training/export screens remain planned; this is not the `0.1.0` MVP yet. The tiny synthetic spike does not establish adviser quality. QuarterMaster is a standalone project, not a KitchenSoup plugin.
+**Status:** Milestones 0–4: local projects, uploads and reviewed case mappings, searchable Markdown knowledge, a guided interview, and local base-model advice with feedback and reviewed context lessons. Optional builder requests require preview and consent. Frozen evaluations and application training/export screens remain planned; this is not the `0.1.0` MVP yet. The separate Milestone 1 LoRA/GGUF spike proves model portability, not adviser quality. QuarterMaster is a standalone project, not a KitchenSoup plugin.
 
 ## Why QuarterMaster?
 
@@ -75,7 +75,9 @@ Open a project to edit its mission, upload sources, preview and confirm case map
 
 Choose **Define the adviser through a guided interview** to describe choices, desired behavior, case grain, decision-time information and observable success/harm. Review, edit or reject the resulting spec before saving it. The manual path needs no provider. Optional provider setup, exact-context consent and failure recovery are described in the [Milestone 3 guide](docs/milestone-3.md). Historical rows remain unreviewed; the interview visibly reports `needs_examples`.
 
-`make help` lists formatting and Compose commands. Startup initializes/checks schema v3 and transactionally migrates v1/v2 databases, preserving existing missions and source metadata. Back up the data volume before upgrading. Incompatible or unversioned existing databases fail with an actionable error instead of being reset.
+For **Test advice and teach a lesson**, first run `make model-setup`, configure the printed model hash and local URL, then start `docker compose --profile advice up -d --build --wait`. The optional CPU service uses the pinned unmodified Qwen base model. Corrections become pending lessons; only reviewed approval changes the next test’s context. Weights stay unchanged. See the [Milestone 4 setup, limits and verification](docs/milestone-4.md).
+
+`make help` lists formatting and Compose commands. Startup initializes/checks schema v4 and transactionally migrates v1–v3 databases, preserving existing missions and source metadata. Back up the data volume before upgrading. Incompatible or unversioned existing databases fail with an actionable error instead of being reset.
 
 ## Model feasibility spike and planned workflow
 
@@ -89,7 +91,7 @@ make test-export EXPORT=/absolute/path/to/data/spike/RUN_ID/adviser.tar
 
 These are explicit, bounded local developer checks, not the future no-code training/export UI. See the verification record for exact hardware, package revisions, latency, artifacts and observed regressions. No cloud GPU or builder API is used by the spike.
 
-A supported GPU is required for this LoRA spike. Projects, uploads, case preparation and knowledge search work on CPU without a model. The explicit base-model text preflight also runs on CPU, subject to available memory. Ordinary adviser testing remains a later milestone. Training uses explicitly selected local hardware.
+A supported GPU is required for this LoRA spike. Projects, uploads, case preparation and knowledge search work on CPU without a model. The explicit base-model text preflight also runs on CPU, subject to available memory. The Test screen uses the separate local CPU model service configured above. Training uses explicitly selected local hardware.
 
 Exported advisers use a separate standard runtime package and run without the QuarterMaster builder or frontier-model API for core advice. The first launch may need to download its prebuilt runtime image; thereafter the model and knowledge are local.
 
@@ -104,7 +106,7 @@ Exported advisers use a separate standard runtime package and run without the Qu
 | Builder intelligence | Configurable OpenAI-compatible LLM provider |
 | Adviser model | Curated small open-weight Qwen model |
 | Consolidated learning | Supervised fine-tuning using PEFT LoRA on supported GPU |
-| Runtime inference | Small local serving engine, initially targeting llama.cpp/GGUF |
+| Runtime inference | Optional pinned llama.cpp/GGUF CPU service; reviewed context lessons |
 | Packaging | Generated Docker Compose bundle with a standard runtime image |
 
 This intentionally avoids Kubernetes, Redis, object storage, agents with tools, general-purpose code generation, and automatic retraining in the first release.
@@ -116,6 +118,7 @@ This intentionally avoids Kubernetes, Redis, object storage, agents with tools, 
 - Uploads and generated examples must be inspected; Markdown and spreadsheets may contain malicious instructions or misleading facts.
 - User preferences, factual correctness, and eventual business outcomes are different signals. Fine-tuning on corrections does not guarantee business benefit.
 - An LLM-generated explanation is a grounded account of supporting evidence, **not a transparent view into the model's hidden reasoning**.
+- Citation and exact-quote validation establish provenance, not factual entailment. The small base model can miss facts or over-ask for information; review its advice.
 - Numerical predictions and causal effect estimates are not guaranteed just because the input contains numbers.
 
 ## Project documents

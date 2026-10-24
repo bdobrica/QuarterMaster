@@ -8,7 +8,7 @@ from uuid import UUID
 
 from quartermaster.contracts.adviser import AdviserSpec
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 class SchemaError(RuntimeError):
@@ -44,6 +44,9 @@ def check_schema(connection: sqlite3.Connection) -> None:
         "chunks": {"id", "source_id", "project_id", "document"},
         "chunks_fts": {"citation_id", "text"},
         "interview_revisions": {"project_id", "revision", "document"},
+        "test_runs": {"id", "project_id", "document"},
+        "feedback": {"id", "project_id", "document"},
+        "lesson_revisions": {"id", "project_id", "revision", "document"},
     }
     for table, expected in required.items():
         actual = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
@@ -105,6 +108,18 @@ def migrate(path: Path) -> None:
             connection.execute(
                 "CREATE TABLE interview_revisions (project_id TEXT REFERENCES projects(id), "
                 "revision INTEGER, document TEXT NOT NULL, PRIMARY KEY(project_id, revision))"
+            )
+            connection.execute("PRAGMA user_version = 3")
+            version = 3
+        if version == 3:
+            for table in ("test_runs", "feedback"):
+                connection.execute(
+                    f"CREATE TABLE {table} (id TEXT PRIMARY KEY, "
+                    "project_id TEXT NOT NULL REFERENCES projects(id), document TEXT NOT NULL)"
+                )
+            connection.execute(
+                "CREATE TABLE lesson_revisions (id TEXT, project_id TEXT REFERENCES projects(id), "
+                "revision INTEGER, document TEXT NOT NULL, PRIMARY KEY(id, revision))"
             )
             connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         check_schema(connection)

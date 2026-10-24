@@ -1,4 +1,4 @@
-.PHONY: help setup fmt lint test test-gpu test-export up down logs migrate
+.PHONY: help setup fmt lint test test-gpu test-export model-setup up down logs migrate
 
 UV ?= uv
 GPU_MODE ?= nvidia
@@ -26,6 +26,9 @@ test-gpu: ## Opt in to bounded local LoRA, conversion and isolated CPU runtime s
 test-export: ## Recheck an existing spike archive in isolation (EXPORT=/absolute/adviser.tar)
 	test -n "$(EXPORT)"
 	$(UV) run --locked python -m quartermaster.spike.run --export "$(EXPORT)"
+
+model-setup: ## Explicitly prepare the pinned local CPU base model (download/build if absent)
+	$(UV) run --locked python -m quartermaster.setup_local
 
 up: ## Build and start the local web service
 	docker compose up --build -d --wait

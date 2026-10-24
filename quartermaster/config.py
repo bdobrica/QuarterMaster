@@ -15,12 +15,17 @@ class Settings(BaseSettings):
     builder_api_key: SecretStr | None = None
     builder_api_key_file: Path | None = None
     builder_timeout_seconds: float = Field(default=20, ge=1, le=30)
+    local_base_url: HttpUrl | None = None
+    local_model_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    local_timeout_seconds: float = Field(default=120, ge=1, le=180)
 
     @field_validator(
         "builder_base_url",
         "builder_model",
         "builder_api_key",
         "builder_api_key_file",
+        "local_base_url",
+        "local_model_sha256",
         mode="before",
     )
     @classmethod
@@ -35,6 +40,20 @@ class Settings(BaseSettings):
                 raise ValueError("Provider URL cannot contain credentials, query or fragment")
             if value.scheme != "https" and value.host not in {"localhost", "127.0.0.1", "[::1]"}:
                 raise ValueError("Use HTTPS for remote providers")
+        return value
+
+    @field_validator("local_base_url")
+    @classmethod
+    def local_url(cls, value):
+        if value is not None and (
+            value.scheme != "http"
+            or value.host not in {"localhost", "127.0.0.1", "[::1]", "inference"}
+            or value.username
+            or value.password
+            or value.query
+            or value.fragment
+        ):
+            raise ValueError("Use HTTP on loopback or the local Compose inference service")
         return value
 
     @field_validator("builder_model")

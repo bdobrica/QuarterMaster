@@ -1,6 +1,6 @@
 # QuarterMaster — Implementation TODO
 
-**Status:** Milestones 0–3 implemented and locally verified; Milestones 4–8 remain pending.
+**Status:** Milestones 0–4 implemented and locally verified; Milestones 5–8 remain pending.
 
 **Scope:** first self-hosted teachable-adviser MVP (`0.1.0`).  
 **Design authority:** [PLAN.md](PLAN.md); implementation rules: [AGENTS.md](AGENTS.md).
@@ -133,31 +133,36 @@ Implementation and verification: [Milestone 3 record](docs/milestone-3.md).
 
 ## Milestone 4 — Test screen, context adviser and immediate lessons
 
-- [ ] Define versioned `Case`, `Advice`, `Lesson` and `Feedback` schemas.
-- [ ] Implement local inference adapter for the pinned base model.
-- [ ] Implement a bounded prompt/context assembler for mission, case, retrieved knowledge and approved lessons.
-- [ ] Ensure source excerpts are marked as untrusted content, not instructions.
-- [ ] Require structured `Advice` output with recommendation, explanation, citations and optional question.
-- [ ] Validate JSON output and reject unsupported fields/types.
-- [ ] Validate that cited IDs actually exist in the retrieved evidence.
-- [ ] Preserve case, knowledge revision, model and output with each test response.
-- [ ] Add the Test UI with a plain-language situation field.
-- [ ] Render recommendations, citations, uncertainties and clarification questions separately.
-- [ ] Add user feedback options: good, wrong call, missing knowledge, should ask, weak explanation.
-- [ ] Save the raw owner correction unchanged.
-- [ ] Use the builder provider to draft an explicit reusable lesson from the correction.
-- [ ] Show the proposed lesson and require owner approval/edit/rejection.
-- [ ] Keep lessons append-only and link them to their original cases.
-- [ ] Apply an approved lesson to the next inference through context retrieval.
-- [ ] Show in the UI that this improvement is **context**, not a weight update.
-- [ ] Add a “similar but unseen situation” fixture for generalization testing.
-- [ ] Add regression tests for nonexistent citations and unsupported decisive statements.
+- [x] Define versioned `Case`, `Advice`, `Lesson` and `Feedback` schemas.
+- [x] Implement local inference adapter for the pinned base model.
+- [x] Implement a bounded prompt/context assembler for mission, case, retrieved knowledge and approved lessons.
+- [x] Ensure source excerpts are marked as untrusted content, not instructions.
+- [x] Require structured `Advice` output with recommendation, explanation, citations and optional question.
+- [x] Validate JSON output and reject unsupported fields/types.
+- [x] Validate that cited IDs actually exist in the retrieved evidence.
+- [x] Preserve case, knowledge revision, model and output with each test response.
+- [x] Add the Test UI with a plain-language situation field.
+- [x] Render recommendations, citations, uncertainties and clarification questions separately.
+- [x] Add user feedback options: good, wrong call, missing knowledge, should ask, weak explanation.
+- [x] Save the raw owner correction unchanged.
+- [x] Use the builder provider to draft an explicit reusable lesson from the correction.
+- [x] Show the proposed lesson and require owner approval/edit/rejection.
+- [x] Keep lessons append-only and link them to their original cases.
+- [x] Apply an approved lesson to the next inference through context retrieval.
+- [x] Show in the UI that this improvement is **context**, not a weight update.
+- [x] Add a “similar but unseen situation” fixture for generalization testing.
+- [x] Add regression tests for nonexistent citations and unsupported decisive statements.
 
 **Acceptance criteria**
 
-- [ ] The complete baseline → correction → reviewed lesson → retest loop works without a training job.
-- [ ] An unreviewed lesson never modifies active advice.
-- [ ] The adviser can ask for missing evidence instead of making an unsupported judgment.
+- [x] The complete baseline → correction → reviewed lesson → retest loop works without a training job.
+- [x] An unreviewed lesson never modifies active advice.
+- [x] The adviser can ask for missing evidence instead of making an unsupported judgment.
+
+Implementation and verification: [Milestone 4 record](docs/milestone-4.md). The real CPU model
+asked for missing damage status but over-asked on a complete case; the recorded rubric miss is
+a quality limitation, not a claimed improvement. The full reviewed-lesson loop is verified with
+deterministic providers; real-model generalization remains unproven.
 
 ---
 

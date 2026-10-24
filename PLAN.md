@@ -207,7 +207,7 @@ knowledge_revision: null
 lessons_revision: null
 ```
 
-The [adviser contract](quartermaster/contracts/adviser.py) implements this configuration with UUIDs, append-only revisions and UTC timestamps. `knowledge_revision` becomes a UUID when the owner selects Markdown sources. Milestone 3 adds an optional, backward-compatible `decision_definition`: owner-reviewed available choices, target behavior, case grain, decision inputs and success/harm observation. It stays null for projects without an applied interview. Interview answers and AI drafts remain separate append-only records until explicit review; they create no training labels. Adapters and lessons remain null until their respective product milestones; unknown model/contract semantics are rejected. The text-only model lifecycle is tested in the [Milestone 1 record](docs/milestone-1.md); the product inference/runtime remains later work. Avoid asking the model for an uncalibrated `confidence: 0.93` field.
+The [adviser contract](quartermaster/contracts/adviser.py) implements this configuration with UUIDs, append-only revisions and UTC timestamps. `knowledge_revision` becomes a UUID when the owner selects Markdown sources. Milestone 3 adds an optional, backward-compatible `decision_definition`: owner-reviewed available choices, target behavior, case grain, decision inputs and success/harm observation. It stays null for projects without an applied interview. Interview answers and AI drafts remain separate append-only records until explicit review; they create no training labels. Milestone 4 allows `lessons_revision` to identify the last applied lesson, with each test additionally freezing the selected lesson IDs, revisions and text. Adapters remain null until the training milestone; unknown model/contract semantics are rejected. The text-only model lifecycle is tested in the [Milestone 1 record](docs/milestone-1.md); the optional local CPU inference service and reviewed context loop are documented in the [Milestone 4 record](docs/milestone-4.md). Standalone product export remains later work. Avoid asking the model for an uncalibrated `confidence: 0.93` field.
 
 ### Minimal case and feedback
 
@@ -275,6 +275,8 @@ The owner chooses a feedback type:
 5. Unsupported or misleading explanation.
 
 The builder converts the comment into a proposed lesson, with applicability and source case, for explicit owner review. Once approved, it is stored as a new lesson revision and injected/retrieved in subsequent responses. This changes **context**, not weights; the UI must say so.
+
+Milestone 4 implements this loop with strict versioned test/feedback/lesson records. The local llama.cpp adapter checks the configured base revision/GGUF identity, constrains citations to retrieved evidence, and validates exact supporting quotes. A bounded context assembler snapshots the mission, decision-time case, selected knowledge and approved lessons. A structured draft identifies missing information before advice; declared missing inputs or questions withhold the decision. These are provenance and consistency checks, not a proof of factual entailment or model judgment. Lesson builder calls use a separate exact-context disclosure and explicit consent; manual drafts work offline. Pending/rejected drafts never enter advice or training. See the [implementation and verification](docs/milestone-4.md).
 
 ### Consolidated learning (LoRA)
 

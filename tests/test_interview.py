@@ -657,6 +657,8 @@ def test_v2_migration_preserves_existing_documents(guided):
     with connect(config.database_path) as connection:
         raw = connection.execute("SELECT document FROM adviser_revisions").fetchall()[0][0]
         connection.execute("DROP TABLE interview_revisions")
+        for table in ("test_runs", "feedback", "lesson_revisions"):
+            connection.execute(f"DROP TABLE {table}")
         connection.execute("PRAGMA user_version=2")
     migrate(config.database_path)
     assert client.get(f"/api/projects/{project}").json() == before

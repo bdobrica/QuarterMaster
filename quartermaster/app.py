@@ -13,16 +13,24 @@ from quartermaster.api.foundation import router as foundation_router
 from quartermaster.api.interview import router as interview_router
 from quartermaster.api.limits import BodyLimitMiddleware
 from quartermaster.api.routes import router, validation_error
+from quartermaster.api.teaching import router as teaching_router
 from quartermaster.builder import BuilderLLM, OpenAICompatible
 from quartermaster.config import Settings, initialize_storage
 from quartermaster.db import SchemaError, migrate
 from quartermaster.errors import DomainError
+from quartermaster.inference import Inference, LocalInference
 from quartermaster.interviews import recover_interviews
+from quartermaster.teaching import recover_lessons
 
 logger = logging.getLogger(__name__)
 
 
-def create_app(settings: Settings | None = None, *, builder: BuilderLLM | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    builder: BuilderLLM | None = None,
+    inference: Inference | None = None,
+) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         try:
@@ -30,6 +38,10 @@ def create_app(settings: Settings | None = None, *, builder: BuilderLLM | None =
             initialize_storage(app.state.settings)
             migrate(app.state.settings.database_path)
             recover_interviews(app.state.settings)
+            recover_lessons(app.state.settings)
+            app.state.inference = (
+                inference if inference is not None else LocalInference(app.state.settings)
+            )
             app.state.builder = (
                 builder if builder is not None else OpenAICompatible(app.state.settings)
             )
@@ -45,6 +57,7 @@ def create_app(settings: Settings | None = None, *, builder: BuilderLLM | None =
     app.include_router(router)
     app.include_router(foundation_router)
     app.include_router(interview_router)
+    app.include_router(teaching_router)
     app.add_middleware(BodyLimitMiddleware)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "ui" / "static"), "static")
     app.add_exception_handler(RequestValidationError, validation_error)

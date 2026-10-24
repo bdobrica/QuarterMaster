@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="/projects/{{ project.id }}">Teach · {{ project.name }}</a></p>
+<h1>Test the adviser</h1>
+{% if selected_test %}<p><a href="/projects/{{ project.id }}/test">Back to recent tests</a> · Viewing a saved original test</p>{% endif %}
+<p>Advice uses the pinned local base model, selected knowledge and approved lessons. Reviewed lessons change <strong>context, not model weights</strong>. No training job runs here.</p>
+{% if not local_ready %}<p role="status">Local inference is not configured. Follow the local model setup in docs/milestone-4.md, then return here. Teaching and lesson review remain available.</p>{% endif %}
+<form method="post" action="/projects/{{ project.id }}/test">
+<label for="situation">What situation do you want advice about?</label>
+<textarea id="situation" name="situation" rows="4" required maxlength="4000"></textarea>
+<p>Include facts known before deciding. Leave later outcomes out of this field. Advice is sent only to this installation's local model service.</p>
+<button {% if not local_ready %}disabled{% endif %}>Ask for advice</button>
+</form>
+<section><h2>Test responses</h2>
+{% for run in runs %}<article id="test-{{ run.id }}">
+<p>{{ run.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }} · Adviser revision {{ run.adviser.revision }} · {{ run.lessons|length }} context lessons</p>
+<h3>Situation</h3><p class="mission">{{ run.case.situation }}</p>
+{% if run.error %}<p role="alert">{{ run.error }}</p>{% else %}
+<h3>Recommendation</h3><p class="mission">{{ run.advice.recommendation }}</p>
+<h3>Explanation</h3><p class="mission">{{ run.advice.explanation }}</p>
+<p>Explanation describes supporting facts; it does not expose internal model reasoning.</p>
+{% if run.advice.clarification_question %}<h3>Clarification needed</h3><p class="mission">{{ run.advice.clarification_question }}</p>{% endif %}
+<h3>Uncertainties and limitations</h3>
+<ul>{% for item in run.advice.limitations %}<li>{{ item }}</li>{% else %}<li>No additional limitations reported by the model. Verify advice before acting.</li>{% endfor %}</ul>
+<h3>Citations</h3><ul>
+{% for ref in run.advice.evidence_refs %}{% for item in run.evidence if item.citation_id|string == ref %}
+<li><a href="/projects/{{ project.id }}/citations/{{ ref }}?revision={{ run.adviser.knowledge_revision }}">{{ item.source_name }} · lines {{ item.line_start }}–{{ item.line_end }}</a><blockquote class="mission">{{ item.text }}</blockquote></li>
+{% endfor %}{% else %}<li>No uploaded excerpts cited.</li>{% endfor %}</ul>
+<form method="post" action="/projects/{{ project.id }}/tests/{{ run.id }}/feedback">
+<label for="category-{{ run.id }}">How was this advice?</label><select name="category" id="category-{{ run.id }}" required>{% for key, title in categories.items() %}<option value="{{ key }}">{{ title }}</option>{% endfor %}</select>
+<label for="correction-{{ run.id }}">What should it keep or change?</label><textarea name="correction" id="correction-{{ run.id }}" rows="3" maxlength="4000" required></textarea>
+<p>Your comment is saved unchanged. It creates a pending lesson for review. Your rating alone does not establish factual correctness or business lift.</p><button>Save feedback</button>
+</form>
+{% endif %}
+<details><summary>Saved context and model details</summary><p>{{ run.model_alias }}</p><p>Knowledge revision: {{ run.adviser.knowledge_revision or 'none' }} · Lesson selection revision: {{ run.adviser.lessons_revision or 'none' }}</p><pre>{{ run.context }}</pre></details>
+</article>{% else %}<p>Enter a situation to get a baseline response, then give a correction and retest a similar new situation.</p>{% endfor %}
+</section>
+<section><h2>Lessons to review</h2>
+{% for lesson in lessons %}{% set record = feedback[lesson.id|string] %}<article id="lesson-{{ lesson.id }}">
+<p><strong>{{ lesson.status }}</strong> · {{ lesson.origin }} · Revision {{ lesson.revision }}</p>
+<p>From <a href="/projects/{{ project.id }}/test?test_id={{ record.test_id }}#test-{{ record.test_id }}">the original test</a> · Case {{ lesson.case_id }} · {{ categories[record.category] }}</p>
+<h3>Owner's unchanged feedback</h3><pre>{{ record.correction }}</pre>
+{% if lesson.error %}<p role="alert">{{ lesson.error }}</p>{% endif %}
+{% if lesson.status not in ['applied', 'rejected', 'sending'] %}
+{% if lesson.text %}
+<p>This draft has no effect until you approve it.</p>
+<form method="post" action="/projects/{{ project.id }}/lessons/{{ lesson.id }}/review">
+<input type="hidden" name="expected_revision" value="{{ lesson.revision }}">
+<label>When does this lesson apply?<textarea name="applicability" rows="2" required maxlength="4000">{{ lesson.text.applicability }}</textarea></label>
+<label>What should the adviser do?<textarea name="instruction" rows="3" required maxlength="4000">{{ lesson.text.instruction }}</textarea></label>
+<button name="action" value="apply">Approve lesson for context</button><button name="action" value="reject" formnovalidate>Reject</button>
+</form>
+{% else %}
+<form method="post" action="/projects/{{ project.id }}/lessons/{{ lesson.id }}/manual">
+<input type="hidden" name="expected_revision" value="{{ lesson.revision }}">
+<label>When does the lesson apply?<textarea name="applicability" rows="2" required maxlength="4000"></textarea></label>
+<label>Reusable instruction<textarea name="instruction" rows="3" required maxlength="4000"></textarea></label><button>Save manual draft for review</button>
+</form>
+{% endif %}
+{% if lesson.disclosure and lesson.status == 'pending' and not lesson.text %}
+<details open><summary>Review exactly what the builder will receive · {{ lesson.disclosure.input_bytes }} UTF-8 bytes</summary>
+<p>Endpoint: {{ lesson.disclosure.endpoint }} · Model: {{ lesson.disclosure.model }}</p><p>The mission, decision-time situation, advice and your correction will leave this installation. No source files or retrieved excerpt blocks are attached. Advice and your correction may quote business content; inspect the exact request below. The separate observed-outcome field is excluded.</p>
+<h3>Instructions</h3><pre>{{ lesson.disclosure.system }}</pre><h3>Business context</h3><pre>{{ lesson.disclosure.context }}</pre><h3>Response schema</h3><pre>{{ lesson.disclosure.response_schema|tojson(indent=2) }}</pre>
+<form method="post" action="/projects/{{ project.id }}/lessons/{{ lesson.id }}/send">
+<input type="hidden" name="expected_revision" value="{{ lesson.revision }}"><input type="hidden" name="turn_id" value="{{ lesson.id }}"><input type="hidden" name="disclosure_sha256" value="{{ lesson.disclosure.disclosure_sha256 }}">
+<label><input type="checkbox" name="consent" value="yes" required> I consent to send this exact context to the displayed provider.</label><button>Send and draft lesson</button>
+</form></details>
+{% else %}
+<form method="post" action="/projects/{{ project.id }}/lessons/{{ lesson.id }}/prepare"><input type="hidden" name="expected_revision" value="{{ lesson.revision }}"><button>Preview optional builder request</button></form>
+{% endif %}
+{% if not lesson.text %}<form method="post" action="/projects/{{ project.id }}/lessons/{{ lesson.id }}/review"><input type="hidden" name="expected_revision" value="{{ lesson.revision }}"><button name="action" value="reject">Reject correction lesson</button></form>{% endif %}
+{% elif lesson.text %}<p><strong>Applies when:</strong> {{ lesson.text.applicability }}</p><p class="mission">{{ lesson.text.instruction }}</p>{% endif %}
+{% if lesson.status == 'applied' %}<p>Available to the next test through context retrieval. Model weights are unchanged.</p>{% endif %}
+</article>{% else %}<p>No lessons yet. Give feedback on a test response to start teaching.</p>{% endfor %}
+</section>
+{% endblock %}

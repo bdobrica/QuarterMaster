@@ -342,11 +342,14 @@ def compare(base, inputs, adapter, output):
 
 
 def convert(base, adapter, output):
-    from peft import PeftModel
-
     model, tokenizer = load_model(base, gpu=False)
-    model = PeftModel.from_pretrained(model, adapter, local_files_only=True)
-    merged = model.merge_and_unload(safe_merge=True)
+    if adapter is not None:
+        from peft import PeftModel
+
+        model = PeftModel.from_pretrained(model, adapter, local_files_only=True)
+        merged = model.merge_and_unload(safe_merge=True)
+    else:
+        merged = model  # Explicit M4 base-only conversion; no adapter or training fixture.
     merged.save_pretrained(output / "merged", safe_serialization=True)
     tokenizer.save_pretrained(output / "merged")
     del model, merged
@@ -374,7 +377,9 @@ def convert(base, adapter, output):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("stage", choices=["download", "preflight", "train", "compare", "convert"])
+    parser.add_argument(
+        "stage", choices=["download", "preflight", "train", "compare", "convert", "convert-base"]
+    )
     parser.add_argument("--base", type=Path, default=Path("/base"))
     parser.add_argument("--output", type=Path, default=Path("/output"))
     args = parser.parse_args()
@@ -390,6 +395,8 @@ def main():
             compare(args.base, Path("/input/cases.json"), Path("/adapter"), args.output)
         case "convert":
             convert(args.base, Path("/adapter"), args.output)
+        case "convert-base":
+            convert(args.base, None, args.output)
 
 
 if __name__ == "__main__":

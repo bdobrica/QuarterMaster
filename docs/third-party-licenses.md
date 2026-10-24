@@ -41,4 +41,6 @@ sources/notices, including licenses embedded in headers, under `/licenses/`. Pyt
 components keep their own image notices. No NVIDIA runtime or trainer dependencies are installed
 in the standalone CPU runtime.
 
+Milestone 4 reuses this pinned CPU engine in the optional local advice service and copies the unmodified base model license into its verified GGUF bundle. It adds no Python runtime dependency. Its image also carries the QuarterMaster license for the verification entry point; trainer/ML packages stay out of the web and CPU serving images. See the [local setup and verification](milestone-4.md).
+
 Future exports must preserve applicable model/runtime license notices and exact revision provenance. Uploaded source materials remain subject to their owners' rights; approving a lesson does not grant redistribution rights over its sources.

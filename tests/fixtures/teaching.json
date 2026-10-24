@@ -1,0 +1,11 @@
+{
+  "provenance": "AI_DRAFT_SYNTHETIC_SOFTWARE_TEST_ONLY_NOT_TRAINING",
+  "mission": "Advise on rental tool use. Require a current inspection and no reported damage.",
+  "baseline": "A drill has a current inspection. Can it be used?",
+  "unseen": "A sander has a current inspection. Can it be used?",
+  "correction": "  Ask whether any damage is reported before recommending use.\nKeep this wording unchanged.  ",
+  "lesson": {
+    "applicability": "Rental tool use when damage status is not supplied",
+    "instruction": "Ask whether any damage is reported and withhold a use recommendation until both inspection and damage status are known."
+  }
+}

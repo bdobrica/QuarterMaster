@@ -3,6 +3,7 @@
 <p><a href="/">All projects</a></p>
 <h1>{{ project.name }}</h1>
 <p class="eyebrow">Teach · Mission and sources</p>
+<p><a class="button" href="/projects/{{ project.id }}/test">Test advice and teach a lesson</a></p>
 <p><a class="button" href="/projects/{{ project.id }}/interview">Define the adviser through a guided interview</a></p>
 {% if project.decision_definition %}<details><summary>Reviewed decision definition</summary>
 {% for key, value in project.decision_definition.model_dump().items() %}<h3>{{ key|replace('_', ' ')|capitalize }}</h3><p class="mission">{{ value }}</p>{% endfor %}
