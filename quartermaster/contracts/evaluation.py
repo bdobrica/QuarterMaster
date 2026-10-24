@@ -53,7 +53,7 @@ class EvaluationInput(Contract):
     adviser: AdviserSpec
     system: str
     context: str
-    prompt_version: Literal["context/v1"] = "context/v1"
+    prompt_version: Literal["context/v1", "context/v2"] = "context/v1"
     engine_revision: Literal["1a24df163920a4744a95373d178d790b72a9bb2f"] = (
         "1a24df163920a4744a95373d178d790b72a9bb2f"
     )

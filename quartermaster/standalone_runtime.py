@@ -22,6 +22,7 @@ from quartermaster.contracts.advice import Advice, Case
 from quartermaster.contracts.export import RuntimeAdvice, RuntimeInput
 from quartermaster.errors import DomainError
 from quartermaster.export_package import PackageContext, content_hash, verify_package
+from quartermaster.generation import checked_parameters
 from quartermaster.inference import LocalInference
 
 
@@ -92,7 +93,7 @@ def start_engine(root, manifest):
         "--no-webui",
         "--log-disable",
         "-n",
-        "512",
+        str(checked_parameters(manifest.inference_parameters)["max_tokens"]),
         "--no-context-shift",
     ]
     try:
@@ -138,7 +139,7 @@ def create_runtime(root: Path, *, inference=None, launch_engine=True):
         engine, context = None, None
         try:
             manifest, config, material, reference = verify_package(root)
-            context = PackageContext(config, material)
+            context = PackageContext(config, material, prompt_version=manifest.prompt_version)
             reference_case = Case.model_validate_json(
                 json.dumps(
                     {
@@ -217,7 +218,11 @@ def create_runtime(root: Path, *, inference=None, launch_engine=True):
         _, context, evidence, _, omitted = app.state.context.assemble(case)
         try:
             async with asyncio.timeout(180):
-                result = await app.state.inference.advise(system=SYSTEM, context=context)
+                result = await app.state.inference.advise(
+                    system=SYSTEM,
+                    context=context,
+                    parameters=app.state.manifest.inference_parameters,
+                )
         except TimeoutError:
             raise DomainError("LOCAL_TIMEOUT: Advice timed out; retry explicitly.", 503) from None
         _, advice = validate_advice(result, case, evidence)

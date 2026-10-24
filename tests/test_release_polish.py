@@ -33,7 +33,7 @@ class ScenarioInference:
         self.scenario = scenario
         self.calls = []
 
-    async def advise(self, *, system, context):
+    async def advise(self, *, system, context, parameters=None):
         data = json.loads(context)
         self.calls.append((system, data))
         refs = [e["citation_id"] for e in data["retrieved_evidence"]]

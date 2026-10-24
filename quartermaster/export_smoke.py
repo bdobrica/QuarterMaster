@@ -32,14 +32,19 @@ def command(args, *, timeout=30, input_text=None):
     return result.stdout
 
 
-def verify_image(image):
+def verify_image(image, contract="quartermaster.export/v1"):
     try:
         result = json.loads(command(["docker", "image", "inspect", image]))[0]
         labels = result["Config"].get("Labels") or {}
         if (
             result["Id"] != image
             or labels.get("org.opencontainers.image.revision") != LLAMA_REVISION
-            or labels.get("io.quartermaster.export-contract") != "quartermaster.export/v1"
+            or labels.get("io.quartermaster.export-contract")
+            not in (
+                {"quartermaster.export/v1", "quartermaster.export/v2"}
+                if contract == "quartermaster.export/v1"
+                else {contract}
+            )
         ):
             raise ValueError
     except (DomainError, ValueError, KeyError, TypeError, IndexError):
@@ -74,7 +79,7 @@ def smoke(archive, report_path=None):
                     "Compose recipe may be executed.",
                     409,
                 )
-            verify_image(manifest.runtime_image)
+            verify_image(manifest.runtime_image, manifest.schema_version)
             override = outer / "isolation.yaml"
             override.write_text(
                 "services:\n  adviser:\n    ports: !reset []\n    network_mode: none\n"

@@ -314,7 +314,10 @@ output truncation and a separate semantic failure. Operator assistance does not 
 independent UI usability, and setup acceptance does not establish a useful learning loop.
 Five later cases are frozen and their ten-output baseline is saved: A produced valid JSON
 in 5/5 cases, B in 1/5, with irrelevant questions in valid outputs. Rubrics remain explicitly
-AI-drafted and there are no human ratings, approved lessons or new training jobs.
+AI-drafted and there are no human ratings. The [reviewed follow-up](docs/response-budget.md)
+preserves that baseline, adds bounded generation and compact prompts, applies three
+owner-edited lessons/targets and submits a separate local GPU job. The unseen complete
+case still over-asks; a useful learning improvement is not yet established.
 
 - [ ] Start builder with `docker compose up -d` and open its local web UI.
 - [x] Create a mission in ordinary language.
@@ -322,10 +325,10 @@ AI-drafted and there are no human ratings, approved lessons or new training jobs
 - [x] Inspect case schema and confirm what was known at decision time.
 - [x] Complete the guided interview and review adviser specification.
 - [ ] Ask the context-only adviser a situation question and receive cited advice.
-- [ ] Give an “ask for missing evidence” correction; approve the lesson.
+- [x] Give an “ask for missing evidence” correction; approve the lesson.
 - [ ] Retest a related unseen case and observe the lesson in effect.
 - [x] Freeze a separate evaluation suite and capture baseline results.
-- [ ] Approve a set of SFT examples and submit a local GPU LoRA job.
+- [x] Approve a set of SFT examples and submit a local GPU LoRA job.
 - [ ] Obtain a verified candidate version and evaluate against the baseline.
 - [ ] Inspect visible improvements and regressions, then select the active version.
 - [ ] Export and start the adviser in a new directory without QuarterMaster.

@@ -53,8 +53,10 @@ class FakeInference:
         self.response = None
         self.error = None
         self.hook = None
+        self.parameters = []
 
-    async def advise(self, *, system, context):
+    async def advise(self, *, system, context, parameters=None):
+        self.parameters.append(parameters)
         data = json.loads(context)
         self.calls.append((system, data))
         if self.hook:

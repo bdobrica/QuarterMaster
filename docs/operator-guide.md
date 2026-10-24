@@ -163,6 +163,7 @@ See [third-party notices](third-party-licenses.md) and review applicable terms b
 | `BUILDER_CONFIG` / `BUILDER_AUTH` / `BUILDER_HTTP` | Check environment/secret reference, endpoint/model and JSON-schema support; use the manual path. |
 | `BUILDER_INPUT` / `BUILDER_TIMEOUT` / `BUILDER_RATE_LIMIT` | Shorten context, review provider bounds, wait when rate-limited and explicitly prepare/retry. |
 | `LOCAL_MODEL` / `LOCAL_CONNECTION` / `LOCAL_TIMEOUT` | Check pinned model hash/license, advice profile health and CPU/RAM; inspect failed saved tests. |
+| `LOCAL_TOKEN_LIMIT` | The answer exhausted its finite output budget. Request a concise answer or shorten the situation and retry explicitly. A frozen evaluation retains its captured budget; create a new suite to assess a changed profile. |
 | `TRAINING_*` / `EXAMPLE_*` | Inspect reviewed targets, frozen suite, preflight/diagnostic code and hardware bounds. Queueing does not start a worker. |
 | `cleanup_required` | Stop/recover the recorded orphan training container before starting another job; never bypass the global job lock. |
 | `EXPORT_IMAGE` / `EXPORT_CONTEXT` / `EXPORT_ARTIFACT` | Verify exact local image ID and historical model/context bytes. Do not edit manifests; evaluate/train a new candidate for changed context. |

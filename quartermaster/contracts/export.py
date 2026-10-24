@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import AwareDatetime, Field, field_validator
+from pydantic import AwareDatetime, Field, field_validator, model_validator
 
 from quartermaster.contracts.advice import Advice, Text
 from quartermaster.contracts.adviser import AdviserSpec
@@ -10,6 +10,8 @@ from quartermaster.contracts.evaluation import Digest
 from quartermaster.contracts.sources import Chunk, Contract, UUIDValue
 from quartermaster.contracts.teaching import AppliedLesson, EvidenceSnapshot
 from quartermaster.contracts.training import ArtifactFile
+from quartermaster.errors import DomainError
+from quartermaster.generation import LEGACY_PARAMETERS, checked_parameters
 
 
 class ExportSelection(Contract):
@@ -40,7 +42,9 @@ class ExportKnowledge(Contract):
 
 
 class ExportManifest(Contract):
-    schema_version: Literal["quartermaster.export/v1"] = "quartermaster.export/v1"
+    schema_version: Literal["quartermaster.export/v1", "quartermaster.export/v2"] = (
+        "quartermaster.export/v1"
+    )
     id: UUIDValue
     project_id: UUIDValue
     created_at: AwareDatetime
@@ -61,8 +65,27 @@ class ExportManifest(Contract):
         "1a24df163920a4744a95373d178d790b72a9bb2f"
     )
     model_format: Literal["GGUF-Q8_0"] = "GGUF-Q8_0"
-    prompt_version: Literal["context/v1"] = "context/v1"
+    prompt_version: Literal["context/v1", "context/v2"] = "context/v1"
     files: dict[str, ArtifactFile]
+    inference_parameters: dict = Field(
+        default_factory=lambda: checked_parameters(LEGACY_PARAMETERS)
+    )
+
+    @model_validator(mode="after")
+    def generation_profile(self):
+        try:
+            checked_parameters(self.inference_parameters)
+        except DomainError:
+            raise ValueError("Unsupported inference parameters") from None
+        if self.schema_version == "quartermaster.export/v1":
+            if (
+                self.inference_parameters != LEGACY_PARAMETERS
+                or self.prompt_version != "context/v1"
+            ):
+                raise ValueError("Version 1 exports use the historical 512-token profile")
+        elif "inference_parameters" not in self.model_fields_set:
+            raise ValueError("Version 2 exports require explicit inference parameters")
+        return self
 
 
 class RuntimeInput(Contract):

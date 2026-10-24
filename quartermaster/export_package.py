@@ -6,7 +6,7 @@ import re
 import sqlite3
 import tarfile
 
-from quartermaster.advice_context import assemble_context
+from quartermaster.advice_context import PROMPT_VERSION, assemble_context
 from quartermaster.contracts.export import (
     ExportKnowledge,
     ExportManifest,
@@ -140,8 +140,9 @@ def verify_package(root):
 
 
 class PackageContext:
-    def __init__(self, config, knowledge):
+    def __init__(self, config, knowledge, *, prompt_version=PROMPT_VERSION):
         self.config = config
+        self.prompt_version = prompt_version
         self.chunks = {str(c.citation_id): c for c in knowledge.chunks}
         self.sources = {s.id: s for s in knowledge.sources}
         self.index = sqlite3.connect(":memory:", check_same_thread=False)
@@ -167,7 +168,13 @@ class PackageContext:
                 {"chunk": self.chunks[cid], "source": self.sources[self.chunks[cid].source_id]}
                 for (cid,) in ids
             ]
-        return assemble_context(self.config.adviser, self.config.lessons, case, evidence)
+        return assemble_context(
+            self.config.adviser,
+            self.config.lessons,
+            case,
+            evidence,
+            prompt_version=self.prompt_version,
+        )
 
     def close(self):
         self.index.close()

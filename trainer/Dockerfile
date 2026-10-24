@@ -34,7 +34,7 @@ ENTRYPOINT ["python", "/opt/quartermaster/candidate_runtime.py"]
 
 FROM runtime AS standalone-runtime
 USER root
-LABEL io.quartermaster.export-contract="quartermaster.export/v1"
+LABEL io.quartermaster.export-contract="quartermaster.export/v2"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 UV_PYTHON_DOWNLOADS=never \
     UV_LINK_MODE=copy PATH="/opt/runtime/.venv/bin:$PATH"
 WORKDIR /opt/runtime
@@ -43,6 +43,7 @@ COPY pyproject.toml uv.lock README.md LICENSE ./
 RUN uv sync --locked --no-dev --no-install-project --no-cache
 COPY quartermaster/__init__.py quartermaster/advice_context.py quartermaster/config.py \
      quartermaster/errors.py quartermaster/export_package.py quartermaster/inference.py \
+     quartermaster/generation.py \
      quartermaster/standalone_runtime.py ./quartermaster/
 COPY quartermaster/contracts ./quartermaster/contracts
 COPY quartermaster/spike/__init__.py quartermaster/spike/spec.py ./quartermaster/spike/

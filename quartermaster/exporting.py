@@ -31,7 +31,8 @@ from quartermaster.export_package import (
     sha256,
     verify_package,
 )
-from quartermaster.inference import PARAMETERS, response_schema
+from quartermaster.generation import checked_parameters
+from quartermaster.inference import response_schema
 from quartermaster.projects import read_spec
 from quartermaster.sources import read_source, source_bytes
 from quartermaster.training_artifacts import verify_candidate
@@ -195,8 +196,9 @@ Requires a CPU supporting this portable llama.cpp build, Docker with 4 GiB RAM
 available for this service and four CPU threads. Model: {size} bytes; allow at least
 twice the archive size for archive plus extraction, plus image space. CPU advice
 can take minutes; one request at a time, 180-second limit, no automatic retries.
-The pinned engine is {manifest.engine_revision}; GGUF v3 / Q8_0, 8192 context, 512
-output tokens. GPU acceleration and offline image distribution are deferred.
+The pinned engine is {manifest.engine_revision}; GGUF v3 / Q8_0, 8192 context,
+{manifest.inference_parameters["max_tokens"]} output tokens.
+GPU acceleration and offline image distribution are deferred.
 
 Packaging verifies bytes, provenance and the frozen reference context. It does not
 prove this package has started. The operator must run the repository's documented
@@ -273,7 +275,9 @@ def create_export(settings, project_id, selection):
         ],
         chunks=chunks,
     )
-    context = PackageContext(config, material)
+    prompt_version = suite.inputs[0].b.prompt_version
+    context = PackageContext(config, material, prompt_version=prompt_version)
+    parameters = checked_parameters(suite.inputs[0].b.parameters)
     try:
         for entry, pair in zip(suite.cases, suite.inputs, strict=True):
             _, text, evidence, selected, omitted = context.assemble(entry.case)
@@ -283,7 +287,7 @@ def create_export(settings, project_id, selection):
                 or selected != pair.b.lessons
                 or omitted != (pair.b.omitted_lessons, pair.b.omitted_excerpts)
                 or pair.b.system != teaching.SYSTEM
-                or pair.b.parameters != PARAMETERS
+                or pair.b.parameters != parameters
                 or pair.b.response_schema != response_schema(text)
             ):
                 raise DomainError(
@@ -325,6 +329,9 @@ def create_export(settings, project_id, selection):
                 knowledge.verify_excerpt(settings, source, chunk)
         (root / "compose.yaml").write_text(compose_text(settings.export_runtime_image))
         data = dict(
+            schema_version="quartermaster.export/v2",
+            prompt_version=prompt_version,
+            inference_parameters=parameters,
             id=export_id,
             project_id=UUID(str(project_id)),
             created_at=datetime.now(UTC),

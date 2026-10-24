@@ -100,7 +100,7 @@ class Gateway:
                 "--no-webui",
                 "--log-disable",
                 "-n",
-                "512",
+                "1024",
                 "--no-context-shift",
             ],
             stdout=subprocess.DEVNULL,

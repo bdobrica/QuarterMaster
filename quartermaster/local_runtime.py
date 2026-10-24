@@ -104,7 +104,7 @@ def main():
             "--no-webui",
             "--log-disable",
             "-n",
-            "512",
+            "1024",
             "--no-context-shift",
         ],
     )

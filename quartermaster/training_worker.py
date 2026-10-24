@@ -18,8 +18,9 @@ from quartermaster.contracts.teaching import GroundedAdvice
 from quartermaster.contracts.training import AdviserVersion, CandidatePair, TrainingRun
 from quartermaster.db import connect, migrate
 from quartermaster.errors import DomainError
+from quartermaster.generation import PARAMETERS, checked_parameters, completed_choice
 from quartermaster.holdouts import require_eligible
-from quartermaster.inference import PARAMETERS, model_alias, response_schema
+from quartermaster.inference import model_alias, response_schema
 from quartermaster.local_runtime import verify as verify_base_gguf
 from quartermaster.spike.artifacts import verify_snapshot
 from quartermaster.spike.spec import LLAMA_REVISION
@@ -246,7 +247,8 @@ class DockerInference:
     def __init__(self, engine, run, name, alias):
         self.engine, self.run, self.name, self.alias = engine, run, name, alias
 
-    async def advise(self, *, system, context):
+    async def advise(self, *, system, context, parameters=None):
+        parameters = checked_parameters(parameters)
         check_cancel(self.engine.settings, self.run)
         payload = {
             "model": self.alias,
@@ -254,7 +256,7 @@ class DockerInference:
                 {"role": "system", "content": system},
                 {"role": "user", "content": context},
             ],
-            **PARAMETERS,
+            **parameters,
             "stream": False,
             "response_format": {
                 "type": "json_schema",
@@ -283,14 +285,7 @@ class DockerInference:
         )
         if len(raw) > 131072:
             raise DomainError("CANDIDATE_SIZE: Model response exceeded the size limit.")
-        row = json.loads(raw)["choices"]
-        if (
-            len(row) != 1
-            or row[0]["finish_reason"] != "stop"
-            or (row[0]["message"].get("tool_calls") or row[0]["message"].get("refusal"))
-        ):
-            raise DomainError("CANDIDATE_JSON: Model did not finish one valid response.")
-        return GroundedAdvice.model_validate_json(row[0]["message"]["content"])
+        return GroundedAdvice.model_validate_json(completed_choice(json.loads(raw)))
 
 
 class DockerEngine:
@@ -504,7 +499,7 @@ class DockerEngine:
                         "--no-webui",
                         "--log-disable",
                         "-n",
-                        "512",
+                        str(PARAMETERS["max_tokens"]),
                         "--no-context-shift",
                     ]
                 )
@@ -524,10 +519,10 @@ class DockerEngine:
                 adapter = DockerInference(self, run, name, alias)
                 outputs[variant] = []
                 for entry, pair in zip(suite.cases, suite.inputs, strict=True):
+                    checked_parameters(pair.b.parameters)
                     if (
                         pair.b.model_alias != model_alias(self.base_record["sha256"])
                         or pair.b.system != teaching.SYSTEM
-                        or pair.b.parameters != PARAMETERS
                         or pair.b.response_schema != response_schema(pair.b.context)
                     ):
                         raise DomainError(

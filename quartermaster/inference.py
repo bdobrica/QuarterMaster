@@ -11,14 +11,9 @@ from pydantic import ValidationError
 from quartermaster.config import Settings
 from quartermaster.contracts.teaching import GroundedAdvice
 from quartermaster.errors import DomainError
+from quartermaster.generation import PARAMETERS as PARAMETERS
+from quartermaster.generation import checked_parameters, completed_choice
 from quartermaster.spike.spec import MODEL_REVISION
-
-PARAMETERS = {
-    "temperature": 0,
-    "seed": 17,
-    "max_tokens": 512,
-    "chat_template_kwargs": {"enable_thinking": False},
-}
 
 
 def model_alias(sha256: str) -> str:
@@ -71,7 +66,9 @@ def response_schema(context: str) -> dict:
 
 
 class Inference(Protocol):
-    async def advise(self, *, system: str, context: str) -> GroundedAdvice: ...
+    async def advise(
+        self, *, system: str, context: str, parameters: dict | None = None
+    ) -> GroundedAdvice: ...
 
 
 class LocalInference:
@@ -82,7 +79,10 @@ class LocalInference:
         self.alias = alias
         self.base_url = base_url
 
-    async def advise(self, *, system: str, context: str) -> GroundedAdvice:
+    async def advise(
+        self, *, system: str, context: str, parameters: dict | None = None
+    ) -> GroundedAdvice:
+        parameters = checked_parameters(parameters)
         alias = self.alias or identity(self.settings)
         if self.lock.locked():
             raise DomainError("LOCAL_BUSY: One local request is running; try again afterward.", 409)
@@ -93,7 +93,7 @@ class LocalInference:
                 {"role": "system", "content": system},
                 {"role": "user", "content": context},
             ],
-            **PARAMETERS,
+            **parameters,
             "stream": False,
             "response_format": {
                 "type": "json_schema",
@@ -123,13 +123,7 @@ class LocalInference:
                             "LOCAL_MODEL: Local server is not the configured base model."
                         )
                     response = await self.read(client, "POST", base + "/chat/completions", body)
-            choices = response["choices"]
-            if len(choices) != 1 or choices[0]["finish_reason"] != "stop":
-                raise ValueError
-            message = choices[0]["message"]
-            if message.get("tool_calls") or message.get("refusal"):
-                raise ValueError
-            return GroundedAdvice.model_validate_json(message["content"])
+            return GroundedAdvice.model_validate_json(completed_choice(response))
         except (TimeoutError, httpx.TimeoutException):
             raise DomainError("LOCAL_TIMEOUT: Local advice timed out; retry explicitly.") from None
         except httpx.HTTPError:

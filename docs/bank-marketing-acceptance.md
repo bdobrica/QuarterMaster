@@ -1,6 +1,9 @@
 # Bank-marketing MVP acceptance session
 
 This session checks a pre-call adviser and the teach → test → correct → evaluate loop.
+This document preserves the original CPU acceptance results. The subsequent
+[owner-reviewed follow-up](response-budget.md) records response-budget and prompt
+changes, three approved edited corrections, and separate training/export verification.
 It does not treat subscription prediction accuracy as the MVP gate. Source: Moro, Rita
 and Cortez (2014), [Bank Marketing, UCI](https://doi.org/10.24432/C5K306), CC BY 4.0;
 related paper: [DOI 10.1016/j.dss.2014.03.001](https://doi.org/10.1016/j.dss.2014.03.001).
@@ -237,10 +240,13 @@ store stayed empty. Dataset files, prepared rows, application data and session o
 remain ignored. The guarded, single-use operator scripts are preserved under ignored
 `operator-scripts/`; they are verification records, not an automatic training pipeline.
 
-The owner must still inspect baseline behavior, any correction/lesson, unseen retest and
+At the end of this original session, the owner still needed to inspect baseline behavior,
+any correction/lesson, unseen retest and
 frozen comparisons. Keep unreviewed supervision unapproved. A new domain
 training run needs reviewed targets and a bounded command approved for this session. Earlier
 synthetic GPU/export checks establish component feasibility, not bank-domain usefulness.
+The later review and standing local GPU authorization are recorded in the follow-up;
+they do not change the original baseline or approve the held-back third correction.
 
 The [release checklist](../TODO.md#mvp-release-gate--explicit-owner-journey) stays pending
 until its actual session evidence exists. Opening the UI and assessing usefulness are human

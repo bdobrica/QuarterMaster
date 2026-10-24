@@ -340,7 +340,7 @@ def test_cancellation_and_total_timeout_are_durable(workshop, monkeypatch):
     config = workshop[-1]
     inference.calls.clear()
 
-    async def cancel(*, system, context):
+    async def cancel(*, system, context, parameters=None):
         inference.calls.append(context)
         raise asyncio.CancelledError
 
@@ -358,7 +358,7 @@ def test_cancellation_and_total_timeout_are_durable(workshop, monkeypatch):
     assert evaluations.list_runs(config, UUID(project))[0].status == "interrupted"
     assert len(inference.calls) == 1
 
-    async def slow(*, system, context):
+    async def slow(*, system, context, parameters=None):
         await asyncio.sleep(10)
 
     inference.advise = slow
@@ -558,7 +558,11 @@ def test_reviewed_lesson_snapshot_and_active_adviser_remain_unchanged(workshop):
     inference.calls.clear()
     run_suite(workshop, suite)
     assert len(inference.calls[1][1]["approved_lessons"]) == 1
-    assert inference.calls[1][1]["approved_lessons"][0]["id"] == lesson["id"]
+    assert inference.calls[1][1]["approved_lessons"][0]["text"] == lesson["text"]
+    assert (
+        client.get(suite_path(workshop, suite)).json()["inputs"][0]["b"]["lessons"][0]["id"]
+        == lesson["id"]
+    )
 
 
 def test_holdout_cannot_enter_a_prepared_builder_request(workshop):

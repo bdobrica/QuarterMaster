@@ -457,7 +457,7 @@ def test_startup_failure_cleans_compose_and_records_code(
             raise DomainError("EXPORT_DOCKER: raw private logs")
         return ""
 
-    monkeypatch.setattr(export_smoke, "verify_image", lambda image: None)
+    monkeypatch.setattr(export_smoke, "verify_image", lambda image, contract: None)
     monkeypatch.setattr(export_smoke, "command", unavailable)
     report = tmp_path / "failed.json"
     with pytest.raises(DomainError, match="EXPORT_STARTUP"):
@@ -500,7 +500,12 @@ def test_missing_engine_and_bounded_cpu_recipe(tmp_path, monkeypatch):
         raise OSError("private path must not be reflected")
 
     monkeypatch.setattr(standalone_runtime.subprocess, "Popen", missing)
-    manifest = SimpleNamespace(files={"model/model.gguf": SimpleNamespace(sha256="a" * 64)})
+    from quartermaster.generation import PARAMETERS
+
+    manifest = SimpleNamespace(
+        files={"model/model.gguf": SimpleNamespace(sha256="a" * 64)},
+        inference_parameters=PARAMETERS,
+    )
     with pytest.raises(DomainError, match="EXPORT_ENGINE") as exc:
         standalone_runtime.start_engine(tmp_path, manifest)
     assert "private path" not in str(exc.value)
@@ -518,7 +523,7 @@ def test_missing_engine_and_bounded_cpu_recipe(tmp_path, monkeypatch):
     assert args[args.index("--host") + 1] == "127.0.0.1"
     assert args[args.index("-ngl") + 1] == "0"
     assert args[args.index("-c") + 1] == "8192"
-    assert args[args.index("-n") + 1] == "512"
+    assert args[args.index("-n") + 1] == "1024"
     assert "--log-disable" in args and "--no-context-shift" in args
     assert options["stdout"] == standalone_runtime.subprocess.DEVNULL
     assert options["stderr"] == standalone_runtime.subprocess.DEVNULL

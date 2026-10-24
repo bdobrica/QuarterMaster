@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from quartermaster import knowledge
 from quartermaster.advice_context import MAX_CONTEXT_BYTES as MAX_CONTEXT_BYTES
-from quartermaster.advice_context import SYSTEM, assemble_context, validate_advice
+from quartermaster.advice_context import PROMPT_VERSION, SYSTEM, assemble_context, validate_advice
 from quartermaster.builder import check_input, provider_identity
 from quartermaster.contracts.advice import Advice, Case
 from quartermaster.contracts.teaching import (
@@ -144,14 +144,14 @@ def assemble(settings, project_id, case):
     return assemble_snapshot(settings, spec, active, case)
 
 
-def assemble_snapshot(settings, spec, active, case):
+def assemble_snapshot(settings, spec, active, case, *, prompt_version=PROMPT_VERSION):
     """Assemble from one captured adviser/lesson snapshot, also used by suite freeze."""
     evidence = []
     if spec.knowledge_revision is not None:
         evidence = knowledge.search(
             settings, spec.id, case.situation[:200], spec.knowledge_revision
         )
-    return assemble_context(spec, active, case, evidence)
+    return assemble_context(spec, active, case, evidence, prompt_version=prompt_version)
 
 
 async def advise(settings, inference, project_id, action):
@@ -177,7 +177,7 @@ async def advise(settings, inference, project_id, action):
     canceled = False
     try:
         async with asyncio.timeout(settings.local_timeout_seconds + 1):
-            result = await inference.advise(system=SYSTEM, context=context)
+            result = await inference.advise(system=SYSTEM, context=context, parameters=PARAMETERS)
         draft = GroundedAdvice.model_validate_json(result.model_dump_json())
         draft, advice = validate_advice(draft, case, evidence)
         if any(omitted):
@@ -203,6 +203,7 @@ async def advise(settings, inference, project_id, action):
         created_at=datetime.now(UTC),
         case=case,
         adviser=spec,
+        prompt_version=PROMPT_VERSION,
         system=SYSTEM,
         context=context,
         model_alias=alias,

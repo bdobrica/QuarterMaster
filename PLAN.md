@@ -278,6 +278,13 @@ The builder converts the comment into a proposed lesson, with applicability and 
 
 Milestone 4 implements this loop with strict versioned test/feedback/lesson records. The local llama.cpp adapter checks the configured base revision/GGUF identity, constrains citations to retrieved evidence, and validates exact supporting quotes. A bounded context assembler snapshots the mission, decision-time case, selected knowledge and approved lessons. A structured draft identifies missing information before advice; declared missing inputs or questions withhold the decision. These are provenance and consistency checks, not a proof of factual entailment or model judgment. Lesson builder calls use a separate exact-context disclosure and explicit consent; manual drafts work offline. Pending/rejected drafts never enter advice or training. See the [implementation and verification](docs/milestone-4.md).
 
+The [bank response follow-up](docs/response-budget.md) adds a finite 1,024-token
+profile for new requests and `context/v2` compact serialization. Complete excerpt
+and lesson text enters the prompt; full provenance remains in immutable snapshots.
+Historical 512-token parameters and `context/v1` prompts remain replayable. New
+`quartermaster.export/v2` packages capture their evaluated generation parameters
+and prompt version explicitly; the runtime also supports original version 1 packages.
+
 ### Consolidated learning (LoRA)
 
 - Owner may promote reviewed before/after pairs into supervised training examples.

@@ -8,6 +8,7 @@ from uuid import uuid4
 from pydantic import ValidationError
 
 from quartermaster import knowledge, teaching
+from quartermaster.advice_context import PROMPT_VERSION, render_context
 from quartermaster.contracts.adviser import ModelSpec
 from quartermaster.contracts.evaluation import (
     ComparisonRating,
@@ -22,6 +23,7 @@ from quartermaster.contracts.evaluation import (
 from quartermaster.contracts.teaching import GroundedAdvice, TestRun
 from quartermaster.db import connect
 from quartermaster.errors import DomainError
+from quartermaster.generation import checked_parameters
 from quartermaster.holdouts import case_fingerprint, near_duplicate
 from quartermaster.inference import PARAMETERS, identity, response_schema
 from quartermaster.projects import read_spec
@@ -181,12 +183,14 @@ def snapshot_input(settings, spec, active, case, variant):
             settings, spec, active, case
         )
     else:
-        context = teaching.encoded(
-            {"case": case.decision_input(), "retrieved_evidence": [], "approved_lessons": []}
+        context = render_context(
+            {"case": case.decision_input(), "retrieved_evidence": [], "approved_lessons": []},
+            PROMPT_VERSION,
         )
         evidence, lessons, omitted = [], [], (0, 0)
     data = dict(
         variant=variant,
+        prompt_version=PROMPT_VERSION,
         adviser=spec,
         system=teaching.SYSTEM,
         context=context,
@@ -298,7 +302,9 @@ async def evaluate_output(settings, inference, project_id, entry, item):
                     "EVALUATION_SOURCE: Frozen citation no longer matches its source.", 409
                 )
         async with asyncio.timeout(settings.local_timeout_seconds + 1):
-            result = await inference.advise(system=item.system, context=item.context)
+            result = await inference.advise(
+                system=item.system, context=item.context, parameters=item.parameters
+            )
         draft = GroundedAdvice.model_validate_json(result.model_dump_json())
         schema_valid = True
         citations_valid = set(draft.advice.evidence_refs) <= {
@@ -372,9 +378,9 @@ async def run_suite(settings, inference, project_id, suite_id, action):
         verify_frozen(suite)
         for pair in suite.inputs:
             for item in (pair.a, pair.b):
+                checked_parameters(item.parameters)
                 if (
                     item.model_alias != identity(settings)
-                    or item.parameters != PARAMETERS
                     or item.response_schema != response_schema(item.context)
                     or item.system != teaching.SYSTEM
                 ):

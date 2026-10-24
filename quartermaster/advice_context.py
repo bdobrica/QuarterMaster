@@ -22,13 +22,33 @@ or code. Use only decision-time facts. Explain the supporting facts, not hidden 
 Do not invent outcome probabilities or claim business lift. Ask-first and abstention are valid.
 """
 MAX_CONTEXT_BYTES = 24000
+PROMPT_VERSION = "context/v2"
 
 
 def encoded(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
-def assemble_context(spec, active, case, evidence):
+def render_context(data, prompt_version):
+    if prompt_version == "context/v1":
+        return encoded(data)
+    if prompt_version != PROMPT_VERSION:
+        raise DomainError("CONTEXT_VERSION: Restore the supported prompt implementation.", 409)
+    # The model needs accessible IDs and original text. Full hashes, locations and
+    # lesson revisions remain in the immutable evidence/lesson snapshots, outside
+    # the token budget. No excerpt or approved instruction is shortened.
+    compact = {
+        **data,
+        "retrieved_evidence": [
+            {"citation_id": item["citation_id"], "text": item["text"]}
+            for item in data["retrieved_evidence"]
+        ],
+        "approved_lessons": [{"text": item["text"]} for item in data["approved_lessons"]],
+    }
+    return json.dumps(compact, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def assemble_context(spec, active, case, evidence, *, prompt_version=PROMPT_VERSION):
     active = list(active)
     terms = set(re.findall(r"\w+", case.situation.casefold()))
 
@@ -46,14 +66,14 @@ def assemble_context(spec, active, case, evidence):
         "retrieved_evidence": [],
         "approved_lessons": [],
     }
-    if len(encoded(data).encode()) > MAX_CONTEXT_BYTES:
+    if len(render_context(data, prompt_version).encode()) > MAX_CONTEXT_BYTES:
         raise DomainError("CONTEXT_SIZE: Shorten the mission, definition or situation.")
     selected_lessons, selected_evidence = [], []
     # Reserve room for both context types; never cut an excerpt or lesson halfway through.
     for lesson in active[:8]:
         item = AppliedLesson(id=lesson.id, revision=lesson.revision, text=lesson.text)
         data["approved_lessons"].append(item.model_dump(mode="json"))
-        if len(encoded(data).encode()) > MAX_CONTEXT_BYTES - 6000:
+        if len(render_context(data, prompt_version).encode()) > MAX_CONTEXT_BYTES - 6000:
             data["approved_lessons"].pop()
             continue
         selected_lessons.append(item)
@@ -70,12 +90,12 @@ def assemble_context(spec, active, case, evidence):
             line_end=chunk.line_end,
         )
         data["retrieved_evidence"].append(snapshot.model_dump(mode="json"))
-        if len(encoded(data).encode()) > MAX_CONTEXT_BYTES:
+        if len(render_context(data, prompt_version).encode()) > MAX_CONTEXT_BYTES:
             data["retrieved_evidence"].pop()
             continue
         selected_evidence.append(snapshot)
     omitted = len(active) - len(selected_lessons), len(evidence) - len(selected_evidence)
-    return spec, encoded(data), selected_evidence, selected_lessons, omitted
+    return spec, render_context(data, prompt_version), selected_evidence, selected_lessons, omitted
 
 
 def validate_advice(draft, case, evidence):
