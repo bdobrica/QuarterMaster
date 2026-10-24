@@ -2,23 +2,35 @@
 {% block content %}
 <p><a href="/projects/{{ project.id }}">Teach · {{ project.name }}</a></p>
 <h1>Test the adviser</h1>
+<p><a href="/projects/{{ project.id }}/evaluations">Review saved evaluation situations and expected behavior</a></p>
 <p>Teach → Test → Correct → Export. Ask a real question, check the evidence, then approve a reusable correction.</p>
 {% if selected_test %}<p><a href="/projects/{{ project.id }}/test">Back to recent tests</a> · Viewing a saved original test</p>{% endif %}
-<p>Advice uses the selected active weights, current knowledge and approved lessons. Active weights: <strong>{{ project.model.adapter_artifact or 'unmodified base model' }}</strong>. Reviewed lessons change <strong>context, not model weights</strong>. No training job runs here.</p>
-{% if not local_ready %}<p role="status">Local inference is not configured. Follow the local model setup in docs/milestone-4.md, then return here. Teaching and lesson review remain available.</p>{% endif %}
+{% if project.advice_mode == 'hosted' %}<p>Advice uses the consented hosted model, current knowledge and approved lessons. Reviewed lessons change runtime context. No training job runs here.</p>{% else %}<p>Advice uses the selected active weights, current knowledge and approved lessons. Active weights: <strong>{{ project.model.adapter_artifact or 'unmodified base model' }}</strong>. Reviewed lessons change <strong>context, not model weights</strong>. No training job runs here.</p>{% endif %}
+{% if not local_ready and project.advice_mode == "local_only" %}<p role="status">Local inference is not configured. Follow the local model setup in docs/milestone-4.md, then return here. Teaching and lesson review remain available.</p>{% endif %}
+<section><h2>Advice engine</h2>
+<p>Current mode: <strong>{{ project.advice_mode }}</strong>. Hosted advice is recommended for the useful demo; local-only advice is the privacy/offline alternative. Hosted advice requires provider connectivity and is not an offline export.</p>
+{% if hosted_ready %}<p>Configured provider: {{ hosted_endpoint }} · Model: {{ hosted_model }} · Reasoning effort: {{ hosted_effort or "provider default" }}</p>
+<form method="post" action="/projects/{{ project.id }}/advice-engine">
+<input type="hidden" name="expected_revision" value="{{ project.revision }}">
+<input type="hidden" name="mode" value="hosted"><input type="hidden" name="endpoint" value="{{ hosted_endpoint }}"><input type="hidden" name="model" value="{{ hosted_model }}">
+<p>Each question sends this project's mission/business goal, decision definition, question and choices, selected policy excerpts and approved routines. Original files, saved evaluation rubrics and later outcomes are excluded. Text may contain business information. Inspect saved context in earlier runs to see the assembled structure. Requests are bounded to 48 KB input and 2,048 output tokens, with no automatic retries. Provider charges may apply.</p>
+<label><input type="checkbox" name="consent" value="yes" required> I consent to external advice for this project at the displayed provider and model.</label><button>Enable hosted advice for this project</button></form>
+{% else %}<p>To use hosted advice, configure QM_ADVISER_BASE_URL, QM_ADVISER_MODEL and a separate adviser key. No external request is sent during setup.</p>{% endif %}
+<form method="post" action="/projects/{{ project.id }}/advice-engine"><input type="hidden" name="expected_revision" value="{{ project.revision }}"><input type="hidden" name="mode" value="local_only"><button>Use local-only advice / revoke consent</button></form></section>
 <form method="post" action="/projects/{{ project.id }}/test">
 <label for="situation">What situation do you want advice about?</label>
 <textarea id="situation" name="situation" rows="4" required maxlength="4000"></textarea>
-<p>Include facts known before deciding. Leave later outcomes out of this field. Advice is sent only to this installation's local model service.</p>
+<p>Include facts known before deciding. Leave later outcomes out of this field. Advice uses this project's selected engine and consent settings.</p>
 <p>Allow up to three minutes per response. Check facts and citations: a valid response can still be wrong.</p>
 {% if comparison_ready %}<label class="check"><input type="checkbox" name="compare_existing">Compare the unchanged base and existing LoRA on this same situation and knowledge. This saves both responses and changes no weights or active model.</label>{% endif %}
-<button {% if not local_ready %}disabled{% endif %}>Ask for advice</button>
+<button {% if not local_ready and project.advice_mode == "local_only" %}disabled{% endif %}>Ask for advice</button>
 </form>
 <section><h2>Test responses</h2>
 {% for run in runs %}<article id="test-{{ run.id }}">
 <p>{{ run.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }} · Adviser revision {{ run.adviser.revision }} · {{ run.lessons|length }} context lessons</p>
 {% if run.model_role == 'existing_lora' %}<h2>Existing LoRA · comparison only</h2><p><a href="/projects/{{ project.id }}/test?test_id={{ run.comparison_of }}">View the paired base response</a>. Identical situation, knowledge, lessons and inference settings. No promotion.</p>{% elif run.model_role == 'base' %}<h2>Unmodified base · comparison</h2>{% endif %}
-<p>{{ run.evidence|length }} knowledge excerpts supplied{% if run.prompt_version == 'context/v3' %} · bounded local thinking enabled{% endif %}</p>
+<p>Provider: {{ run.provider }} · Model: {{ run.model_alias }} · {{ run.latency_ms if run.latency_ms is not none else "unrecorded" }} ms</p>
+<p>{{ run.evidence|length }} knowledge excerpts supplied{% if run.prompt_version == 'context/v3' and run.provider == 'local' %} · bounded local thinking enabled{% endif %}</p>
 <h3>Situation</h3><p class="mission">{{ run.case.situation }}</p>
 {% if run.id|string in held_out_tests %}<p><strong>Held out for evaluation.</strong> Teaching feedback and training selection are blocked for this situation. Rate comparisons on the evaluation screen.</p>{% endif %}
 {% if suites %}<details><summary>Save as evaluation case</summary>

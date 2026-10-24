@@ -9,11 +9,17 @@
 </form>
 <section><h2>Suites</h2>
 {% for item in suites %}<article>
-<h3>{{ item.name }}</h3><p>{{ item.status }} · Revision {{ item.revision }} · {{ item.cases|length }} cases</p>
+<h3>{{ item.name }}</h3>
+{% if item.reviewed_at %}<p><strong>Owner reviewed</strong> · {{ item.reviewed_at }} · {{ item.review_note }}</p>{% else %}<p><strong>Owner review pending.</strong> Generated demo cases and rubrics are drafts, not ground truth.</p>{% endif %}<p>{{ item.status }} · Revision {{ item.revision }} · {{ item.cases|length }} cases</p>
 {% if item.cases|length < 5 %}<p>A small suite can miss important failures. Include more representative and difficult cases before training.</p>{% endif %}
 <details><summary>Membership and owner rubric</summary>
 {% for entry in item.cases %}<h4>{{ entry.case.situation }}</h4><p>Expected: {{ behaviors[entry.rubric.expected_behavior] }} · {{ entry.rubric.expectation }}</p><p>Held out · <a href="/projects/{{ project.id }}/test?test_id={{ entry.test_id }}">Original Test</a></p>{% else %}<p>Use “Save as evaluation case” on a Test response.</p>{% endfor %}
 </details>
+{% if item.status == 'draft' and item.cases and not item.reviewed_at %}
+<form method="post" action="/projects/{{ project.id }}/evaluation-suites/{{ item.id }}/review">
+<input type="hidden" name="expected_revision" value="{{ item.revision }}">
+<label><input type="checkbox" name="approved" value="yes" required> I reviewed every situation and expected behavior above and approve them for evaluation only.</label>
+<label>Review note<textarea name="note" required maxlength="4000" rows="2"></textarea></label><button>Record owner review of cases</button></form>{% endif %}
 {% if item.status == 'draft' %}<form method="post" action="/projects/{{ project.id }}/evaluation-suites/{{ item.id }}/freeze">
 <input type="hidden" name="expected_revision" value="{{ item.revision }}"><p>Freezing locks membership, rubric, exact model requests and source hashes. Future knowledge and lesson changes will not change these inputs. Create another suite for different inputs.</p><button {% if not item.cases %}disabled{% endif %}>Freeze suite and inputs</button></form>
 {% else %}<p class="hash">Frozen SHA-256: {{ item.frozen_sha256 }}</p>

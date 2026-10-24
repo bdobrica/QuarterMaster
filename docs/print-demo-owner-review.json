@@ -1,0 +1,27 @@
+{
+  "schema_version": "quartermaster.print-demo-owner-review/v1",
+  "recorded_at": "2026-10-24T19:12:03.351628+00:00",
+  "project_id": "3dd484b4-cdfe-4d74-98a8-f595b68e35a3",
+  "suite_id": "8aea5767-bcb4-4f0b-9bdc-4fa682f94732",
+  "suite_revision": 12,
+  "owner_statement": "Owner confirmed in chat: \"I checked all the print-shop cases and the answers. Looks good.\"",
+  "case_ids": [
+    "3c56d97c-5869-4ae0-a4fe-849636abd75b",
+    "6c87c693-a0bd-43a8-9e07-ec76fb865ce1",
+    "9a84f5d0-0622-4dde-a8ec-7390fe1c0c35",
+    "f2c43ece-97e1-4ed7-9ab8-0b0301d052f7",
+    "fcdda8c5-3118-477b-9277-44ee8834ffea",
+    "17ef996b-2b6d-4340-931b-8979748b2446",
+    "287fb030-8621-4263-a9f7-cc1812919193",
+    "08fe3cf0-459e-46a0-8c3b-d805fe40c92f",
+    "21f2f060-dcaa-4bbd-8081-933ecb93c455",
+    "be05e07b-8417-4ac4-986a-23aadded48ba"
+  ],
+  "approved_final_run_ids": [
+    "27d0888a-07cc-4263-a946-9bab92cc39c7",
+    "0d1c849d-5673-4766-a0a5-989c70e1a5ee",
+    "c5c02edd-ca38-46b9-8cea-c709d79796d7",
+    "f40a3380-9455-404a-a228-737edebd8c3f"
+  ],
+  "scope": "Owner approval of ten synthetic evaluation cases and four final hosted answers; no training labels or business outcome claims."
+}

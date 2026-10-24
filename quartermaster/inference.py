@@ -251,3 +251,151 @@ class LocalInference:
                 if len(data) > 65536:
                     raise DomainError("LOCAL_SIZE: Local response exceeded 64 KiB; retry.")
         return json.loads(data)
+
+
+HOSTED_SYSTEM_SUFFIX = """
+Supporting quote contract (hosted/v1): for recommend, copy 1-2 short contiguous
+substrings exactly from case.situation into supporting_quotes. Copy the characters
+inside the JSON string only: do not add quotation marks, punctuation, escape-code
+text, or normalize whitespace. Use case facts here; cite policy through evidence_refs.
+"""
+
+HOSTED_PARAMETERS = {"max_completion_tokens": 2048, "n": 1, "stream": False, "store": False}
+
+
+def hosted_identity(settings):
+    if settings.adviser_local_only:
+        raise DomainError("ADVISER_LOCAL_ONLY: External advice is disabled on this installation.")
+    if settings.adviser_base_url is None or settings.adviser_model is None:
+        raise DomainError(
+            "ADVISER_CONFIG: Configure an adviser endpoint and model, or use local advice."
+        )
+    return str(settings.adviser_base_url).rstrip("/"), settings.adviser_model
+
+
+def hosted_parameters(settings):
+    parameters = dict(HOSTED_PARAMETERS)
+    if settings.adviser_reasoning_effort:
+        parameters["reasoning_effort"] = settings.adviser_reasoning_effort
+    return parameters
+
+
+def hosted_schema(context):
+    schema = response_schema(context, bounded=True)
+
+    def required(node):
+        if isinstance(node, dict):
+            if node.get("type") == "object":
+                node["required"] = list(node.get("properties", {}))
+            node.pop("default", None)
+            for value in node.values():
+                required(value)
+        elif isinstance(node, list):
+            for value in node:
+                required(value)
+
+    required(schema)
+    return schema
+
+
+class HostedInference(LocalInference):
+    """One bounded, explicit hosted request; consent is enforced by the project harness.
+
+    Separate credentials/configuration from builder drafting. No model-list probe,
+    fallback, redirect, tool execution, or automatic billable retry.
+    """
+
+    async def advise(self, *, system, context, parameters=None):
+        try:
+            return await super().advise(system=system, context=context, parameters=parameters)
+        except CompletionError:
+            raise DomainError("ADVISER_JSON: Invalid or incomplete provider advice.") from None
+
+    async def _completion(self, system, context, parameters, schema):
+        from quartermaster.builder import credential
+
+        checked_parameters(parameters)
+        base, model = hosted_identity(self.settings)
+        key_settings = Settings(
+            _env_file=None,
+            builder_api_key=self.settings.adviser_api_key,
+            builder_api_key_file=self.settings.adviser_api_key_file,
+        )
+        try:
+            key = credential(key_settings)
+        except DomainError:
+            raise DomainError("ADVISER_KEY: Check the adviser key or secret file.") from None
+        body = json.dumps(
+            {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": context},
+                ],
+                **hosted_parameters(self.settings),
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "grounded_advice",
+                        "strict": True,
+                        "schema": hosted_schema(context),
+                    },
+                },
+            },
+            ensure_ascii=False,
+        ).encode()
+        if len(body) > 48000:
+            raise DomainError(
+                "ADVISER_INPUT: Shorten the situation or mission (48 KB request limit)."
+            )
+        headers = {"Content-Type": "application/json"}
+        if key:
+            headers["Authorization"] = "Bearer " + key
+        try:
+            async with asyncio.timeout(self.settings.adviser_timeout_seconds):
+                async with httpx.AsyncClient(
+                    timeout=self.settings.adviser_timeout_seconds,
+                    follow_redirects=False,
+                    trust_env=False,
+                    transport=self.transport,
+                ) as client:
+                    async with client.stream(
+                        "POST",
+                        base + "/chat/completions",
+                        content=body,
+                        headers=headers,
+                    ) as response:
+                        if response.status_code != 200:
+                            raise DomainError(
+                                "ADVISER_HTTP: Check access, quota, model and schema support; "
+                                "retry explicitly."
+                            )
+                        data = bytearray()
+                        async for chunk in response.aiter_bytes():
+                            data.extend(chunk)
+                            if len(data) > 65536:
+                                raise DomainError(
+                                    "ADVISER_SIZE: Provider response exceeded 64 KiB."
+                                )
+            envelope = json.loads(data)
+            content = completed_choice(envelope)
+            unambiguous_json(content)
+            usage = envelope.get("usage", {})
+            tokens = usage.get("completion_tokens") if isinstance(usage, dict) else None
+            return content, tokens if type(tokens) is int and tokens >= 0 else None
+        except (TimeoutError, httpx.TimeoutException):
+            raise DomainError("ADVISER_TIMEOUT: Provider timed out; retry explicitly.") from None
+        except httpx.HTTPError:
+            raise DomainError(
+                "ADVISER_CONNECTION: Check provider connectivity; retry explicitly."
+            ) from None
+        except DomainError as exc:
+            if exc.message.startswith("LOCAL_"):
+                raise DomainError(
+                    "ADVISER_COMPLETION: Provider did not finish a valid answer."
+                ) from None
+            raise
+        except (ValueError, KeyError, TypeError, IndexError, RecursionError):
+            raise DomainError(
+                "ADVISER_JSON: Invalid or incomplete provider advice; retry explicitly."
+            ) from None

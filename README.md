@@ -1,5 +1,8 @@
 # QuarterMaster
 
+The fresh print-proof demo and its live hosted-model evidence are documented in [P0 print demo](docs/print-demo.md).
+
+
 **A local factory for teachable AI advisers.** Describe a recurring decision, upload reference
 material, test the adviser, review corrections, evaluate frozen situations, explicitly train a
 small model when explicitly requested, and export it with an independent browser interface and advice API.

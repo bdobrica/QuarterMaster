@@ -16,6 +16,15 @@ class Settings(BaseSettings):
     builder_api_key_file: Path | None = None
     builder_timeout_seconds: float = Field(default=20, ge=1, le=30)
     builder_max_input_bytes: int = Field(default=49152, ge=4096, le=65536)
+    adviser_base_url: HttpUrl | None = None
+    adviser_model: str | None = None
+    adviser_api_key: SecretStr | None = None
+    adviser_api_key_file: Path | None = None
+    adviser_timeout_seconds: float = Field(default=60, ge=1, le=180)
+    adviser_local_only: bool = False
+    adviser_reasoning_effort: str | None = Field(
+        default=None, pattern=r"^(none|low|medium|high|xhigh|max)$"
+    )
     local_base_url: HttpUrl | None = None
     local_model_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     local_timeout_seconds: float = Field(default=180, ge=1, le=180)
@@ -26,6 +35,11 @@ class Settings(BaseSettings):
     export_runtime_image: str | None = Field(default=None, pattern=r"^sha256:[a-f0-9]{64}$")
 
     @field_validator(
+        "adviser_reasoning_effort",
+        "adviser_base_url",
+        "adviser_model",
+        "adviser_api_key",
+        "adviser_api_key_file",
         "builder_base_url",
         "builder_model",
         "builder_api_key",
@@ -41,7 +55,7 @@ class Settings(BaseSettings):
     def empty_is_unconfigured(cls, value):
         return None if value == "" else value
 
-    @field_validator("builder_base_url")
+    @field_validator("builder_base_url", "adviser_base_url")
     @classmethod
     def provider_url(cls, value):
         if value is not None:
@@ -66,7 +80,7 @@ class Settings(BaseSettings):
             raise ValueError("Use HTTP on loopback or the local Compose inference service")
         return value
 
-    @field_validator("builder_model")
+    @field_validator("builder_model", "adviser_model")
     @classmethod
     def model_name(cls, value):
         if value is not None and (not value.strip() or len(value) > 200):

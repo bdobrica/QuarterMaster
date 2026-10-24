@@ -4,14 +4,16 @@
 
 ## P0 — Make the demo answer useful (first)
 
-- [ ] Create a **fresh synthetic print-shop demo project** with one short policy article and a plain-language mission; no CSV mapping, GPU, or external provider needed just to create it.
-- [ ] Save **8–12 human-reviewed cases**: clear approval, explicit hold, missing approval, missing copy, conflicting evidence, e-signature update, and two unseen near-neighbors. Keep evaluation cases out of training and AI drafting prompts.
-- [ ] Run the existing local model on 4 representative cases; record actual answers, citations and latency as the honest baseline. Do not tune its prompts for days.
-- [ ] Add a **single OpenAI-compatible adviser inference adapter** behind the existing inference interface (the external builder adapter is not yet an adviser adapter). Make a capable provider the recommended demo engine, local inference an explicit alternative; record provider/model in every run.
-- [ ] Require clear per-project consent for external advice, showing what business material will leave the machine; support a local-only mode, bounded input/output, sanitized errors and no silent billable retries.
-- [ ] Confirm the chosen engine answers the four baseline cases **usefully**, with correct sources and no unnecessary questions. If it fails, fix retrieved context or response contract once; stop expanding the system until this works.
+- [x] Create a **fresh synthetic print-shop demo project** with one short policy article and a plain-language mission; no CSV mapping, GPU, or external provider needed just to create it.
+- [x] Save **8–12 human-reviewed cases**: clear approval, explicit hold, missing approval, missing copy, conflicting evidence, e-signature update, and two unseen near-neighbors. Keep evaluation cases out of training and AI drafting prompts.
+- [x] Run the existing local model on 4 representative cases; record actual answers, citations and latency as the honest baseline. Do not tune its prompts for days.
+- [x] Add a **single OpenAI-compatible adviser inference adapter** behind the existing inference interface (the external builder adapter is not yet an adviser adapter). Make a capable provider the recommended demo engine, local inference an explicit alternative; record provider/model in every run.
+- [x] Require clear per-project consent for external advice, showing what business material will leave the machine; support a local-only mode, bounded input/output, sanitized errors and no silent billable retries.
+- [x] Confirm the chosen engine answers the four baseline cases **usefully**, with correct sources and no unnecessary questions. If it fails, fix retrieved context or response contract once; stop expanding the system until this works.
 
 **Gate:** A single question yields grounded, intelligible advice or one relevant missing-fact question. A provider's JSON-valid response alone does not pass.
+
+Implementation and actual four-case hosted results: [P0 print demo](docs/print-demo.md). Ten cases are saved and held out; the owner reviewed and approved all cases and final answers on 2026-10-24. The hosted rerun produced ready / hold / approval question / copy question with valid policy citations (3.3–5.3 seconds). The pinned CPU runtime is installed and the four-case local baseline is recorded: two unnecessary questions, one relevant question without a citation, and one quote-validation failure (21.8–28.8 seconds); see [local evidence](docs/print-demo-local-baseline.json). Owner usefulness confirmation is recorded in the app and [review evidence](docs/print-demo-owner-review.json).
 
 ## P0 — Put knowledge in the driver's seat
 

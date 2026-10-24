@@ -173,7 +173,27 @@ def save_case(settings, project_id, suite_id, action):
             (str(project_id), str(run.case.case_id), fingerprint, str(run.id)),
         )
         return insert_revision(
-            connection, "evaluation_suites", revised(suite, cases=[*suite.cases, case])
+            connection,
+            "evaluation_suites",
+            revised(suite, cases=[*suite.cases, case], reviewed_at=None, review_note=None),
+        )
+
+
+def review_suite(settings, project_id, suite_id, action):
+    """Owner attestation for the displayed cases/rubrics; never inference supervision."""
+    with connect(settings.database_path) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        suite = editable(connection, project_id, suite_id, action.expected_revision)
+        if not suite.cases:
+            raise DomainError("EVALUATION_EMPTY: Add cases before reviewing them.")
+        return insert_revision(
+            connection,
+            "evaluation_suites",
+            revised(
+                suite,
+                reviewed_at=datetime.now(UTC),
+                review_note=action.note,
+            ),
         )
 
 

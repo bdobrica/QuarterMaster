@@ -9,6 +9,7 @@ from quartermaster import evaluations, teaching
 from quartermaster.api.foundation import page, settings, validate_form
 from quartermaster.api.interview import form_values
 from quartermaster.api.routes import require_same_origin
+from quartermaster.contracts.adviser import AdviceEngineEdit, AdviserSpec
 from quartermaster.contracts.interview import VersionedAction
 from quartermaster.contracts.teaching import (
     Feedback,
@@ -22,7 +23,7 @@ from quartermaster.contracts.teaching import (
 )
 from quartermaster.db import connect
 from quartermaster.holdouts import case_fingerprint
-from quartermaster.projects import get_adviser
+from quartermaster.projects import edit_advice_engine, get_adviser
 
 router = APIRouter()
 
@@ -63,6 +64,14 @@ def test_page(project_id: UUID, request: Request, test_id: UUID | None = None):
             for lesson in lessons
         },
         local_ready=config.local_base_url is not None and config.local_model_sha256 is not None,
+        hosted_ready=bool(
+            config.adviser_base_url and config.adviser_model and not config.adviser_local_only
+        ),
+        hosted_endpoint=str(config.adviser_base_url).rstrip("/")
+        if config.adviser_base_url
+        else None,
+        hosted_model=config.adviser_model,
+        hosted_effort=config.adviser_reasoning_effort,
         comparison_ready=bool(config.comparison_base_url and config.comparison_model_sha256),
     )
 
@@ -213,4 +222,18 @@ async def review_form(project_id: UUID, lesson_id: UUID, request: Request):
             },
         ),
     )
+    return redirect(project_id)
+
+
+@router.post("/api/projects/{project_id}/advice-engine", response_model=AdviserSpec)
+def advice_engine(project_id: UUID, action: AdviceEngineEdit, request: Request):
+    require_same_origin(request)
+    return edit_advice_engine(settings(request), project_id, action)
+
+
+@router.post("/projects/{project_id}/advice-engine")
+async def advice_engine_form(project_id: UUID, request: Request):
+    data = await form_values(request, {"expected_revision", "mode", "consent", "endpoint", "model"})
+    data["consent"] = data.get("consent") == "yes"
+    edit_advice_engine(settings(request), project_id, validate_form(AdviceEngineEdit, data))
     return redirect(project_id)

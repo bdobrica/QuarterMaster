@@ -102,3 +102,12 @@ async def validation_error(request: Request, exc: RequestValidationError):
             "detail": "REQUEST_INVALID: Check required fields, types and supported schema versions."
         },
     )
+
+
+@router.post("/print-demo")
+def new_print_demo(request: Request):
+    require_same_origin(request, form=True)
+    from quartermaster.print_demo import seed
+
+    project, _ = seed(request.app.state.settings)
+    return RedirectResponse(f"/projects/{project.id}/test", status_code=303)

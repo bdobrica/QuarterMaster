@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 from datetime import UTC, datetime
+from time import monotonic
 from uuid import uuid4
 
 from pydantic import ValidationError
@@ -32,8 +33,14 @@ from quartermaster.db import connect
 from quartermaster.errors import DomainError
 from quartermaster.generation import ADVICE_PARAMETERS
 from quartermaster.holdouts import require_eligible
+from quartermaster.inference import (
+    HOSTED_SYSTEM_SUFFIX,
+    hosted_parameters,
+    hosted_schema,
+    identity,
+    response_schema,
+)
 from quartermaster.inference import PARAMETERS as PARAMETERS
-from quartermaster.inference import identity, response_schema
 from quartermaster.projects import append_spec, read_spec
 
 LESSON_SYSTEM = """Draft a reusable advisory lesson from an owner's correction for human review.
@@ -189,6 +196,18 @@ async def advise(
         snapshot = _snapshot
     case, assembled = snapshot
     spec, context, evidence, lessons, omitted = assembled
+    hosted = spec.advice_mode == "hosted"
+    provider = "local"
+    if hosted:
+        from quartermaster.inference import HostedInference, hosted_identity
+
+        provider, model = hosted_identity(settings)
+        consent = spec.advice_consent
+        if consent is None or (consent.endpoint, consent.model) != (provider, model):
+            raise DomainError("ADVISER_CONSENT: Provider changed; review project consent again.")
+        if action.compare_existing or spec.model.adapter_artifact:
+            raise DomainError("ADVISER_WEIGHTS: Use local-only mode for LoRA comparisons.", 409)
+        inference = HostedInference(settings)
     if action.compare_existing:
         single = action.model_copy(update={"compare_existing": False})
         base = await advise(
@@ -221,13 +240,17 @@ async def advise(
             base_url=str(settings.candidate_base_url).rstrip("/") + f"/{version.id}/v1",
         )
     else:
-        alias = identity(settings)
+        alias = model if hosted else identity(settings)
+    advice_system = system_for(ADVICE_PROMPT_VERSION) + (HOSTED_SYSTEM_SUFFIX if hosted else "")
+    started = monotonic()
     draft, advice, error = None, None, None
     canceled = False
     try:
-        async with asyncio.timeout(settings.local_timeout_seconds + 1):
+        async with asyncio.timeout(
+            (settings.adviser_timeout_seconds if hosted else settings.local_timeout_seconds) + 1
+        ):
             result = await inference.advise(
-                system=system_for(ADVICE_PROMPT_VERSION),
+                system=advice_system,
                 context=context,
                 parameters=ADVICE_PARAMETERS,
             )
@@ -257,11 +280,17 @@ async def advise(
         case=case,
         adviser=spec,
         prompt_version=ADVICE_PROMPT_VERSION,
-        system=system_for(ADVICE_PROMPT_VERSION),
+        system=advice_system,
         context=context,
         model_alias=alias,
-        parameters=ADVICE_PARAMETERS,
-        response_schema=response_schema(context, bounded=True),
+        parameters=hosted_parameters(settings) if hosted else ADVICE_PARAMETERS,
+        response_schema=hosted_schema(context)
+        if hosted
+        else response_schema(context, bounded=True),
+        provider=provider,
+        provider_prompt_version="hosted/v1" if hosted else None,
+        **({"engine_revision": "openai-compatible/v1"} if hosted else {}),
+        latency_ms=round((monotonic() - started) * 1000),
         evidence=evidence,
         lessons=lessons,
         draft=draft,

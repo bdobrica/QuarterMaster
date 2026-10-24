@@ -27,6 +27,11 @@ class SuiteAction(Contract):
     expected_revision: int = Field(ge=1)
 
 
+class SuiteReview(SuiteAction):
+    approved: Literal[True]
+    note: Text
+
+
 class Rubric(Contract):
     expected_behavior: Literal["any", "recommend", "clarify", "abstain"]
     expectation: Text
@@ -84,6 +89,8 @@ class EvaluationSuite(Contract):
     created_at: AwareDatetime
     status: Literal["draft", "frozen"]
     frozen_at: AwareDatetime | None = None
+    reviewed_at: AwareDatetime | None = Field(default=None, exclude_if=lambda value: value is None)
+    review_note: Text | None = Field(default=None, exclude_if=lambda value: value is None)
     cases: list[EvaluationCase] = Field(max_length=10)
     inputs: list[FrozenPair] = Field(default_factory=list, max_length=10)
     source_hashes: dict[str, Digest] = Field(default_factory=dict)

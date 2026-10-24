@@ -17,6 +17,7 @@ from quartermaster.contracts.evaluation import (
     SaveEvaluationCase,
     SuiteAction,
     SuiteCreate,
+    SuiteReview,
 )
 from quartermaster.projects import get_adviser
 
@@ -196,3 +197,21 @@ async def rate_form(project_id: UUID, run_id: UUID, case_id: UUID, request: Requ
         settings(request), project_id, run_id, case_id, validate_form(RatingInput, data)
     )
     return redirect(project_id, run_id)
+
+
+@router.post(
+    "/api/projects/{project_id}/evaluation-suites/{suite_id}/review", response_model=EvaluationSuite
+)
+def review_suite(project_id: UUID, suite_id: UUID, action: SuiteReview, request: Request):
+    require_same_origin(request)
+    return evaluations.review_suite(settings(request), project_id, suite_id, action)
+
+
+@router.post("/projects/{project_id}/evaluation-suites/{suite_id}/review")
+async def review_suite_form(project_id: UUID, suite_id: UUID, request: Request):
+    data = await form_values(request, {"expected_revision", "approved", "note"})
+    data["approved"] = data.get("approved") == "yes"
+    evaluations.review_suite(
+        settings(request), project_id, suite_id, validate_form(SuiteReview, data)
+    )
+    return redirect(project_id)

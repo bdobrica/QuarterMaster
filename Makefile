@@ -1,4 +1,4 @@
-.PHONY: help setup fmt lint test test-gpu test-export model-setup up down logs migrate
+.PHONY: demo help setup fmt lint test test-gpu test-export model-setup up down logs migrate
 
 UV ?= uv
 GPU_MODE ?= nvidia
@@ -48,3 +48,7 @@ logs: ## Follow web service logs
 
 migrate: ## Initialize or check the local SQLite schema
 	$(UV) run --locked python -m quartermaster.db
+
+
+demo: ## Create a fresh synthetic print demo (no model calls, CSV or GPU)
+	$(UV) run --locked python -m quartermaster.print_demo

@@ -55,11 +55,16 @@ class TestRun(Contract):
     case: Case
     adviser: AdviserSpec
     prompt_version: Literal["context/v1", "context/v2", "context/v3"] = "context/v1"
-    engine_revision: Literal["1a24df163920a4744a95373d178d790b72a9bb2f"] = (
+    engine_revision: Literal["1a24df163920a4744a95373d178d790b72a9bb2f", "openai-compatible/v1"] = (
         "1a24df163920a4744a95373d178d790b72a9bb2f"
     )
     system: str
     context: str
+    provider_prompt_version: Literal["hosted/v1"] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    provider: str = Field(default="local", exclude_if=lambda value: value == "local")
+    latency_ms: int | None = Field(default=None, ge=0, exclude_if=lambda value: value is None)
     model_alias: str
     parameters: dict
     response_schema: dict

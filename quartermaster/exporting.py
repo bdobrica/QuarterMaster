@@ -355,6 +355,10 @@ def create_base_export(settings, project_id, selection):
     if settings.export_runtime_image is None:
         raise DomainError("EXPORT_IMAGE: Configure the pinned standalone runtime image.", 409)
     run = teaching.get_test(settings, project_id, selection.test_id)
+    if run.provider != "local":
+        raise DomainError(
+            "EXPORT_HOSTED: Hosted advice is not an offline export. Test a local model first.", 409
+        )
     portable = settings.local_model_dir
     try:
         base = verify(portable)

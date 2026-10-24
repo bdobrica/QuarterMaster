@@ -81,3 +81,24 @@ def edit_adviser(database: Path, project_id, draft: ProjectEdit) -> AdviserSpec:
         if draft.expected_revision != previous.revision:
             raise DomainError("PROJECT_CHANGED: Reload the project before saving your edits.", 409)
         return append_spec(connection, previous, **draft.model_dump(exclude={"expected_revision"}))
+
+
+def edit_advice_engine(settings, project_id, action):
+    from quartermaster.contracts.adviser import AdviceConsent
+    from quartermaster.inference import hosted_identity
+
+    consent = None
+    if action.mode == "hosted":
+        endpoint, model = hosted_identity(settings)
+        if not action.consent or (action.endpoint, action.model) != (endpoint, model):
+            raise DomainError(
+                "ADVISER_CONSENT: Review the current provider and approve sending this project's "
+                "mission, question, retrieved policy excerpts and approved routines."
+            )
+        consent = AdviceConsent(endpoint=endpoint, model=model, consented_at=datetime.now(UTC))
+    with connect(settings.database_path) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        spec = read_spec(connection, project_id)
+        if action.expected_revision != spec.revision:
+            raise DomainError("PROJECT_CHANGED: Reload before changing the advice engine.", 409)
+        return append_spec(connection, spec, advice_mode=action.mode, advice_consent=consent)

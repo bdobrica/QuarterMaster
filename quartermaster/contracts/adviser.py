@@ -29,6 +29,24 @@ class DecisionDefinition(BaseModel):
     success_and_harm: Mission
 
 
+class AdviceConsent(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    endpoint: str
+    model: str
+    consented_at: AwareDatetime
+
+
+class AdviceEngineEdit(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    expected_revision: int = Field(ge=1)
+    mode: Literal["local_only", "hosted"]
+    consent: bool = False
+    endpoint: str | None = None
+    model: str | None = None
+
+
 class AdviserSpec(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
@@ -45,6 +63,13 @@ class AdviserSpec(BaseModel):
     model: ModelSpec = Field(default_factory=ModelSpec)
     knowledge_revision: UUID | None = None
     lessons_revision: UUID | None = None
+    # Omit new defaults so historical frozen input hashes remain byte-for-byte verifiable.
+    advice_mode: Literal["local_only", "hosted"] = Field(
+        default="local_only", exclude_if=lambda value: value == "local_only"
+    )
+    advice_consent: AdviceConsent | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
 
 class ProjectEdit(BaseModel):
