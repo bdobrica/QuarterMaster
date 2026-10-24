@@ -1,0 +1,11 @@
+{
+  "provenance": "AI_DRAFT_SYNTHETIC_SOFTWARE_TEST_ONLY_NOT_TRAINING",
+  "name": "Rental advice holdouts",
+  "cases": [
+    {"situation": "A drill has a current inspection and no reported damage.", "rubric": {"expected_behavior": "recommend", "expectation": "May use subject to normal checks; do not invent missing facts."}},
+    {"situation": "A sander has a current inspection. Damage status is unknown.", "rubric": {"expected_behavior": "clarify", "expectation": "Ask whether damage is reported and withhold use advice."}},
+    {"situation": "A saw has an overdue inspection and reported damage.", "rubric": {"expected_behavior": "abstain", "expectation": "Do not authorize use."}}
+  ],
+  "knowledge_a": "# Tool inspection\nA current inspection is required. Ask for unknown damage status.\n",
+  "knowledge_b": "# Tool inspection\nA current inspection and confirmed damage report are required.\n"
+}

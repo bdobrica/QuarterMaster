@@ -24,6 +24,7 @@ from quartermaster.contracts.teaching import (
 )
 from quartermaster.db import connect
 from quartermaster.errors import DomainError
+from quartermaster.holdouts import require_eligible
 from quartermaster.inference import PARAMETERS, identity, response_schema
 from quartermaster.projects import append_spec, read_spec
 
@@ -156,10 +157,16 @@ def assemble(settings, project_id, case):
             for lesson in read_latest_lessons(connection, project_id)
             if lesson.status == "applied"
         ]
+    return assemble_snapshot(settings, spec, active, case)
+
+
+def assemble_snapshot(settings, spec, active, case):
+    """Assemble from one captured adviser/lesson snapshot, also used by suite freeze."""
+    active = list(active)
     evidence = []
     if spec.knowledge_revision is not None:
         evidence = knowledge.search(
-            settings, project_id, case.situation[:200], spec.knowledge_revision
+            settings, spec.id, case.situation[:200], spec.knowledge_revision
         )
     terms = set(re.findall(r"\w+", case.situation.casefold()))
 
@@ -331,6 +338,8 @@ def feedback(settings, project_id, test_id, action):
         origin="OWNER_DRAFT",
     )
     with connect(settings.database_path) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        require_eligible(connection, project_id, [run.case])
         connection.execute(
             "INSERT INTO feedback VALUES (?, ?, ?)",
             (str(record.id), str(project_id), record.model_dump_json()),
@@ -385,6 +394,7 @@ def prepare_lesson(settings, project_id, lesson_id, action):
     )
     with connect(settings.database_path) as connection:
         connection.execute("BEGIN IMMEDIATE")
+        require_eligible(connection, project_id, [run.case])
         lesson = checked_lesson(connection, project_id, lesson_id, action.expected_revision)
         return append_lesson(
             connection,
@@ -417,6 +427,9 @@ async def send_lesson(settings, builder, project_id, lesson_id, action):
     with connect(settings.database_path) as connection:
         connection.execute("BEGIN IMMEDIATE")
         lesson = checked_lesson(connection, project_id, lesson_id, action.expected_revision)
+        record = get_feedback(settings, project_id, lesson.feedback_id)
+        run = get_test(settings, project_id, record.test_id)
+        require_eligible(connection, project_id, [run.case])
         d = lesson.disclosure
         if (
             lesson.status != "pending"

@@ -4,7 +4,7 @@
 
 QuarterMaster helps a small-business owner turn their knowledge, historical examples, and natural-language feedback into a specialized adviser. Describe what you want advice about, upload spreadsheets and Markdown research, teach the adviser how to handle situations, evaluate its judgment, fine-tune a small language model, and export a standalone Docker-ready adviser.
 
-**Status:** Milestones 0–4: local projects, uploads and reviewed case mappings, searchable Markdown knowledge, a guided interview, and local base-model advice with feedback and reviewed context lessons. Optional builder requests require preview and consent. Frozen evaluations and application training/export screens remain planned; this is not the `0.1.0` MVP yet. The separate Milestone 1 LoRA/GGUF spike proves model portability, not adviser quality. QuarterMaster is a standalone project, not a KitchenSoup plugin.
+**Status:** Milestones 0–5: local projects, uploads and reviewed case mappings, searchable Markdown knowledge, a guided interview, local base-model advice with reviewed context lessons, and frozen evaluations with side-by-side comparisons. Optional builder requests require preview and consent. Application training/export screens remain planned; this is not the `0.1.0` MVP yet. The separate Milestone 1 LoRA/GGUF spike proves model portability, not adviser quality. QuarterMaster is a standalone project, not a KitchenSoup plugin.
 
 ## Why QuarterMaster?
 
@@ -77,7 +77,9 @@ Choose **Define the adviser through a guided interview** to describe choices, de
 
 For **Test advice and teach a lesson**, first run `make model-setup`, configure the printed model hash and local URL, then start `docker compose --profile advice up -d --build --wait`. The optional CPU service uses the pinned unmodified Qwen base model. Corrections become pending lessons; only reviewed approval changes the next test’s context. Weights stay unchanged. See the [Milestone 4 setup, limits and verification](docs/milestone-4.md).
 
-`make help` lists formatting and Compose commands. Startup initializes/checks schema v4 and transactionally migrates v1–v3 databases, preserving existing missions and source metadata. Back up the data volume before upgrading. Incompatible or unversioned existing databases fail with an actionable error instead of being reset.
+Choose **Evaluate frozen situations side by side**, create a suite, and save new Test situations with your expected behavior. Freeze the suite to capture exact inputs, then compare the same base model without and with custom context. Rate cases as A better, B better, same or both bad; wins, regressions and unreviewed cases remain separate. Saved holdouts cannot become teaching examples. See the [Milestone 5 guide and verification](docs/milestone-5.md) for limits, reproducibility and real-model failures.
+
+`make help` lists formatting and Compose commands. Startup initializes/checks schema v5 and transactionally migrates v1–v4 databases, preserving existing missions and source metadata. Back up the data volume before upgrading. Incompatible or unversioned existing databases fail with an actionable error instead of being reset.
 
 ## Model feasibility spike and planned workflow
 

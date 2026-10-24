@@ -2,6 +2,7 @@
 {% block content %}
 <p><a href="/projects/{{ project.id }}">Teach · {{ project.name }}</a></p>
 <h1>Test the adviser</h1>
+<p><a href="/projects/{{ project.id }}/evaluations">Frozen evaluations and comparisons</a></p>
 {% if selected_test %}<p><a href="/projects/{{ project.id }}/test">Back to recent tests</a> · Viewing a saved original test</p>{% endif %}
 <p>Advice uses the pinned local base model, selected knowledge and approved lessons. Reviewed lessons change <strong>context, not model weights</strong>. No training job runs here.</p>
 {% if not local_ready %}<p role="status">Local inference is not configured. Follow the local model setup in docs/milestone-4.md, then return here. Teaching and lesson review remain available.</p>{% endif %}
@@ -15,6 +16,14 @@
 {% for run in runs %}<article id="test-{{ run.id }}">
 <p>{{ run.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }} · Adviser revision {{ run.adviser.revision }} · {{ run.lessons|length }} context lessons</p>
 <h3>Situation</h3><p class="mission">{{ run.case.situation }}</p>
+{% if run.id|string in held_out_tests %}<p><strong>Held out for evaluation.</strong> Teaching feedback and training selection are blocked for this situation. Rate comparisons on the evaluation screen.</p>{% endif %}
+{% if suites %}<details><summary>Save as evaluation case</summary>
+<p>Reserve an unseen situation for evaluation before teaching from it. Already corrected situations cannot become holdouts. Write an owner rubric; it is kept out of model prompts. Saving is permanent for this project's training exclusion.</p>
+{% for suite in suites %}<form method="post" action="/projects/{{ project.id }}/evaluation-suites/{{ suite.id }}/cases">
+<input type="hidden" name="expected_revision" value="{{ suite.revision }}"><input type="hidden" name="test_id" value="{{ run.id }}">
+<p>Suite: {{ suite.name }}</p><label>Expected behavior<select name="expected_behavior" required>{% for key, title in behaviors.items() %}<option value="{{ key }}">{{ title }}</option>{% endfor %}</select></label>
+<label>What should good advice do?<textarea name="expectation" required maxlength="4000" rows="2"></textarea></label><button>Save to {{ suite.name }} as held out</button>
+</form>{% endfor %}</details>{% endif %}
 {% if run.error %}<p role="alert">{{ run.error }}</p>{% else %}
 <h3>Recommendation</h3><p class="mission">{{ run.advice.recommendation }}</p>
 <h3>Explanation</h3><p class="mission">{{ run.advice.explanation }}</p>
@@ -26,11 +35,11 @@
 {% for ref in run.advice.evidence_refs %}{% for item in run.evidence if item.citation_id|string == ref %}
 <li><a href="/projects/{{ project.id }}/citations/{{ ref }}?revision={{ run.adviser.knowledge_revision }}">{{ item.source_name }} · lines {{ item.line_start }}–{{ item.line_end }}</a><blockquote class="mission">{{ item.text }}</blockquote></li>
 {% endfor %}{% else %}<li>No uploaded excerpts cited.</li>{% endfor %}</ul>
-<form method="post" action="/projects/{{ project.id }}/tests/{{ run.id }}/feedback">
+{% if run.id|string not in held_out_tests %}<form method="post" action="/projects/{{ project.id }}/tests/{{ run.id }}/feedback">
 <label for="category-{{ run.id }}">How was this advice?</label><select name="category" id="category-{{ run.id }}" required>{% for key, title in categories.items() %}<option value="{{ key }}">{{ title }}</option>{% endfor %}</select>
 <label for="correction-{{ run.id }}">What should it keep or change?</label><textarea name="correction" id="correction-{{ run.id }}" rows="3" maxlength="4000" required></textarea>
 <p>Your comment is saved unchanged. It creates a pending lesson for review. Your rating alone does not establish factual correctness or business lift.</p><button>Save feedback</button>
-</form>
+</form>{% endif %}
 {% endif %}
 <details><summary>Saved context and model details</summary><p>{{ run.model_alias }}</p><p>Knowledge revision: {{ run.adviser.knowledge_revision or 'none' }} · Lesson selection revision: {{ run.adviser.lessons_revision or 'none' }}</p><pre>{{ run.context }}</pre></details>
 </article>{% else %}<p>Enter a situation to get a baseline response, then give a correction and retest a similar new situation.</p>{% endfor %}

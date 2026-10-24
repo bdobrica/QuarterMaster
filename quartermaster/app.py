@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
+from quartermaster.api.evaluation import router as evaluation_router
 from quartermaster.api.foundation import router as foundation_router
 from quartermaster.api.interview import router as interview_router
 from quartermaster.api.limits import BodyLimitMiddleware
@@ -18,6 +19,7 @@ from quartermaster.builder import BuilderLLM, OpenAICompatible
 from quartermaster.config import Settings, initialize_storage
 from quartermaster.db import SchemaError, migrate
 from quartermaster.errors import DomainError
+from quartermaster.evaluations import recover_evaluations
 from quartermaster.inference import Inference, LocalInference
 from quartermaster.interviews import recover_interviews
 from quartermaster.teaching import recover_lessons
@@ -39,6 +41,7 @@ def create_app(
             migrate(app.state.settings.database_path)
             recover_interviews(app.state.settings)
             recover_lessons(app.state.settings)
+            recover_evaluations(app.state.settings)
             app.state.inference = (
                 inference if inference is not None else LocalInference(app.state.settings)
             )
@@ -58,6 +61,7 @@ def create_app(
     app.include_router(foundation_router)
     app.include_router(interview_router)
     app.include_router(teaching_router)
+    app.include_router(evaluation_router)
     app.add_middleware(BodyLimitMiddleware)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "ui" / "static"), "static")
     app.add_exception_handler(RequestValidationError, validation_error)

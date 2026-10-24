@@ -480,6 +480,13 @@ def test_recovery_and_v3_migration_preserve_history(workshop):
     assert latest.status == "failed" and "BUILDER_INTERRUPTED" in latest.error
     before = client.get(base(project)).json()
     with connect(config.database_path) as connection:
+        for table in (
+            "evaluation_suites",
+            "evaluation_runs",
+            "evaluation_ratings",
+            "evaluation_holdouts",
+        ):
+            connection.execute(f"DROP TABLE {table}")
         connection.execute("DROP TABLE test_runs")
         connection.execute("DROP TABLE feedback")
         connection.execute("DROP TABLE lesson_revisions")
@@ -863,7 +870,15 @@ def test_v3_upgrade_preserves_populated_teaching_metadata_and_originals(workshop
             for table in tables
         }
         assert all(before.values())
-        for table in ("test_runs", "feedback", "lesson_revisions"):
+        for table in (
+            "test_runs",
+            "feedback",
+            "lesson_revisions",
+            "evaluation_suites",
+            "evaluation_runs",
+            "evaluation_ratings",
+            "evaluation_holdouts",
+        ):
             connection.execute(f"DROP TABLE {table}")
         connection.execute("PRAGMA user_version=3")
     migrate(config.database_path)

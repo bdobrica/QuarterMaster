@@ -8,7 +8,7 @@ from uuid import UUID
 
 from quartermaster.contracts.adviser import AdviserSpec
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 
 class SchemaError(RuntimeError):
@@ -47,6 +47,10 @@ def check_schema(connection: sqlite3.Connection) -> None:
         "test_runs": {"id", "project_id", "document"},
         "feedback": {"id", "project_id", "document"},
         "lesson_revisions": {"id", "project_id", "revision", "document"},
+        "evaluation_suites": {"id", "project_id", "revision", "document"},
+        "evaluation_runs": {"id", "project_id", "revision", "document"},
+        "evaluation_ratings": {"run_id", "case_id", "revision", "document"},
+        "evaluation_holdouts": {"project_id", "case_id", "case_sha256", "test_id"},
     }
     for table, expected in required.items():
         actual = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
@@ -121,7 +125,24 @@ def migrate(path: Path) -> None:
                 "CREATE TABLE lesson_revisions (id TEXT, project_id TEXT REFERENCES projects(id), "
                 "revision INTEGER, document TEXT NOT NULL, PRIMARY KEY(id, revision))"
             )
-            connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+            connection.execute("PRAGMA user_version = 4")
+            version = 4
+        if version == 4:
+            for table in ("evaluation_suites", "evaluation_runs"):
+                connection.execute(
+                    f"CREATE TABLE {table} (id TEXT, project_id TEXT REFERENCES projects(id), "
+                    "revision INTEGER, document TEXT NOT NULL, PRIMARY KEY(id, revision))"
+                )
+            connection.execute(
+                "CREATE TABLE evaluation_ratings (run_id TEXT, case_id TEXT, revision INTEGER, "
+                "document TEXT NOT NULL, PRIMARY KEY(run_id, case_id, revision))"
+            )
+            connection.execute(
+                "CREATE TABLE evaluation_holdouts (project_id TEXT REFERENCES projects(id), "
+                "case_id TEXT NOT NULL, case_sha256 TEXT NOT NULL, test_id TEXT NOT NULL, "
+                "PRIMARY KEY(project_id, case_sha256))"
+            )
+            connection.execute("PRAGMA user_version = 5")
         check_schema(connection)
     with connect(path) as connection:
         connection.execute("PRAGMA journal_mode = WAL")

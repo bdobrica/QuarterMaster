@@ -310,6 +310,15 @@ Keep retrieval/instructions constant for before/after comparison; otherwise the 
 - Do not combine all signals into an opaque one-number quality score. Display counts, cases improved/regressed, and examples side by side.
 - Track optional business outcome separately from owner preference. A 30-day observed conversion is not attributable to the adviser without a suitable comparison design.
 
+Milestone 5 implements suites of up to 10 saved Test situations. Saving immediately reserves a
+situation as a project holdout; freezing appends an immutable membership/rubric revision with
+exact A (no custom mission/knowledge/lessons) and B (captured mission/knowledge/reviewed lessons)
+requests, source hashes and model/engine/parameter pins. Runs checkpoint each output and never
+change the active adviser. Ratings are separate append-only records, not teaching corrections.
+Behavior checks distinguish recommend/clarify/abstain; full rubric relevance remains human review.
+These are context comparisons with unchanged weights. Candidate-model comparisons with identical
+context belong to Milestone 6. See [the implementation and verification](docs/milestone-5.md).
+
 ### Promotion gate
 
 No automatic promotion. Show a diff of significant wins and regressions, warn on untested slices, then let the owner choose the active version. If the new candidate fails core held-out cases, default to keeping the existing adviser.

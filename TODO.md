@@ -1,6 +1,6 @@
 # QuarterMaster — Implementation TODO
 
-**Status:** Milestones 0–4 implemented and locally verified; Milestones 5–8 remain pending.
+**Status:** Milestones 0–5 implemented and locally verified; Milestones 6–8 remain pending.
 
 **Scope:** first self-hosted teachable-adviser MVP (`0.1.0`).  
 **Design authority:** [PLAN.md](PLAN.md); implementation rules: [AGENTS.md](AGENTS.md).
@@ -168,28 +168,33 @@ deterministic providers; real-model generalization remains unproven.
 
 ## Milestone 5 — Frozen evaluations and comparison
 
-- [ ] Define immutable `EvaluationSuite` and `EvaluationRun` contracts.
-- [ ] Add a UI to save a Test situation as an evaluation case.
-- [ ] Let the owner specify expected behavior or a small rubric per case.
-- [ ] Mark evaluation examples as held out from training selection.
-- [ ] Freeze suite membership, revision and source hashes before training.
-- [ ] Run the same suite against base-only and base-plus-context variants.
-- [ ] Persist model/prompt/knowledge/lesson revision per output.
-- [ ] Show side-by-side advice with citations and questions.
-- [ ] Add human ratings `A better`, `B better`, `same`, `both bad`.
-- [ ] Add structured feedback category and free-text rationale per comparison.
-- [ ] Add deterministic checks for schema validity and citation integrity.
-- [ ] Add rubric check for expected clarification versus unsupported recommendation.
-- [ ] Display improved, regressed and unreviewed counts separately.
-- [ ] Keep recorded business outcomes separate from human preference ratings.
-- [ ] Prevent held-out cases from being promoted into training examples accidentally.
-- [ ] Add fixtures proving that a changed knowledge set is not credited as training improvement.
+- [x] Define immutable `EvaluationSuite` and `EvaluationRun` contracts.
+- [x] Add a UI to save a Test situation as an evaluation case.
+- [x] Let the owner specify expected behavior or a small rubric per case.
+- [x] Mark evaluation examples as held out from training selection.
+- [x] Freeze suite membership, revision and source hashes before training.
+- [x] Run the same suite against base-only and base-plus-context variants.
+- [x] Persist model/prompt/knowledge/lesson revision per output.
+- [x] Show side-by-side advice with citations and questions.
+- [x] Add human ratings `A better`, `B better`, `same`, `both bad`.
+- [x] Add structured feedback category and free-text rationale per comparison.
+- [x] Add deterministic checks for schema validity and citation integrity.
+- [x] Add rubric check for expected clarification versus unsupported recommendation.
+- [x] Display improved, regressed and unreviewed counts separately.
+- [x] Keep recorded business outcomes separate from human preference ratings.
+- [x] Prevent held-out cases from being promoted into training examples accidentally.
+- [x] Add fixtures proving that a changed knowledge set is not credited as training improvement.
 
 **Acceptance criteria**
 
-- [ ] A frozen suite produces reproducible inputs and comparable saved outputs.
-- [ ] The owner can identify regressions and retain an earlier version.
-- [ ] Evaluation does not claim causal business lift from user preference alone.
+- [x] A frozen suite produces reproducible inputs and comparable saved outputs.
+- [x] The owner can identify regressions and retain an earlier version.
+- [x] Evaluation does not claim causal business lift from user preference alone.
+
+Implementation and verification: [Milestone 5 record](docs/milestone-5.md). Frozen A/B inputs,
+holdout protection, separate preference ratings and regression counts are verified. Real CPU
+outputs remained structurally valid but over-asked or asked about irrelevant facts; the full
+synthetic rubric was not satisfied. No weight or business-lift improvement is claimed.
 
 ---
 

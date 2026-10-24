@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="/projects/{{ project.id }}">Teach · {{ project.name }}</a> · <a href="/projects/{{ project.id }}/test">Test situations</a></p>
+<h1>Frozen evaluations</h1>
+<p>Save representative new situations from Test, including hard cases and missing information. Aim for 5–10 cases. Write the expected behavior before comparing outputs. Saving reserves a situation for evaluation immediately; it cannot become a teaching example.</p>
+<p>A is the base model without a custom mission, knowledge or lessons. B uses the same model with the frozen mission, knowledge and reviewed lessons. This measures a <strong>context comparison</strong>; model weights do not change. No adviser version is promoted here.</p>
+<form method="post" action="/projects/{{ project.id }}/evaluation-suites">
+<label>Suite name<input name="name" required maxlength="200"></label><button>Create draft suite</button>
+</form>
+<section><h2>Suites</h2>
+{% for item in suites %}<article>
+<h3>{{ item.name }}</h3><p>{{ item.status }} · Revision {{ item.revision }} · {{ item.cases|length }} cases</p>
+{% if item.cases|length < 5 %}<p>A small suite can miss important failures. Include more representative and difficult cases before training.</p>{% endif %}
+<details><summary>Membership and owner rubric</summary>
+{% for entry in item.cases %}<h4>{{ entry.case.situation }}</h4><p>Expected: {{ behaviors[entry.rubric.expected_behavior] }} · {{ entry.rubric.expectation }}</p><p>Held out · <a href="/projects/{{ project.id }}/test?test_id={{ entry.test_id }}">Original Test</a></p>{% else %}<p>Use “Save as evaluation case” on a Test response.</p>{% endfor %}
+</details>
+{% if item.status == 'draft' %}<form method="post" action="/projects/{{ project.id }}/evaluation-suites/{{ item.id }}/freeze">
+<input type="hidden" name="expected_revision" value="{{ item.revision }}"><p>Freezing locks membership, rubric, exact model requests and source hashes. Future knowledge and lesson changes will not change these inputs. Create another suite for different inputs.</p><button {% if not item.cases %}disabled{% endif %}>Freeze suite and inputs</button></form>
+{% else %}<p class="hash">Frozen SHA-256: {{ item.frozen_sha256 }}</p>
+<form method="post" action="/projects/{{ project.id }}/evaluation-suites/{{ item.id }}/run"><input type="hidden" name="expected_revision" value="{{ item.revision }}"><p>Runs {{ item.cases|length * 2 }} local requests, up to 20 minutes total. Each completed output is saved. No builder provider or GPU training is used. Leave this page open while the request finishes.</p><button>Run A and B on frozen inputs</button></form>
+{% endif %}</article>{% else %}<p>Create a draft suite, then save new Test situations into it.</p>{% endfor %}
+</section>
+<section><h2>Saved comparison runs</h2>
+{% for item in runs %}<p><a href="/projects/{{ project.id }}/evaluations?run_id={{ item.id }}">{{ item.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }} · {{ item.status }} · {{ item.outputs|length }} outputs</a></p>{% else %}<p>No runs yet.</p>{% endfor %}
+</section>
+{% if run %}<section><h2>{{ suite.name }} · {{ run.status }}</h2>
+{% if run.error %}<p role="alert">{{ run.error }}</p>{% endif %}
+<p>Owner preference for B relative to A: <strong>{{ counts.improved }} improved · {{ counts.regressed }} regressed · {{ counts.same }} same · {{ counts.both_bad }} both bad · {{ counts.unreviewed }} unreviewed</strong>.</p>
+<p>{{ counts.failed_outputs }} failed outputs · {{ counts.rubric_failures }} expected-behavior check failures. These checks and preferences are separate signals; there is no combined quality score.</p>
+<p>The automatic behavior check only distinguishes recommending, asking and abstaining. A question about the wrong fact can pass that check. Review the full owner rubric and question yourself.</p>
+<p>Preferences do not establish factual correctness or causal business lift. Observed outcomes remain separate and are never sent in these model requests. Retain an earlier run using the links above; evaluating and rating do not change your active adviser.</p>
+{% if scope %}<p class="notice">Compared with the preceding saved run: {{ scope.message }}</p>{% endif %}
+{% for pair in suite.inputs %}{% set entry = suite.cases[loop.index0] %}{% set review = reviews.get(entry.id|string) %}
+<article id="case-{{ entry.id }}"><h3>{{ entry.case.situation }}</h3>
+{% if entry.case.choices %}<p>Choices: {{ entry.case.choices|join(' · ') }}</p>{% endif %}
+<p><strong>Owner rubric:</strong> {{ behaviors[entry.rubric.expected_behavior] }} · {{ entry.rubric.expectation }}</p>
+{% if entry.case.observed_outcome %}<details><summary>Separate recorded business outcome (excluded from inference and ratings)</summary><p>{{ entry.case.observed_outcome }}</p></details>{% endif %}
+<div class="comparison">
+{% for item in [pair.a, pair.b] %}<div><h4>{{ 'A · Base only' if item.variant == 'base_only' else 'B · Base plus context' }}</h4>
+{% set matches = run.outputs|selectattr('case_id', 'equalto', entry.id)|selectattr('variant', 'equalto', item.variant)|list %}
+{% if matches %}{% set output = matches[0] %}
+{% if output.error %}<p role="alert">{{ output.error }}</p>{% endif %}
+{% if output.advice %}<h5>Recommendation</h5><p class="mission">{{ output.advice.recommendation }}</p><h5>Explanation</h5><p class="mission">{{ output.advice.explanation }}</p>
+{% if output.advice.clarification_question %}<h5>Clarification needed</h5><p class="mission">{{ output.advice.clarification_question }}</p>{% endif %}
+<h5>Limitations</h5><ul>{% for text in output.advice.limitations %}<li>{{ text }}</li>{% else %}<li>No additional limitations reported.</li>{% endfor %}</ul>
+<h5>Citations</h5><ul>{% for ref in output.advice.evidence_refs %}{% for evidence in item.evidence if evidence.citation_id|string == ref %}<li><a href="/projects/{{ project.id }}/citations/{{ ref }}?revision={{ item.adviser.knowledge_revision }}">{{ evidence.source_name }} · lines {{ evidence.line_start }}–{{ evidence.line_end }}</a><blockquote class="mission">{{ evidence.text }}</blockquote></li>{% endfor %}{% else %}<li>No uploaded excerpts cited.</li>{% endfor %}</ul>{% endif %}
+<p>Schema: {{ output.checks.schema_valid }} · Citation integrity: {{ output.checks.citations_valid if output.checks.citations_valid is not none else 'not checked' }} · Supporting facts: {{ output.checks.supporting_facts_valid if output.checks.supporting_facts_valid is not none else 'not checked' }} · Expected behavior: {{ output.checks.expected_behavior_passed if output.checks.expected_behavior_passed is not none else 'manual only' }}</p>
+{% if output.checks.unsupported_recommendation %}<p role="alert">Recommended when the rubric required asking first or abstention. Review this regression.</p>{% endif %}
+{% else %}<p>No completed output. Interrupted runs are never retried automatically.</p>{% endif %}
+<details><summary>Frozen input and model</summary><p class="hash">{{ item.model_alias }} · {{ item.input_sha256 }}</p><p>Adviser revision {{ item.adviser.revision }} · {{ item.prompt_version }} · Knowledge {{ item.adviser.knowledge_revision or 'none' }} · Lessons {{ item.adviser.lessons_revision or 'none' }} ({{ item.lessons|length }} included).</p><p>The adviser snapshot records the capture; A omits custom mission, knowledge and lessons from its request.</p><pre>{{ item.system }}</pre><pre>{{ item.context }}</pre><pre>{{ item.parameters|tojson(indent=2) }}</pre></details>
+</div>{% endfor %}</div>
+{% set completed = run.outputs|selectattr('case_id', 'equalto', entry.id)|list %}
+{% if completed|length == 2 %}<form method="post" action="/projects/{{ project.id }}/evaluation-runs/{{ run.id }}/ratings/{{ entry.id }}">
+<input type="hidden" name="expected_revision" value="{{ review.revision if review else 0 }}">
+<label>Your preference<select name="preference" required><option value="" disabled {% if not review %}selected{% endif %}>Choose a rating</option>{% for key, title in preferences.items() %}<option value="{{ key }}" {% if review and review.preference == key %}selected{% endif %}>{{ title }}</option>{% endfor %}</select></label>
+<label>Feedback category<select name="category" required>{% for key, title in categories.items() %}<option value="{{ key }}" {% if review and review.category == key %}selected{% endif %}>{{ title }}</option>{% endfor %}</select></label>
+<label>Why?<textarea name="rationale" rows="3" required maxlength="4000">{{ review.rationale if review else '' }}</textarea></label><p>This is a preference rating, not a business outcome or a teaching correction. It never creates a lesson or training example.</p><button>Save comparison rating</button></form>{% endif %}
+</article>{% endfor %}
+</section>{% endif %}
+{% endblock %}

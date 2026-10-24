@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 
-from quartermaster import teaching
+from quartermaster import evaluations, teaching
 from quartermaster.api.foundation import page, settings, validate_form
 from quartermaster.api.interview import form_values
 from quartermaster.api.routes import require_same_origin
@@ -20,6 +20,8 @@ from quartermaster.contracts.teaching import (
     TestInput,
     TestRun,
 )
+from quartermaster.db import connect
+from quartermaster.holdouts import case_fingerprint
 from quartermaster.projects import get_adviser
 
 router = APIRouter()
@@ -33,16 +35,27 @@ def redirect(project_id):
 def test_page(project_id: UUID, request: Request, test_id: UUID | None = None):
     config = settings(request)
     lessons = teaching.latest_lessons(config, project_id)
+    runs = (
+        [teaching.get_test(config, project_id, test_id)]
+        if test_id
+        else teaching.list_tests(config, project_id)
+    )
+    with connect(config.database_path) as connection:
+        held_out = {
+            row[0]
+            for row in connection.execute(
+                "SELECT case_sha256 FROM evaluation_holdouts WHERE project_id=?", (str(project_id),)
+            )
+        }
     return page(
         request,
         "test.html",
         project=get_adviser(config.database_path, project_id),
-        runs=(
-            [teaching.get_test(config, project_id, test_id)]
-            if test_id
-            else teaching.list_tests(config, project_id)
-        ),
+        runs=runs,
+        held_out_tests={str(run.id) for run in runs if case_fingerprint(run.case) in held_out},
         selected_test=test_id,
+        suites=[s for s in evaluations.list_suites(config, project_id) if s.status == "draft"],
+        behaviors=evaluations.BEHAVIORS,
         lessons=list(reversed(lessons)),
         categories=teaching.CATEGORIES,
         feedback={
