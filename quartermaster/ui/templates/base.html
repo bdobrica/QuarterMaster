@@ -10,7 +10,17 @@
 </head>
 <body>
   <header><a href="/">QuarterMaster</a><span>Local adviser workshop · Teach · Test · Evaluate · Train · Export</span></header>
-  <main>{% block content %}{% endblock %}</main>
+  <nav aria-label="Workshop help"><a href="/examples">Synthetic examples</a> · <a href="/help">Help and troubleshooting</a></nav>
+  <main>
+    {% if project is defined %}<nav aria-label="Adviser workflow" class="project-tabs">
+      <a href="/projects/{{ project.id }}">Teach</a>
+      <a href="/projects/{{ project.id }}/train">Train</a>
+      <a href="/projects/{{ project.id }}/evaluations">Evaluate</a>
+      <a href="/projects/{{ project.id }}/test">Test</a>
+      <a href="/projects/{{ project.id }}/export">Export</a>
+    </nav>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
   <footer>Advice uses the local model. Optional builder requests require your preview and consent.</footer>
 </body>
 </html>

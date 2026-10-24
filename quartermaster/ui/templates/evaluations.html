@@ -18,7 +18,7 @@
 <input type="hidden" name="expected_revision" value="{{ item.revision }}"><p>Freezing locks membership, rubric, exact model requests and source hashes. Future knowledge and lesson changes will not change these inputs. Create another suite for different inputs.</p><button {% if not item.cases %}disabled{% endif %}>Freeze suite and inputs</button></form>
 {% else %}<p class="hash">Frozen SHA-256: {{ item.frozen_sha256 }}</p>
 <form method="post" action="/projects/{{ project.id }}/evaluation-suites/{{ item.id }}/run"><input type="hidden" name="expected_revision" value="{{ item.revision }}"><p>Runs {{ item.cases|length * 2 }} local requests, up to 20 minutes total. Each completed output is saved. No builder provider or GPU training is used. Leave this page open while the request finishes.</p><button>Run A and B on frozen inputs</button></form>
-{% endif %}</article>{% else %}<p>Create a draft suite, then save new Test situations into it.</p>{% endfor %}
+{% endif %}</article>{% else %}<p>No evaluation suites yet. Create a draft suite above, open <a href="/projects/{{ project.id }}/test">Test</a> and save a separate unseen situation with an expected behavior. Freeze the suite before comparing or training; keep teaching situations separate.</p>{% endfor %}
 </section>
 <section><h2>Saved comparison runs</h2>
 {% for item in runs %}<p><a href="/projects/{{ project.id }}/evaluations?run_id={{ item.id }}">{{ item.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }} · {{ item.status }} · {{ item.outputs|length }} outputs</a></p>{% else %}<p>No runs yet.</p>{% endfor %}

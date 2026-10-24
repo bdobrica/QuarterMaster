@@ -43,4 +43,6 @@ in the standalone CPU runtime.
 
 Milestone 4 reuses this pinned CPU engine in the optional local advice service and copies the unmodified base model license into its verified GGUF bundle. It adds no Python runtime dependency. Its image also carries the QuarterMaster license for the verification entry point; trainer/ML packages stay out of the web and CPU serving images. See the [local setup and verification](milestone-4.md).
 
-Future exports must preserve applicable model/runtime license notices and exact revision provenance. Uploaded source materials remain subject to their owners' rights; approving a lesson does not grant redistribution rights over its sources.
+Standalone exports preserve the selected model license, project license and exact revision provenance; their standard CPU runtime retains its separate third-party notices. Uploaded source materials remain subject to their owners' rights; approving a lesson does not grant redistribution rights over its sources.
+
+The downloadable rental-tool, print-proof and social-post examples are explicitly AI-drafted synthetic repository fixtures under the project license, not real observations, safety standards, approved SFT supervision or evidence of business benefit. See the [operator guide](operator-guide.md) before sharing a model package or its selected knowledge.

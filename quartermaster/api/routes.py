@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
@@ -6,12 +7,14 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
+from quartermaster.builder import preview_estimate
 from quartermaster.contracts.project import Project, ProjectCreate
 from quartermaster.db import check_schema, connect
 from quartermaster.projects import create_project, list_projects
 
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).parents[1] / "ui" / "templates")
+templates.env.globals["provider_estimate"] = preview_estimate
 
 
 def require_same_origin(request: Request, *, form: bool = False) -> None:
@@ -39,6 +42,20 @@ def landing(request: Request):
         name="index.html",
         context={"projects": list_projects(request.app.state.settings.database_path)},
     )
+
+
+@router.get("/examples")
+def examples(request: Request):
+    root = Path(__file__).parents[1] / "ui" / "static" / "examples"
+    demos = [json.loads(path.read_text()) for path in sorted(root.glob("*/scenario.json"))]
+    return templates.TemplateResponse(
+        request=request, name="examples.html", context={"demos": demos}
+    )
+
+
+@router.get("/help")
+def help_page(request: Request):
+    return templates.TemplateResponse(request=request, name="help.html", context={})
 
 
 @router.get("/api/projects", response_model=list[Project])

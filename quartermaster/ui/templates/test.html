@@ -42,7 +42,7 @@
 </form>{% endif %}
 {% endif %}
 <details><summary>Saved context and model details</summary><p>{{ run.model_alias }}</p><p>Knowledge revision: {{ run.adviser.knowledge_revision or 'none' }} · Lesson selection revision: {{ run.adviser.lessons_revision or 'none' }}</p><pre>{{ run.context }}</pre></details>
-</article>{% else %}<p>Enter a situation to get a baseline response, then give a correction and retest a similar new situation.</p>{% endfor %}
+</article>{% else %}<p>No test responses yet. Enter a situation with facts known before deciding to get a baseline response, then give a correction and retest a similar new situation. <a href="/examples">Try a synthetic situation</a>. A request for missing information is a valid result.</p>{% endfor %}
 </section>
 <section><h2>Lessons to review</h2>
 {% for lesson in lessons %}{% set record = feedback[lesson.id|string] %}<article id="lesson-{{ lesson.id }}">
@@ -69,6 +69,7 @@
 {% if lesson.disclosure and lesson.status == 'pending' and not lesson.text %}
 <details open><summary>Review exactly what the builder will receive · {{ lesson.disclosure.input_bytes }} UTF-8 bytes</summary>
 <p>Endpoint: {{ lesson.disclosure.endpoint }} · Model: {{ lesson.disclosure.model }}</p><p>The mission, decision-time situation, advice and your correction will leave this installation. No source files or retrieved excerpt blocks are attached. Advice and your correction may quote business content; inspect the exact request below. The separate observed-outcome field is excluded.</p>
+{% set d = lesson.disclosure %}{% include "provider_preview.html" %}
 <h3>Instructions</h3><pre>{{ lesson.disclosure.system }}</pre><h3>Business context</h3><pre>{{ lesson.disclosure.context }}</pre><h3>Response schema</h3><pre>{{ lesson.disclosure.response_schema|tojson(indent=2) }}</pre>
 <form method="post" action="/projects/{{ project.id }}/lessons/{{ lesson.id }}/send">
 <input type="hidden" name="expected_revision" value="{{ lesson.revision }}"><input type="hidden" name="turn_id" value="{{ lesson.id }}"><input type="hidden" name="disclosure_sha256" value="{{ lesson.disclosure.disclosure_sha256 }}">

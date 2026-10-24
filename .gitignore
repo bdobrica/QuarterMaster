@@ -12,6 +12,8 @@ dist/
 .env.*
 !.env.example
 data/
+/backups/
+/quartermaster-backup*.tar
 uploads/
 checkpoints/
 models/

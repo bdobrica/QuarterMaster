@@ -6,7 +6,7 @@ import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from quartermaster.builder import BuilderLLM, provider_identity
+from quartermaster.builder import BuilderLLM, check_input, provider_identity
 from quartermaster.config import Settings
 from quartermaster.contracts.adviser import AdviserSpec, DecisionDefinition
 from quartermaster.contracts.interview import (
@@ -149,6 +149,7 @@ def source_context(settings, project_id, excerpt_ids):
             {
                 "id": str(source.id),
                 "sha256": source.sha256,
+                "size_bytes": source.size_bytes,
                 "kind": source.kind,
                 "label": source.label,
                 "name": source.display_name[:120],
@@ -191,6 +192,7 @@ def source_context(settings, project_id, excerpt_ids):
         )
     return {
         "total_sources": len(sources),
+        "total_source_bytes": sum(source.size_bytes for source in sources),
         "summaries": summaries,
         "summary_limits": (
             "First 10 sources, 4 sheets/source, 30 fields/sheet; names clipped to 120 characters. "
@@ -220,6 +222,9 @@ def prepare(settings: Settings, project_id, action: Prepare) -> Interview:
             indent=2,
         )
         response_schema = Interpretation.model_json_schema()
+        check_input(
+            settings, model=model, system=SYSTEM, context=context, response_schema=response_schema
+        )
         disclosure = {
             "endpoint": endpoint,
             "model": model,

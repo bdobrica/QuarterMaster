@@ -1,6 +1,6 @@
 # QuarterMaster — Implementation TODO
 
-**Status:** Milestones 0–7 implemented and locally verified, including one owner-approved real M6 GPU run and independent M7 export inference. The tiny fixture shows no adviser-quality improvement. Milestone 8 remains pending.
+**Status:** Milestones 0–7 locally verified; Milestone 8 usability/safety implementation and local checks completed. Full owner-journey release acceptance and the MVP tag remain pending. Real-model limitations are recorded without a quality-gain claim.
 
 **Scope:** first self-hosted teachable-adviser MVP (`0.1.0`).  
 **Design authority:** [PLAN.md](PLAN.md); implementation rules: [AGENTS.md](AGENTS.md).
@@ -273,32 +273,34 @@ gain is claimed. Documented localhost startup was also tested with the M1 runtim
 
 ## Milestone 8 — Usability, safety and release polish
 
-- [ ] Add helpful blank/empty state on each of the five tabs.
-- [ ] Add a sample mission and small synthetic data/docs fixture with explicit labeling.
-- [ ] Add one second-domain synthetic demo proving no domain-specific code edits.
-- [ ] Show source size, token estimate and external-provider disclosure before large build calls.
-- [ ] Add per-provider timeout and maximum-input protections.
-- [ ] Ensure no uploaded text or API keys appear in ordinary logs.
-- [ ] Add prompt-injection regression fixtures for malicious Markdown cells.
-- [ ] Add path traversal and archive extraction regression tests.
-- [ ] Confirm locally scoped port exposure and document reverse-proxy security limitations.
-- [ ] Add project export/backup guidance for the persistent data volume.
-- [ ] Document local GPU prerequisites, unsupported hardware and approximate model footprint.
-- [ ] Document source upload, knowledge revision and example-review behavior.
-- [ ] Document LoRA model licensing and distribution constraints.
-- [ ] Document contextual improvement versus weight training clearly in the UI.
-- [ ] Add a small troubleshooting section for API, training and model-export failures.
-- [ ] Add an honest capability/limitation section to README.
-- [ ] Run full CPU test, lint and Compose boot checks from clean state.
-- [ ] Run opt-in real GPU and standalone export validation; record hardware/results.
-- [ ] Review README, PLAN, TODO and AGENTS for consistency with actual shipped behavior.
+- [x] Add helpful blank/empty state on each of the five tabs.
+- [x] Add a sample mission and small synthetic data/docs fixture with explicit labeling.
+- [x] Add one second-domain synthetic demo proving no domain-specific code edits.
+- [x] Show source size, token estimate and external-provider disclosure before large build calls.
+- [x] Add per-provider timeout and maximum-input protections.
+- [x] Ensure no uploaded text or API keys appear in ordinary logs.
+- [x] Add prompt-injection regression fixtures for malicious Markdown cells.
+- [x] Add path traversal and archive extraction regression tests.
+- [x] Confirm locally scoped port exposure and document reverse-proxy security limitations.
+- [x] Add project export/backup guidance for the persistent data volume.
+- [x] Document local GPU prerequisites, unsupported hardware and approximate model footprint.
+- [x] Document source upload, knowledge revision and example-review behavior.
+- [x] Document LoRA model licensing and distribution constraints.
+- [x] Document contextual improvement versus weight training clearly in the UI.
+- [x] Add a small troubleshooting section for API, training and model-export failures.
+- [x] Add an honest capability/limitation section to README.
+- [x] Run full CPU test, lint and Compose boot checks from clean state.
+- [x] Run opt-in real GPU and standalone export validation; record hardware/results (retain the unchanged owner-approved M6 GPU run; recheck export during M8).
+- [x] Review README, PLAN, TODO and AGENTS for consistency with actual shipped behavior.
 - [ ] Tag an MVP only after release gate passes.
 
 **Acceptance criteria**
 
 - [ ] A new user can follow README from a clean environment.
-- [ ] Both demonstration domains work using the same contracts.
-- [ ] The shipped UI never claims an unverified training, export or business improvement.
+- [x] Both demonstration domains work using the same contracts.
+- [x] The shipped UI never claims an unverified training, export or business improvement.
+
+Implementation and verification: [Milestone 8 record](docs/milestone-8.md); operation, privacy, hardware and recovery: [operator guide](docs/operator-guide.md). Clean-volume startup, backup/restore and the same public workflow across three synthetic domains are verified. Real CPU advice still over-asks and one print-domain retest failed JSON validation. The earlier explicitly approved M6 GPU run is retained as hardware evidence; no new GPU run or supervision approval is implied. Fresh standalone export validation is recorded separately. The full human owner journey below has not passed as one clean-install session; no MVP tag is created.
 
 ---
 

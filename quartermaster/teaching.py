@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from quartermaster import knowledge
 from quartermaster.advice_context import MAX_CONTEXT_BYTES as MAX_CONTEXT_BYTES
 from quartermaster.advice_context import SYSTEM, assemble_context, validate_advice
-from quartermaster.builder import provider_identity
+from quartermaster.builder import check_input, provider_identity
 from quartermaster.contracts.advice import Advice, Case
 from quartermaster.contracts.teaching import (
     Feedback,
@@ -296,6 +296,13 @@ def prepare_lesson(settings, project_id, lesson_id, action):
         "response_schema": LessonText.model_json_schema(),
     }
     raw = encoded(disclosure).encode()
+    check_input(
+        settings,
+        model=model,
+        system=LESSON_SYSTEM,
+        context=context,
+        response_schema=LessonText.model_json_schema(),
+    )
     if len(raw) > 24000:
         raise DomainError(
             "LESSON_SIZE: This correction is too large for the builder; draft manually."

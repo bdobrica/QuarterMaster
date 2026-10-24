@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     builder_api_key: SecretStr | None = None
     builder_api_key_file: Path | None = None
     builder_timeout_seconds: float = Field(default=20, ge=1, le=30)
+    builder_max_input_bytes: int = Field(default=49152, ge=4096, le=65536)
     local_base_url: HttpUrl | None = None
     local_model_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     local_timeout_seconds: float = Field(default=120, ge=1, le=180)

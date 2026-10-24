@@ -1,67 +1,101 @@
 # QuarterMaster
 
-**A no-code factory for specialized, teachable AI advisers.**
+**A local factory for teachable AI advisers.** Describe a recurring decision, upload reference
+material, test the adviser, review corrections, evaluate frozen situations, explicitly train a
+small model, and export it with an independent browser interface and advice API.
 
-QuarterMaster helps a small-business owner turn their knowledge, historical examples, and natural-language feedback into a specialized adviser. Describe what you want advice about, upload spreadsheets and Markdown research, teach the adviser how to handle situations, evaluate its judgment, fine-tune a small language model, and export a standalone Docker-ready adviser.
-
-**Status:** Milestones 0–7 are implemented and locally verified, including a real owner-approved LoRA run on a laptop GTX 1660 Ti and fresh offline inference from its standalone export. The tiny synthetic evaluation showed no quality gain; the candidate remains unpromoted. See [training results](docs/milestone-6.md) and [export setup and verification](docs/milestone-7.md). Milestone 8 remains pending, so this is not the `0.1.0` MVP yet. QuarterMaster is a standalone project, not a KitchenSoup plugin.
-
-## Why QuarterMaster?
-
-A knowledgeable human adviser is useful not only because they know facts, but because they have experience: they've encountered similar situations, learned when to ask questions, and developed judgment. QuarterMaster explores whether a business owner can teach those habits to a small LLM **without becoming a data scientist**.
-
-The defining interaction is:
-
-> “In this situation, I don't think you handled it well. You should have asked for the menu picture before advising.”
-
-QuarterMaster turns that correction into a reviewed lesson, applies it immediately through context, and can later include it in a LoRA fine-tuning run. The owner tests the result and decides which adviser version is worth keeping.
-
-## The workflow
-
-1. **Teach** — Describe the advisory job. Upload CSV/XLSX observations, Markdown knowledge, and examples. Answer a short guided interview.
-2. **Test** — Ask the base-model apprentice for advice. Inspect supporting evidence and correct mistakes in plain English.
-3. **Evaluate** — Save representative situations and compare advisers side by side, including cases where they should ask for more information.
-4. **Train** — Review supervised examples, queue an explicitly enabled local LoRA run, and compare the candidate against base weights with identical frozen context.
-5. **Export** — Package the chosen version with its model, lessons, knowledge index, local UI and `/v1/advise` API.
-
-The primary UI tabs are **Teach · Train · Evaluate · Test · Export**. The order above reflects how a first-time owner discovers the product: try it and teach it before committing to a training run.
-
-## What an adviser returns
-
-An adviser can offer:
-
-- A concrete recommendation or an honest inability to decide.
-- A concise explanation grounded in the supplied case and retrieved knowledge.
-- References to the uploaded sources that support factual claims.
-- A request for missing information when it should not make a call yet.
-- Limitations or uncertainty stated without invented numerical confidence.
-
-It does **not** send emails, post to social media, modify business records, or execute real-world actions.
-
-## Example projects
-
-| Domain | Owner's question | Potential teaching moment |
-| --- | --- | --- |
-| Social media | “When should I post this announcement?” | Ask whether it is part of a coordinated campaign. |
-| Accounts receivable | “Which invoice should I follow up on?” | Consider a disputed invoice differently from a normal overdue invoice. |
-| Customer experience | “How should I respond to this complaint?” | Ask for the relevant photo before making a definitive judgment. |
-
-These examples illustrate **advisory behavior**, not proven causal business lift. Historical observations help ground the advice, but do not automatically identify the effect of taking the recommended action.
+**Status:** Milestones 0–7 are implemented and locally verified; Milestone 8 adds onboarding,
+three synthetic domains, provider limits and operating guidance. This is a development build,
+not a tagged `0.1.0` release. A real laptop GPU run and offline standalone inference passed,
+but the tiny synthetic evaluation showed **no quality gain**. The candidate remains unpromoted.
+See [M8 verification and release checks](docs/milestone-8.md), [training results](docs/milestone-6.md)
+and [export verification](docs/milestone-7.md).
 
 ## Quick start
 
-From this checkout, with Docker Engine and Docker Compose v2 installed:
+Install Docker Engine and Docker Compose v2, then run from this checkout:
 
 ```sh
 cp .env.example .env
 docker compose up -d --build --wait
 ```
 
-Open <http://127.0.0.1:8000>. No GPU, model download, API key or other application service is needed. The build needs internet access to obtain the Python image and locked packages; the running application serves its assets locally. The Python 3.13 image uses Debian Trixie and is pinned by digest.
+Open <http://127.0.0.1:8000>. The project/teaching UI needs no GPU, model download, API key or
+other application. Initial image/package builds need internet access. Assets are served locally;
+there is no Node build. Images use digest-pinned Python 3.13 slim **Trixie**.
 
-Compose stores SQLite and artifacts in the `quartermaster-data` named volume at `/data`. `docker compose down` retains it. To back it up, stop the web service and copy the entire volume, including SQLite sidecar files and artifacts. Restore with the service stopped. `QM_DATA_DIR` configures local Python runs; Compose deliberately fixes it to its persistent `/data` mount.
+Start at **Synthetic examples** for small, explicitly AI-drafted rental-tool, print-proof and social-post
+CSV/Markdown files and sample missions. Create a project, upload the files, inspect their previews,
+confirm decision-time inputs and select the Markdown as searchable knowledge. The manual guided
+interview needs no provider. History and later outcomes never automatically become ideal advice.
 
-For development, install Python 3.13 and [uv](https://docs.astral.sh/uv/), then run:
+For actual advice, run `make model-setup`, set the printed `QM_LOCAL_MODEL_SHA256` and
+`QM_LOCAL_BASE_URL=http://inference:8080/v1` in `.env`, then start:
+
+```sh
+docker compose --profile advice up -d --build --wait
+```
+
+This explicitly prepares the pinned unmodified Qwen3.5-0.8B model; it does not train it. The GGUF
+is approximately 812 MB; the tested CPU service uses a 4 GiB memory limit/four threads and can take
+minutes per response. See [model setup](docs/milestone-4.md) for resources and limitations.
+
+## Teach → test → correct → evaluate → train → export
+
+- **Teach:** describe the mission; upload CSV/XLSX observations and Markdown knowledge, up to
+  8 MiB per file. Inspect mappings, confirm any joins and keep outcomes separate from inputs.
+- **Test:** enter a situation, inspect advice/citations/questions and give a plain-language
+  correction. Review and approve the reusable lesson, then try a related unseen situation.
+  Lessons change **context immediately**; weights stay unchanged.
+- **Evaluate:** save separate unseen cases with owner rubrics and freeze the suite. Compare
+  saved outputs, inspect mistakes and rate preferences. Holdouts are blocked from teaching/SFT.
+- **Train:** separately review complete prompts/desired responses, including AI drafts. Queue
+  a bounded LoRA job; an operator explicitly starts the local GPU worker. Compare the candidate
+  with base weights on identical frozen inputs. Active weights change only by explicit selection.
+- **Export:** choose an evaluated candidate and review its disclosed contents. An operator
+  builds/pins the standard runtime first. Run `make test-export EXPORT=/absolute/adviser.tar`,
+  then follow the archive's Compose instructions. The CPU adviser runs independently of
+  QuarterMaster, its database, training GPU and builder API.
+
+Optional builder interpretation/drafting uses a configured OpenAI-compatible provider. Every
+business-content request has an exact preview and explicit consent. Preview shows file/request
+size and a rough token estimate. Timeout and input bounds are configurable; failures never silently
+retry. Use the manual path without credentials. See [provider setup](docs/milestone-3.md) and
+[limits, privacy and troubleshooting](docs/operator-guide.md).
+
+## Storage and operation
+
+Compose keeps SQLite and artifacts in the `quartermaster-data` named volume at `/data`.
+`docker compose down` retains it; `down -v` deletes it. Back up the **whole volume with writers
+stopped**, plus secrets separately, before upgrading. An adviser archive is not a project backup.
+See the [operator guide](docs/operator-guide.md) for tested backup/restore steps, optional host-worker
+storage, GPU prerequisites, unsupported hardware, licensing and failure recovery. Startup checks
+schema v6 and preserves versioned records; incompatible databases fail instead of being reset.
+
+The web app has no Docker socket, ML dependencies or automatic cloud fallback. Local CPU inference,
+explicit GPU training and independent export serving use separate pinned images. Application code
+is Python/FastAPI, Jinja2/HTMX, SQLite FTS5 and local immutable artifacts with versioned contracts.
+
+## Capabilities and limits
+
+- Single trusted local owner; **no login, tenancy or TLS**. Ports bind to localhost. Remote exposure
+  needs operator-provided authentication, HTTPS and reviewed proxy/origin controls.
+- Adviser only: no posting, payments, messages, scheduling or changes to business records.
+- Uploaded data and model completions are untrusted. Scripts/formulas are never executed.
+  Prompt instructions and structural checks do not guarantee resistance to every injection.
+- Citations identify accessible uploaded excerpts; exact quotes do not prove factual entailment.
+  Explanations describe support, not hidden internal reasoning. Missing evidence can lead to
+  clarification or abstention; the small model can still misunderstand or ask irrelevant questions.
+- Reviewed examples, immutable snapshots and held-out comparisons make changes inspectable.
+  Small datasets can overfit/regress. Owner preference is not factual truth or causal business lift.
+- One pinned text-only Qwen model and a tested NVIDIA/WSL quick-training path. Other model families,
+  CPU-only/AMD/Apple GPU training and the standard preset have not been live verified.
+- Standalone use requires its exact runtime image to be obtained first. Archives contain selected
+  business content; inspect privacy and redistribution rights. No offline image bundle is included.
+
+## Development and verification
+
+With Python 3.13 and [uv](https://docs.astral.sh/uv/):
 
 ```sh
 make setup
@@ -71,68 +105,14 @@ make lint
 uv run --locked uvicorn quartermaster.app:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
-Open a project to edit its mission, upload sources, preview and confirm case mappings, and select Markdown for knowledge search. Each upload is limited to 8 MiB; formulas are never evaluated. Outcomes stay separate from decision inputs. See the [Milestone 2 guide and verification](docs/milestone-2.md) for supported mappings, limits and API routes.
+`make test` uses deterministic CPU fixtures without network, cloud credentials or live models.
+`make help` lists commands. Live GPU checks are opt-in and require reviewed supervision plus
+explicit hardware authorization; see [M1](docs/milestone-1.md) and [M6](docs/milestone-6.md).
+Real-model results and remaining owner-journey release gates are recorded separately from mocked tests.
 
-Choose **Define the adviser through a guided interview** to describe choices, desired behavior, case grain, decision-time information and observable success/harm. Review, edit or reject the resulting spec before saving it. The manual path needs no provider. Optional provider setup, exact-context consent and failure recovery are described in the [Milestone 3 guide](docs/milestone-3.md). Historical rows remain unreviewed; the interview visibly reports `needs_examples`.
+[PLAN](PLAN.md) describes product boundaries and contracts; [TODO](TODO.md) tracks verified acceptance
+criteria; [AGENTS](AGENTS.md) defines implementation rules. Help is also available in the running UI at `/help`.
 
-For **Test advice and teach a lesson**, first run `make model-setup`, configure the printed model hash and local URL, then start `docker compose --profile advice up -d --build --wait`. The optional CPU service uses the pinned unmodified Qwen base model. Corrections become pending lessons; only reviewed approval changes the next test’s context. Weights stay unchanged. See the [Milestone 4 setup, limits and verification](docs/milestone-4.md).
-
-Choose **Evaluate frozen situations side by side**, create a suite, and save new Test situations with your expected behavior. Freeze the suite to capture exact inputs, then compare the same base model without and with custom context. Rate cases as A better, B better, same or both bad; wins, regressions and unreviewed cases remain separate. Saved holdouts cannot become teaching examples. See the [Milestone 5 guide and verification](docs/milestone-5.md) for limits, reproducibility and real-model failures.
-
-Choose **Export a standalone adviser** after a reviewed training run produces an evaluated candidate. Your operator first builds the standard runtime and sets its exact image ID. Packaging freezes the evaluated mission, knowledge, lessons and merged model; review the business content before downloading. Run `make test-export EXPORT=/absolute/adviser.tar` for a fresh offline Compose check, then start the extracted package using its README. See the [Milestone 7 guide](docs/milestone-7.md).
-
-`make help` lists formatting and Compose commands. Startup initializes/checks schema v6 and transactionally migrates v1–v5 databases, preserving existing records and source metadata. Back up the data volume before upgrading. Incompatible or unversioned existing databases fail with an actionable error instead of being reset.
-
-## Model feasibility spike and planned workflow
-
-The opt-in [Milestone 1 spike](docs/milestone-1.md) pins Qwen3.5-0.8B, trains a small reviewed synthetic fixture, compares held-out outputs, merges a LoRA adapter into GGUF Q8_0, and tests a fresh extraction in a network-isolated llama.cpp CPU container. It uses separate Trixie-based trainer/runtime images; ordinary web startup and CPU tests do not install ML dependencies or download weights.
-
-```sh
-make test-gpu                 # Requires NVIDIA Container Toolkit
-make test-gpu GPU_MODE=wsl    # Explicit WSL device/read-only driver passthrough
-uv run --locked python -m quartermaster.spike.run --export /absolute/path/to/data/spike/RUN_ID/adviser.tar
-```
-
-These are explicit, bounded developer checks, separate from the Train/Export screens. See the verification record for hardware, package revisions, latency, artifacts and observed regressions. No cloud GPU or builder API is used by the spike.
-
-A supported GPU is required for this LoRA spike. Projects, uploads, case preparation and knowledge search work on CPU without a model. The explicit base-model text preflight also runs on CPU, subject to available memory. The Test screen uses the separate local CPU model service configured above. Training uses explicitly selected local hardware.
-
-Exported advisers use one standard runtime image and run without the QuarterMaster builder or frontier-model API for core advice. Obtain the exact image first; generated Compose files never silently pull a replacement. The model and knowledge are local.
-
-## Architecture at a glance
-
-| Part | Initial implementation |
-| --- | --- |
-| Builder UI/API | Python, FastAPI, Jinja2, HTMX |
-| Durable metadata | SQLite |
-| File and model artifacts | Persistent local directory with hashes |
-| Research/knowledge | Markdown chunks + SQLite full-text search |
-| Builder intelligence | Configurable OpenAI-compatible LLM provider |
-| Adviser model | Curated small open-weight Qwen model |
-| Consolidated learning | Supervised fine-tuning using PEFT LoRA on supported GPU |
-| Runtime inference | Optional pinned llama.cpp/GGUF CPU service; reviewed context lessons |
-| Packaging | Generated Docker Compose bundle with a standard runtime image |
-
-This intentionally avoids Kubernetes, Redis, object storage, agents with tools, general-purpose code generation, and automatic retraining in the first release.
-
-## Trust and limitations
-
-- QuarterMaster is a **trusted single-user local application**, not an internet-exposed or multi-tenant service. Compose publishes only on localhost. Internet exposure requires authentication and a secure reverse proxy, which are not included.
-- The builder must ask permission before transmitting uploaded business information to an external model provider. The exported adviser does not need that provider for core inference.
-- Uploads and generated examples must be inspected; Markdown and spreadsheets may contain malicious instructions or misleading facts.
-- User preferences, factual correctness, and eventual business outcomes are different signals. Fine-tuning on corrections does not guarantee business benefit.
-- An LLM-generated explanation is a grounded account of supporting evidence, **not a transparent view into the model's hidden reasoning**.
-- Citation and exact-quote validation establish provenance, not factual entailment. The small base model can miss facts or over-ask for information; review its advice.
-- Numerical predictions and causal effect estimates are not guaranteed just because the input contains numbers.
-
-## Project documents
-
-- [PLAN.md](PLAN.md) — product scope, architecture, contracts, risk spikes, milestones, release gate and future extension seams.
-- [TODO.md](TODO.md) — atomic implementation checklist and acceptance criteria.
-- [AGENTS.md](AGENTS.md) — coding-agent instructions and verification requirements.
-
-## Name and licensing
-
-**QuarterMaster is a development codename.** No exclusive claim to the name is implied, and a public-facing brand should be cleared separately.
-
-The project code is licensed under [Apache-2.0](LICENSE). Base models, source materials and third-party runtimes retain their own licenses and distribution terms; see [third-party notes](docs/third-party-licenses.md).
+QuarterMaster is an independent project and a development codename, with no exclusive branding claim.
+Code uses [Apache-2.0](LICENSE). Models, source documents and third-party runtimes keep their own
+licenses and distribution obligations; see [third-party notices](docs/third-party-licenses.md).

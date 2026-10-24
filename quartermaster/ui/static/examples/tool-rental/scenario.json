@@ -1,0 +1,32 @@
+{
+  "id": "tool-rental",
+  "name": "Synthetic rental-tool adviser",
+  "mission": "Advise whether a rental tool may be used. Require a current inspection and no reported damage. Ask for any missing decisive facts; keep damaged tools or tools with overdue inspections out of use.",
+  "business_goal": "Practice evidence-based advice using invented data; no measured safety or business benefit.",
+  "grain": "one rental-tool request",
+  "decision_time": "before use",
+  "inputs": [
+    "tool",
+    "inspection",
+    "damage"
+  ],
+  "outcomes": [
+    "returned_after"
+  ],
+  "available_choices": "May use subject to normal checks; keep out of use; ask for missing inspection or damage status.",
+  "target_behavior": "Use the uploaded policy. Ask when a decisive fact is missing. Never infer damage status from an inspection.",
+  "decision_inputs": "Tool, inspection status and reported damage status are known before use. returned_after is a later outcome.",
+  "success_and_harm": "No real outcomes measured. Human review can identify unsupported advice or unnecessary questions.",
+  "baseline": "A synthetic drill has a current inspection. Damage status is unknown.",
+  "correction": "Ask about reported damage before recommending use, even with a current inspection.",
+  "lesson": {
+    "applicability": "Rental tools with unknown damage status",
+    "instruction": "Ask whether any damage is reported before recommending use. An inspection does not establish damage status."
+  },
+  "unseen": "A synthetic sander has a current inspection. Damage status is unknown.",
+  "holdout": "A synthetic mixer has no reported damage. Inspection status is unknown.",
+  "question": "Is any damage reported?",
+  "holdout_question": "Is the inspection current or overdue?",
+  "query": "rental inspection damage",
+  "provenance": "AI_DRAFT synthetic demonstration. All names, cases, rules and outcomes are invented. Not reviewed training supervision or factual ground truth."
+}

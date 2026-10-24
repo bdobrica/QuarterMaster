@@ -12,7 +12,7 @@
 <label class="check"><input type="checkbox" name="acknowledge_contents" required>I reviewed this candidate and understand the archive contains its selected knowledge source bytes, approved lesson text and one frozen evaluation situation with decision-time facts. Protect this business content. Training rows, raw corrections, outcomes, rubrics and builder credentials are excluded.</label>
 <button {% if not image or not candidates %}disabled{% endif %}>Create immutable package</button>
 </form>
-{% if not candidates %}<p>No evaluated candidates yet. Complete a reviewed local training job on Train before exporting.</p>{% endif %}
+{% if not candidates %}<p>No evaluated candidates yet. On <a href="/projects/{{ project.id }}/train">Train</a>, review examples, choose a frozen suite and complete an explicitly enabled local GPU job. Inspect the candidate comparison before packaging. You can keep using context advice on Test while preparing training data.</p>{% endif %}
 <h2>Packages</h2>
 {% for export in exports %}<article><h3>Export {{ export.id }}</h3>
 <p>{{ export.created_at.strftime('%Y-%m-%d %H:%M UTC') }} · candidate {{ export.candidate_id }} · evaluated adviser revision {{ export.evaluated_adviser_revision }}</p>

@@ -58,15 +58,10 @@ def credential(settings: Settings) -> str | None:
     return value
 
 
-class OpenAICompatible:
-    def __init__(self, settings: Settings, *, transport=None):
-        self.settings = settings
-        self.transport = transport
-
-    async def structured[T: BaseModel](self, *, system: str, context: str, schema: type[T]) -> T:
-        endpoint, model = provider_identity(self.settings)
-        key = credential(self.settings)
-        payload = {
+def request_body(*, model, system, context, response_schema) -> bytes:
+    """One serialization for previews and actual transmission, excluding credentials."""
+    return json.dumps(
+        {
             "model": model,
             "messages": [
                 {"role": "system", "content": system},
@@ -75,19 +70,65 @@ class OpenAICompatible:
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {
-                    "name": schema.__name__,
+                    "name": response_schema["title"],
                     "strict": True,
-                    "schema": schema.model_json_schema(),
+                    "schema": response_schema,
                 },
             },
             "max_completion_tokens": 2048,
             "n": 1,
             "stream": False,
             "store": False,
+        },
+        ensure_ascii=False,
+    ).encode("utf-8")
+
+
+def check_input(settings: Settings, *, model, system, context, response_schema) -> bytes:
+    body = request_body(
+        model=model, system=system, context=context, response_schema=response_schema
+    )
+    if len(body) > min(settings.builder_max_input_bytes, MAX_REQUEST_BYTES):
+        raise DomainError(
+            "BUILDER_INPUT: Request exceeds this provider's configured byte limit. "
+            "Shorten the answers/correction, omit excerpts, or draft manually."
+        )
+    return body
+
+
+def preview_estimate(disclosure) -> dict:
+    """Derived display only: never changes a consented or historical disclosure."""
+    body = request_body(
+        **{
+            key: getattr(disclosure, key)
+            for key in ("model", "system", "context", "response_schema")
         }
-        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        if len(body) > MAX_REQUEST_BYTES:
-            raise DomainError("BUILDER_INPUT: Shorten the interview answers or omit excerpts.")
+    )
+    sources = json.loads(disclosure.context).get("sources", {})
+    return {
+        "wire_bytes": len(body),
+        "approx_tokens": (len(body) + 3) // 4,
+        "sources": sources.get("summaries", []),
+        "total_source_bytes": sources.get("total_source_bytes"),
+        "total_sources": sources.get("total_sources", 0),
+    }
+
+
+class OpenAICompatible:
+    def __init__(self, settings: Settings, *, transport=None):
+        self.settings = settings
+        self.transport = transport
+
+    async def structured[T: BaseModel](self, *, system: str, context: str, schema: type[T]) -> T:
+        endpoint, model = provider_identity(self.settings)
+        key = credential(self.settings)
+        body = check_input(
+            self.settings,
+            model=model,
+            system=system,
+            context=context,
+            response_schema=schema.model_json_schema(),
+        )
         headers = {"Content-Type": "application/json"}
         if key:
             headers["Authorization"] = "Bearer " + key

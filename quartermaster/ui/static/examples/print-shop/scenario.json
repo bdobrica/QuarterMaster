@@ -1,0 +1,32 @@
+{
+  "id": "print-shop",
+  "name": "Synthetic print-proof adviser",
+  "mission": "Advise whether a print proof is ready for production. Require confirmed final copy and customer approval of the proof. Ask for missing confirmation; recommend holding when either is explicitly absent. Give advice only; never send files to production.",
+  "business_goal": "Practice reviewed advice on invented printing requests; no measured production or business benefit.",
+  "grain": "one print-proof review",
+  "decision_time": "before approving production",
+  "inputs": [
+    "job",
+    "final_copy",
+    "customer_approval"
+  ],
+  "outcomes": [
+    "reprints_after"
+  ],
+  "available_choices": "Recommend ready for production; recommend holding; ask for missing confirmation.",
+  "target_behavior": "Ground advice in the proof policy. Confirm both final copy and customer approval; do not treat one as the other.",
+  "decision_inputs": "Job, final copy confirmation and customer approval are known before deciding. reprints_after is a later outcome.",
+  "success_and_harm": "No real outcomes measured. Human review can identify unsupported readiness claims or unnecessary questions.",
+  "baseline": "A synthetic brochure has confirmed final copy. Customer approval of the print proof is unknown.",
+  "correction": "Ask for customer approval of the proof even when final copy is confirmed.",
+  "lesson": {
+    "applicability": "Print proofs with unknown customer approval",
+    "instruction": "Ask whether the customer approved the proof before recommending production. Final copy confirmation is not customer approval."
+  },
+  "unseen": "A synthetic flyer has confirmed final copy. Customer approval of the print proof is unknown.",
+  "holdout": "A synthetic poster has customer approval of the print proof. Final copy confirmation is unknown.",
+  "question": "Has the customer approved the print proof?",
+  "holdout_question": "Is the final copy confirmed?",
+  "query": "print proof approval",
+  "provenance": "AI_DRAFT synthetic demonstration. All names, cases, rules and outcomes are invented. Not reviewed training supervision or factual ground truth."
+}

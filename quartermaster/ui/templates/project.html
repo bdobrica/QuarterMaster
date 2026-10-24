@@ -53,7 +53,7 @@
     <h3><a href="/projects/{{ project.id }}/sources/{{ source.id }}">{{ source.display_name }}</a></h3>
     <p>{{ source.label }} · {{ source.kind|upper }} · {{ source.size_bytes }} bytes</p>
     <small>{{ source.created_at.strftime('%Y-%m-%d %H:%M UTC') }}</small>
-  </article>{% else %}<p>No sources uploaded yet.</p>{% endfor %}
+  </article>{% else %}<p>No sources uploaded yet. Start with a CSV/XLSX labeled observations and a Markdown reference labeled knowledge. <a href="/examples">Download small synthetic examples</a>, then inspect their previews before confirming a mapping.</p>{% endfor %}
 </section>
 <section>
   <h2>Build cases from your tables</h2>

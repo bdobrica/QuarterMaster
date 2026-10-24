@@ -1,0 +1,33 @@
+{
+  "id": "social-post",
+  "name": "Synthetic social-post timing adviser",
+  "mission": "Advise on a proposed social-post time using the owner-defined posting window and campaign coordination status. Ask for either if missing. Never infer an optimal time or causal reach gain from historical observations; advise only and never publish.",
+  "business_goal": "Practice cautious timing advice with invented observations; no measured reach or business lift.",
+  "grain": "one proposed social post",
+  "decision_time": "before publishing",
+  "inputs": [
+    "post_type",
+    "proposed_hour",
+    "posting_window",
+    "campaign_coordination"
+  ],
+  "outcomes": [
+    "reach_after"
+  ],
+  "available_choices": "Recommend the proposed time within the stated window; suggest reviewing a time outside it; ask for missing window or campaign coordination.",
+  "target_behavior": "Ask about missing decision facts. Use the owner posting window, not historical reach, to assess the proposed time. Never post or schedule anything.",
+  "decision_inputs": "Post type, proposed hour, owner posting window and campaign coordination status are decision-time inputs. reach_after is an observed outcome recorded later.",
+  "success_and_harm": "No real outcomes measured. Human review checks missing-fact questions; historical reach does not identify a causal timing effect.",
+  "baseline": "A synthetic announcement is proposed for 10:00 in the owner posting window 09:00 to 12:00. Campaign coordination status is unknown.",
+  "correction": "Ask about campaign coordination before advising on announcement timing, even inside the owner posting window.",
+  "lesson": {
+    "applicability": "Announcement timing with unknown campaign coordination",
+    "instruction": "Ask whether the announcement is coordinated with other campaigns before advising. A permitted posting window does not establish campaign coordination."
+  },
+  "unseen": "A synthetic product launch post is proposed for 11:00 in the owner posting window 09:00 to 12:00. Campaign coordination status is unknown.",
+  "holdout": "A synthetic event post is coordinated with its campaign and proposed for 10:00. The owner posting window is unknown.",
+  "question": "Is the post coordinated with other campaigns?",
+  "holdout_question": "What is the owner-defined posting window?",
+  "query": "post timing campaign window",
+  "provenance": "AI_DRAFT synthetic demonstration. All names, cases, rules, research notes and numerical outcomes are invented. Not reviewed training supervision or factual ground truth."
+}

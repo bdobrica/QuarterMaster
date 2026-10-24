@@ -52,6 +52,7 @@
 <section>
   <h2>Review external-data disclosure</h2>
   <p>Destination: {{ state.prepared.endpoint }} · Model: {{ state.prepared.model }} · Preview: {{ state.prepared.input_bytes }} UTF-8 bytes. The request also includes JSON schema and a 2,048 output-token limit. One request only; retries require a new preview and consent.</p>
+  {% set d = state.prepared %}{% include "provider_preview.html" %}
   <details open><summary>Exact business context</summary><pre>{{ state.prepared.context }}</pre></details>
   <details><summary>System instruction and response schema</summary><pre>{{ state.prepared.system }}</pre><pre>{{ state.prepared.response_schema|tojson(indent=2) }}</pre></details>
   <small class="hash">Disclosure SHA-256: {{ state.prepared.disclosure_sha256 }}</small>

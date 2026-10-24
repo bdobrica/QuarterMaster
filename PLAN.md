@@ -1,6 +1,6 @@
 # QuarterMaster — MVP Project Plan
 
-**Status:** Milestones 0–7 locally verified, including owner-approved real GPU training and standalone export inference; no quality gain shown by the tiny fixture; Milestone 8 pending
+**Status:** Milestones 0–7 locally verified; M8 usability/safety polish implemented with synthetic domain checks. The full owner-journey release gate remains pending; no MVP tag or quality-gain claim.
 
 **Working name:** QuarterMaster (codename; no public branding or trademark claim)  
 **Target:** a focused, self-hosted MVP built in approximately 2–3 weeks of part-time work  
@@ -526,6 +526,8 @@ The milestone IDs in [TODO.md](TODO.md) are stable. Within each milestone, finis
 - **M8: Polish.** Error copy, CPU-only fallback UX, demo, docs, safety and release checks.
 
 This is an aggressive **target**, not an engineering guarantee. Prefer a smaller working loop to partially implementing all milestones. If necessary, ship a working correction/context MVP first, but **do not label it the fine-tuned standalone MVP** until M6–M7 pass.
+
+M8 adds blank-state guidance across the five tabs, built-in help and downloadable explicitly synthetic rental-tool, print-proof and social-post scenarios. They share existing contracts and engines. Provider previews display original source sizes, exact serialized request bytes and a rough token estimate; one bounded provider supports configurable input/timeout limits. No model recipe, runtime contract or persistent schema changes. See the [operator guide](docs/operator-guide.md) and [verification/release limits](docs/milestone-8.md).
 
 ## 19. Release gate (MVP 0.1.0)
 

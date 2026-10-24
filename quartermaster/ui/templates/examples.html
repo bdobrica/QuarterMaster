@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Try a synthetic example</h1>
+<p>These unrelated domains use the same Teach, Test and Evaluate flow. All files, rules, cases and outcomes are AI-drafted fiction. They demonstrate the workflow, not useful judgment, safety guidance or measured business results. Nothing is imported or approved automatically.</p>
+<p>Create a <a href="/">new project</a> using a mission below. Download the CSV and Markdown, then upload them on Teach as <strong>observations</strong> and <strong>knowledge</strong>. Open the CSV preview, map the listed inputs and keep the outcome separate. Select the Markdown in Searchable knowledge and save the selection.</p>
+{% for demo in demos %}<section>
+<h2>{{ demo.name }}</h2>
+<h3>Sample mission</h3><p class="mission">{{ demo.mission }}</p>
+<p><a href="/static/examples/{{ demo.id }}/observations.csv" download>Download synthetic CSV</a> · <a href="/static/examples/{{ demo.id }}/knowledge.md" download>Download synthetic Markdown</a> · <a href="/static/examples/{{ demo.id }}/scenario.json" download>Full scenario and interview answers (JSON)</a></p>
+<p>Case grain: {{ demo.grain }}. Decision time: {{ demo.decision_time }}.<br>Inputs: {{ demo.inputs|join(', ') }}. Later outcome: {{ demo.outcomes|join(', ') }}; never select it as an input or ideal advice.</p>
+<h3>First Test situation</h3><p class="mission">{{ demo.baseline }}</p>
+<h3>Correction to inspect and review</h3><p class="mission">{{ demo.correction }}</p>
+<p>Save the correction, write a reusable manual lesson, inspect it and approve it for context only. If the initial response already asks correctly, review it as good feedback; do not invent a model failure.</p>
+<h3>Related unseen Test</h3><p class="mission">{{ demo.unseen }}</p>
+<h3>Separate evaluation holdout</h3><p class="mission">{{ demo.holdout }}</p>
+<p>Create an Evaluate suite, run this separate situation on Test and save it as an evaluation case before giving teaching feedback. Expect clarification: {{ demo.holdout_question }} Freeze the suite and compare outputs. Read the full questions; structural checks alone can miss irrelevant advice.</p>
+</section>{% endfor %}
+<p>Training requires a separate review of each desired response and explicit GPU opt-in. These downloadable scenarios are not approved SFT targets. See <a href="/help">Help and troubleshooting</a>.</p>
+{% endblock %}

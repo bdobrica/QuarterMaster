@@ -1,6 +1,8 @@
 :root { color-scheme: light; font-family: system-ui, sans-serif; color: #233339; background: #f5f5ef; }
 body { margin: 0; }
 header, main, footer { max-width: 56rem; margin: auto; padding: 1.5rem; }
+nav[aria-label="Workshop help"] { max-width: 56rem; margin: auto; padding: .8rem 1.5rem; }
+.project-tabs { display: flex; flex-wrap: wrap; gap: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #ccd4ce; }
 header { display: flex; gap: 1rem; justify-content: space-between; border-bottom: 1px solid #ccd4ce; }
 header a { color: #245343; font-weight: 700; text-decoration: none; }
 header span, footer, small { color: #53655d; font-size: .9rem; }

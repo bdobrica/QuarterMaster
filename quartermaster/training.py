@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from quartermaster import evaluations, teaching
-from quartermaster.builder import provider_identity
+from quartermaster.builder import check_input, provider_identity
 from quartermaster.contracts.advice import Case
 from quartermaster.contracts.adviser import ModelSpec
 from quartermaster.contracts.evaluation import ComparisonRating
@@ -231,6 +231,7 @@ def prepare_example(settings, project_id, example_id, action):
             context=context,
             response_schema=ExampleProposal.model_json_schema(),
         )
+        check_input(settings, **{key: value for key, value in fields.items() if key != "endpoint"})
         disclosure = LessonDisclosure(
             **fields,
             disclosure_sha256=evaluations.digest(fields),
