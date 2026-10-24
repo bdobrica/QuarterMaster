@@ -310,6 +310,72 @@ of complete prose or factual entailment. A separate read-only assertion checker
 compares explicit structured claims with captured state/value/unit/citation facts;
 arbitrary generated prose is not certified by this check or the interpreter.
 
+An optional three-arm decision-selection experiment uses no lessons and identical
+full decision-time context, attributed interpretations, compact schema and base
+weights. Only system instructions vary: existing compact instructions, an added
+answer-first instruction, and an added decision-selection checklist. This isolates
+instruction sensitivity; the checklist is a prompt, not a deterministic gate or
+request for hidden reasoning. Context filtering, multiple generation stages and
+semantic validation changes require separate comparisons. Approved lesson content
+and ordinary adviser operation remain unchanged.
+
+A separate three-arm context-selection experiment holds the compact system,
+schema and no-lessons policy fixed. Explicit reviewed field lists produce raw
+and interpreted views of question-relevant inputs and verbatim definition spans.
+Focused views omit the general mission/decision definition and repeated full case
+record; this tests context packaging as a bundle, not field removal alone. The
+immutable run retains the complete full-context control, original source excerpts
+and span offsets. The full control's citation enum stays fixed in decoding, while
+validation accepts only citations supplied in each view. This is an operator-run
+development diagnostic, not an automatic relevance selector or normal rollout.
+
+A separate two-arm decision-contract diagnostic compares compact advice with a
+minimal `{"decision": "answer|clarify|abstain"}` label. Both arms receive exactly
+the same explicit question-focused interpreted view, shared contract-neutral task
+instructions, base model and decoding parameters, without lessons. Only the JSON
+response schema changes. Full original context and attributed definition spans
+remain captured in a versioned immutable run. A minimal label is never treated
+as grounded advice or credited with citation/prose quality. Expected decisions
+remain development review metadata, outside prompts and teaching data. This tests
+the combined output-contract/grammar intervention; it cannot by itself distinguish
+response-composition burden from constrained-decoding effects. It does not install
+multiple generation stages or change the normal adviser.
+
+A small operator-only schema/label probe reuses saved development contexts to
+check enum order, neutral-code mappings and plain classification. It preserves
+actual rendered prompts, expanded grammar and token diagnostics without adding
+another runtime mode. A representation-sensitive result is not proof of a
+decoder bug or permission to deploy a preferred label encoding. Model-visible
+output contracts and semantic sufficiency policy require separate verification
+before a deterministic routing prototype or additional model/training changes.
+
+The owner's next step is one fixed explicit-contract baseline followed, if action
+discrimination remains unreliable, by a reviewed decision-only LoRA experiment.
+The [decision-policy preparation](docs/decision-policy-experiment.md) separates
+synthetic teaching review from independent frozen decision evaluation. It holds
+the visible prompt and minimal output contract fixed, targets only action selection,
+and keeps the candidate outside ordinary advice, lessons and exports. Existing
+full-advice training contracts stay intact. A separate bounded experimental job
+boundary verifies the decision adapter, safe CPU merge/GGUF conversion and paired
+frozen CPU generation. It does not add a normal adviser stage or promotion.
+
+Supervision preparation preserves the original sixty drafts and adds twelve
+question contrasts with identical background facts across different decisions.
+All seventy-two targets and thirty separate evaluation references require owner
+review; structural inspection does not approve labels or GPU execution. The
+experimental job boundary binds final reviews to content hashes, excludes frozen
+cases from trainer mounts, and separates CPU draft checks from authorized GPU
+preflight/training. Scores retain counts, confusion matrices and descriptive
+uncertainty; provisional small-suite gates do not establish broad reliability.
+All seventy-two teaching targets and thirty evaluation references now have owner
+approval. The owner separately authorized one bounded GPU attempt after the
+conversion/comparison CPU checks passed. Exact commands, hashes and limits are
+recorded before dispatch; failed or invalid generations remain in every score.
+The bounded 120-step candidate completed through verified conversion and frozen
+comparison. It matched 10/30 decisions versus base 9/30, with seven unsupported
+false answers and worse unseen-domain performance. It failed the proposed gates,
+remains unpromoted and does not establish a transferable decision policy.
+
 ### Consolidated learning (LoRA)
 
 - Owner may promote reviewed before/after pairs into supervised training examples.

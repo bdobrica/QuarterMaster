@@ -72,3 +72,18 @@ COPY LICENSE /licenses/QuarterMaster-LICENSE
 ENV HF_HUB_DISABLE_XET=1 TORCHINDUCTOR_CACHE_DIR=/tmp/torchinductor \
     TORCH_EXTENSIONS_DIR=/tmp/torch-extensions TRITON_CACHE_DIR=/tmp/triton
 ENTRYPOINT ["python", "/opt/trainer/worker.py"]
+
+# Separate experimental entry point; existing full-advice jobs and image contract stay intact.
+FROM trainer AS decision-trainer
+LABEL io.quartermaster.training-contract="quartermaster.decision-training-job/v1"
+COPY quartermaster/decision_training.py /opt/trainer/quartermaster/decision_training.py
+COPY quartermaster/decision_artifacts.py quartermaster/training_artifacts.py \
+     quartermaster/errors.py /opt/trainer/quartermaster/
+COPY trainer/decision_worker.py /opt/trainer/decision_worker.py
+ENTRYPOINT ["python", "/opt/trainer/decision_worker.py"]
+
+# Offline CPU comparison: no ML training dependencies, database, GPU or builder API.
+FROM runtime AS decision-runtime
+COPY quartermaster/decision_runtime.py /opt/decision_runtime.py
+COPY LICENSE /licenses/QuarterMaster-LICENSE
+ENTRYPOINT ["python", "/opt/decision_runtime.py"]

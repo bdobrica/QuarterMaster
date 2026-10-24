@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, Field, StringConstraints, field_validator, model_validator
 
-from quartermaster.contracts.advice import Advice, Case, CompactAdvice, Text
+from quartermaster.contracts.advice import Advice, Case, CompactAdvice, DecisionOnly, Text
 from quartermaster.contracts.adviser import AdviserSpec
 from quartermaster.contracts.sources import Contract, ShortText, UUIDValue
 from quartermaster.contracts.teaching import AppliedLesson, EvidenceSnapshot, GroundedAdvice
@@ -20,6 +20,14 @@ Arm = Literal[
     "all_lessons",
     "relevant_lesson",
     "irrelevant_lesson",
+    "existing_instructions",
+    "answer_first",
+    "decision_gated",
+    "full_context",
+    "relevant_raw",
+    "relevant_interpreted",
+    "compact_contract",
+    "decision_only",
 ]
 Digest = Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
 
@@ -94,12 +102,69 @@ class LessonAblation(Contract):
         return self
 
 
+class ContextSelection(Contract):
+    fields: list[FieldName] = Field(min_length=1, max_length=20)
+    rationale: ShortText
+    reviewed: Literal[True]
+
+    @field_validator("reviewed", mode="before")
+    @classmethod
+    def confirmed(cls, value):
+        if value is not True:
+            raise ValueError("Explicitly review the field selection")
+        return value
+
+    @model_validator(mode="after")
+    def distinct(self):
+        if len(set(self.fields)) != len(self.fields):
+            raise ValueError("Select distinct fields")
+        return self
+
+
+class DefinitionSpan(Contract):
+    field: FieldName
+    citation_id: UUIDValue
+    start: int = Field(ge=0)
+    end: int = Field(gt=0)
+    text: Quote
+
+
 class ReliabilityInput(Contract):
     situation: Text
     decision_inputs: dict[FieldName, Value | None] = Field(max_length=30)
     field_rules: FieldRules
     inputs_available_at_decision: Literal[True]
     lesson_ablation: LessonAblation | None = None
+    decision_selection: Literal[True] | None = None
+    context_selection: ContextSelection | None = None
+    decision_contract: ContextSelection | None = None
+
+    @field_validator("decision_selection", mode="before")
+    @classmethod
+    def selection_opt_in(cls, value):
+        if value is not None and value is not True:
+            raise ValueError("Use true to select the decision-selection experiment")
+        return value
+
+    @model_validator(mode="after")
+    def one_experiment(self):
+        if (
+            sum(
+                bool(v)
+                for v in (
+                    self.lesson_ablation,
+                    self.decision_selection,
+                    self.context_selection,
+                    self.decision_contract,
+                )
+            )
+            > 1
+        ):
+            raise ValueError("Choose only one development experiment")
+        selection = self.context_selection or self.decision_contract
+        if selection and not set(selection.fields) <= {r.field for r in self.field_rules.rules}:
+            raise ValueError("Each selected field needs an attributed field rule, even if absent")
+        return self
 
     @field_validator("inputs_available_at_decision", mode="before")
     @classmethod
@@ -120,7 +185,7 @@ class ReliabilityRequest(Contract):
 
 class ReliabilityOutput(Contract):
     arm: Arm
-    draft: GroundedAdvice | CompactAdvice | None
+    draft: GroundedAdvice | CompactAdvice | DecisionOnly | None
     advice: Advice | CompactAdvice | None
     error: str | None
     schema_valid: bool
@@ -131,13 +196,15 @@ class ReliabilityOutput(Contract):
 
     @property
     def citation_count(self):
-        if self.draft is None:
+        if self.draft is None or isinstance(self.draft, DecisionOnly):
             return None
         advice = self.draft if isinstance(self.draft, CompactAdvice) else self.draft.advice
         return len(advice.evidence_refs)
 
     @property
     def citation_status(self):
+        if self.arm == "decision_only":
+            return "not_applicable"
         if self.citation_count is None:
             return "not_assessed"
         if self.citation_count == 0:
@@ -158,7 +225,11 @@ class ReliabilityOutput(Contract):
 
 class ReliabilityRun(Contract):
     schema_version: Literal[
-        "quartermaster.reliability-run/v1", "quartermaster.reliability-run/v2"
+        "quartermaster.reliability-run/v1",
+        "quartermaster.reliability-run/v2",
+        "quartermaster.reliability-run/v3",
+        "quartermaster.reliability-run/v4",
+        "quartermaster.reliability-run/v5",
     ] = "quartermaster.reliability-run/v1"
     id: UUIDValue
     project_id: UUIDValue
@@ -178,9 +249,11 @@ class ReliabilityRun(Contract):
     omitted_excerpts: int
     interpretations: list[FieldInterpretation]
     rules_sha256: Digest
-    requests: list[ReliabilityRequest] = Field(min_length=3, max_length=4)
+    requests: list[ReliabilityRequest] = Field(min_length=2, max_length=4)
     outputs: list[ReliabilityOutput] = Field(max_length=4)
     error: str | None = None
+    full_context: str | None = None
+    definition_spans: list[DefinitionSpan] = Field(default_factory=list, max_length=20)
 
     @model_validator(mode="after")
     def experiment_arms(self):
@@ -193,10 +266,57 @@ class ReliabilityRun(Contract):
         version = (
             "quartermaster.reliability-run/v2" if ablation else "quartermaster.reliability-run/v1"
         )
+        if self.action.decision_selection:
+            expected = ["existing_instructions", "answer_first", "decision_gated"]
+            version = "quartermaster.reliability-run/v3"
+        selection = self.action.context_selection or self.action.decision_contract
+        if selection:
+            if self.action.decision_contract:
+                expected = ["compact_contract", "decision_only"]
+                version = "quartermaster.reliability-run/v5"
+                if len(self.requests) != 2 or any(
+                    r.context != self.requests[0].context
+                    or r.system != self.requests[0].system
+                    or r.parameters != self.requests[0].parameters
+                    for r in self.requests
+                ):
+                    raise ValueError("Decision contracts require identical messages and parameters")
+            else:
+                expected = ["full_context", "relevant_raw", "relevant_interpreted"]
+                version = "quartermaster.reliability-run/v4"
+            if not self.full_context or (
+                self.action.context_selection and self.full_context != self.requests[0].context
+            ):
+                raise ValueError("Preserve the exact full control context")
+            if [s.field for s in self.definition_spans] != selection.fields:
+                raise ValueError("Preserve a definition span for every selected field")
+            for span in self.definition_spans:
+                rule = next(r for r in self.action.field_rules.rules if r.field == span.field)
+                if span.citation_id != rule.citation_id or span.text != rule.source_quote:
+                    raise ValueError("Definition span must match its selected rule")
+                if not any(
+                    e.citation_id == span.citation_id
+                    and span.start < span.end <= len(e.text)
+                    and e.text[span.start : span.end] == span.text
+                    for e in self.evidence
+                ):
+                    raise ValueError("Definition span must match captured original excerpt bytes")
+        elif self.full_context is not None or self.definition_spans:
+            raise ValueError("Selected views belong only to context-selection experiments")
         if self.schema_version != version or [r.arm for r in self.requests] != expected:
             raise ValueError("Run version and ordered requests must match the selected experiment")
         if [o.arm for o in self.outputs] != expected[: len(self.outputs)]:
             raise ValueError("Outputs must follow captured request order without duplicates")
+        for output in self.outputs:
+            if output.arm == "decision_only":
+                if (
+                    (output.draft is not None and not isinstance(output.draft, DecisionOnly))
+                    or output.advice is not None
+                    or output.citations_valid is not None
+                ):
+                    raise ValueError("A decision-only label is not grounded advice")
+            elif isinstance(output.draft, DecisionOnly):
+                raise ValueError("Decision-only labels belong only to their experimental arm")
         return self
 
 

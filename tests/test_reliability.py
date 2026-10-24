@@ -12,7 +12,12 @@ from pydantic import ValidationError
 from quartermaster import reliability
 from quartermaster.app import create_app
 from quartermaster.contracts.advice import Case, CompactAdvice
-from quartermaster.contracts.reliability import FieldRules, ReliabilityInput, ReliabilityRun
+from quartermaster.contracts.reliability import (
+    DecisionOnly,
+    FieldRules,
+    ReliabilityInput,
+    ReliabilityRun,
+)
 from quartermaster.contracts.teaching import Lesson, LessonText
 from quartermaster.db import SCHEMA_VERSION, connect, migrate
 from quartermaster.errors import DomainError
@@ -53,9 +58,11 @@ class Measured:
         self.calls = []
         self.error = None
         self.hook = None
+        self.schema_contexts = []
 
-    async def measured_advice(self, *, system, context, parameters, compact):
+    async def measured_advice(self, *, system, context, parameters, compact, schema_context=None):
         self.calls.append((system, json.loads(context), parameters, compact))
+        self.schema_contexts.append(schema_context)
         if self.hook:
             self.hook()
         if self.error:
@@ -755,3 +762,594 @@ def test_claim_forms_access_and_scope(lab, project_fixture):
     assert response.status_code == 200 and "Adviser prose checked: false" in response.text
     response = lab[0].post(form, headers=ORIGIN, data={"claims": "sensitive bad json"})
     assert response.status_code == 422 and "sensitive bad json" not in response.text
+
+
+def test_decision_selection_changes_only_system_and_omits_lessons(lab):
+    action, _ = ablation_action(lab)
+    action.pop("lesson_ablation")
+    action["decision_selection"] = True
+    client, project, fake, settings, _ = lab
+    before = client.get(f"/api/projects/{project}").json()
+    with connect(settings.database_path) as connection:
+        lessons_before = list(map(tuple, connection.execute("SELECT * FROM lesson_revisions")))
+    run = execute(lab, action)
+    assert run["schema_version"] == "quartermaster.reliability-run/v3"
+    assert run["revision"] == 5 and len(run["lessons"]) == 3
+    assert list(reliability.DECISION_SYSTEMS) == [r["arm"] for r in run["requests"]]
+    assert len(fake.calls) == 3
+    assert fake.calls[0][0] == reliability.COMPACT_SYSTEM
+    assert [c[0] for c in fake.calls] == list(reliability.DECISION_SYSTEMS.values())
+    assert len(set(c[0] for c in fake.calls)) == 3
+    for call in fake.calls:
+        assert call[1] == fake.calls[0][1]
+        assert call[1]["approved_lessons"] == []
+        assert call[1]["structured_inputs"] == action["decision_inputs"]
+        assert len(call[1]["field_interpretations"]) == 3
+        assert call[2] == PARAMETERS and call[3] is True
+    assert all(
+        r["response_schema"] == run["requests"][0]["response_schema"] for r in run["requests"]
+    )
+    assert all(
+        r["input_sha256"] == reliability.digest({k: v for k, v in r.items() if k != "input_sha256"})
+        for r in run["requests"]
+    )
+    with connect(settings.database_path) as connection:
+        assert (
+            list(map(tuple, connection.execute("SELECT * FROM lesson_revisions"))) == lessons_before
+        )
+        for table in ("training_examples", "evaluation_holdouts", "reliability_reviews"):
+            assert connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0
+    assert client.get(f"/api/projects/{project}").json() == before
+    assert (
+        "Decision-selection experiment"
+        in client.get(f"/projects/{project}/reliability?run_id={run['id']}").text
+    )
+    assert client.get(f"{url(lab)}/{run['id']}").json() == run
+
+
+@pytest.mark.parametrize("value", [False, 1, "true", {}, []])
+def test_decision_selection_requires_explicit_true(lab, value):
+    action = {**lab[4], "decision_selection": value}
+    assert lab[0].post(url(lab), json=action).status_code == 422
+    assert not lab[2].calls
+
+
+def test_decision_selection_cannot_mix_experiments(lab):
+    action, _ = ablation_action(lab)
+    action["decision_selection"] = True
+    assert lab[0].post(url(lab), json=action).status_code == 422
+    assert not lab[2].calls
+
+
+def test_decision_selection_recovery_preserves_no_lesson_requests(lab):
+    action = ReliabilityInput.model_validate({**lab[4], "decision_selection": True})
+    captured = reliability.capture(lab[3], UUID(lab[1]), action)
+    reliability.save(lab[3], captured)
+    reliability.recover(lab[3])
+    saved = reliability.get_run(lab[3], UUID(lab[1]), captured.id)
+    assert saved.status == "interrupted" and saved.requests == captured.requests
+    assert saved.schema_version == "quartermaster.reliability-run/v3"
+    assert not lab[2].calls
+    document = saved.model_dump(mode="json")
+    for changes in (
+        {"schema_version": "quartermaster.reliability-run/v1"},
+        {"requests": document["requests"][::-1]},
+        {"action": {**document["action"], "decision_selection": None}},
+    ):
+        with pytest.raises(ValidationError):
+            ReliabilityRun.model_validate({**document, **changes})
+
+
+def test_decision_selection_failure_has_no_retry_or_quality_credit(lab):
+    lab[2].error = "LOCAL_TOKEN_LIMIT: No complete response."
+    run = execute(lab, {**lab[4], "decision_selection": True})
+    assert len(lab[2].calls) == 3
+    assert all(o["advice"] is None and not o["schema_valid"] for o in run["outputs"])
+    assert lab[0].get(f"{url(lab)}/{run['id']}/reviews").json() == []
+
+
+def context_action(lab, fields=None):
+    return {
+        **deepcopy(lab[4]),
+        "context_selection": {
+            "fields": fields or ["visits"],
+            "rationale": "The question asks only for the recorded inspection count.",
+            "reviewed": True,
+        },
+    }
+
+
+def test_context_selection_preserves_full_snapshot_and_exact_views(lab):
+    action, _ = ablation_action(lab)
+    action.pop("lesson_ablation")
+    action["context_selection"] = context_action(lab)["context_selection"]
+    action["decision_inputs"]["unrelated"] = "private-unselected-marker"
+    before = lab[0].get(f"/api/projects/{lab[1]}").json()
+    run = execute(lab, action)
+    assert run["schema_version"] == "quartermaster.reliability-run/v4" and run["revision"] == 5
+    full, raw, interpreted = [json.loads(r["context"]) for r in run["requests"]]
+    assert run["full_context"] == run["requests"][0]["context"]
+    assert "private-unselected-marker" in run["full_context"]
+    assert "private-unselected-marker" not in json.dumps([raw, interpreted])
+    assert raw["case"]["situation"] == action["situation"]
+    assert raw["case"]["case_id"] == full["case"]["case_id"]
+    assert "mission" in full and "decision_definition" in full
+    assert not {"mission", "decision_definition", "field_interpretations"} & set(raw)
+    assert {k: v for k, v in interpreted.items() if k != "field_interpretations"} == raw
+    assert raw["structured_inputs"] == {"visits": "2"}
+    assert [r["field"] for r in raw["field_rules"]["rules"]] == ["visits"]
+    assert [f["field"] for f in interpreted["field_interpretations"]] == ["visits"]
+    span = run["definition_spans"][0]
+    assert span["text"] == "visits is a count of earlier inspections."
+    source = next(e for e in run["evidence"] if e["citation_id"] == span["citation_id"])
+    assert source["text"][span["start"] : span["end"]] == span["text"]
+    assert raw["retrieved_evidence"] == [{"citation_id": span["citation_id"], "text": span["text"]}]
+    assert all(not body["approved_lessons"] for body in (full, raw, interpreted))
+    assert len(run["lessons"]) == 3
+    assert all(
+        call[0] == reliability.COMPACT_SYSTEM and call[2] == PARAMETERS for call in lab[2].calls
+    )
+    assert lab[2].schema_contexts == [run["full_context"]] * 3
+    assert all(
+        r["response_schema"] == compact_response_schema(run["full_context"])
+        for r in run["requests"]
+    )
+    assert all(
+        r["input_sha256"] == reliability.digest({k: v for k, v in r.items() if k != "input_sha256"})
+        for r in run["requests"]
+    )
+    assert lab[0].get(f"/api/projects/{lab[1]}").json() == before
+    page = lab[0].get(f"/projects/{lab[1]}/reliability?run_id={run['id']}").text
+    assert "Question-focused context experiment" in page and "Complete original context" in page
+    with connect(lab[3].database_path) as c:
+        assert c.execute("SELECT COUNT(*) FROM training_examples").fetchone()[0] == 0
+        assert c.execute("SELECT COUNT(*) FROM reliability_reviews").fetchone()[0] == 0
+
+
+def test_context_selection_preserves_absence_without_inventing_value(lab):
+    action = context_action(lab, ["wait"])
+    action["decision_inputs"].pop("wait")
+    run = execute(lab, action)
+    raw, interpreted = [json.loads(r["context"]) for r in run["requests"][1:]]
+    assert raw["structured_inputs"] == interpreted["structured_inputs"] == {}
+    assert "field_interpretations" not in raw
+    assert interpreted["field_interpretations"][0]["state"] == "absent"
+    assert interpreted["field_interpretations"][0]["value"] is None
+    assert len(raw["field_rules"]["rules"]) == 1
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "empty",
+        "duplicate",
+        "unconfigured",
+        "missing_review",
+        "false",
+        "integer",
+        "extra",
+        "mixed_decision",
+        "mixed_lessons",
+    ],
+)
+def test_context_selection_is_explicit_and_strict(lab, change):
+    action = context_action(lab)
+    selection = action["context_selection"]
+    if change == "empty":
+        selection["fields"] = []
+    if change == "duplicate":
+        selection["fields"] *= 2
+    if change == "unconfigured":
+        selection["fields"] = ["unconfigured"]
+    if change == "missing_review":
+        selection.pop("reviewed")
+    if change == "false":
+        selection["reviewed"] = False
+    if change == "integer":
+        selection["reviewed"] = 1
+    if change == "extra":
+        selection["expected_decision"] = "answer"
+    if change == "mixed_decision":
+        action["decision_selection"] = True
+    if change == "mixed_lessons":
+        action["lesson_ablation"] = ablation_action(lab)[0]["lesson_ablation"]
+    assert lab[0].post(url(lab), json=action).status_code == 422
+    assert not lab[2].calls
+
+
+def test_context_spans_and_version_cannot_be_mislabeled(lab):
+    run = execute(lab, context_action(lab))
+    for change in ("full", "span", "citation", "offset", "version"):
+        document = deepcopy(run)
+        if change == "full":
+            document["full_context"] = "{}"
+        if change == "span":
+            document["definition_spans"][0]["text"] = "Invented definition."
+        if change == "citation":
+            document["definition_spans"][0]["citation_id"] = str(uuid4())
+        if change == "offset":
+            document["definition_spans"][0]["end"] += 10000
+        if change == "version":
+            document["schema_version"] = "quartermaster.reliability-run/v3"
+        with pytest.raises(ValidationError):
+            ReliabilityRun.model_validate_json(json.dumps(document))
+    original_requests = run["requests"]
+    saved = reliability.capture(
+        lab[3], UUID(lab[1]), ReliabilityInput.model_validate(context_action(lab))
+    )
+    reliability.save(lab[3], saved)
+    calls = len(lab[2].calls)
+    reliability.recover(lab[3])
+    restored = reliability.get_run(lab[3], UUID(lab[1]), saved.id)
+    assert restored.status == "interrupted" and restored.requests == saved.requests
+    assert len(lab[2].calls) == calls
+    assert lab[0].get(f"{url(lab)}/{run['id']}").json()["requests"] == original_requests
+
+
+def test_context_selection_requires_shared_schema_adapter_before_generation(lab):
+    async def old_adapter(*, system, context, parameters, compact):
+        raise AssertionError("Must fail before inference")
+
+    lab[2].measured_advice = old_adapter
+    response = lab[0].post(url(lab), json=context_action(lab))
+    assert response.status_code == 422 and "RELIABILITY_ADAPTER" in response.text
+    assert lab[0].get(url(lab)).json() == []
+
+
+def test_shared_schema_is_sent_without_full_context_message(lab):
+    action = context_action(lab)
+    action["decision_inputs"]["unrelated"] = "secret-unselected-value"
+    captured = reliability.capture(lab[3], UUID(lab[1]), ReliabilityInput.model_validate(action))
+    calls = []
+    alias = model_alias("a" * 64)
+    ref = str(captured.definition_spans[0].citation_id)
+
+    def respond(request):
+        if request.method == "GET":
+            return httpx.Response(200, json={"data": [{"id": alias}]})
+        payload = json.loads(request.content)
+        calls.append(payload)
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "finish_reason": "stop",
+                        "message": {"content": compact([ref]).model_dump_json()},
+                    }
+                ],
+                "usage": {"completion_tokens": 40},
+            },
+        )
+
+    inference = LocalInference(lab[3], transport=httpx.MockTransport(respond), alias=alias)
+    run = asyncio.run(
+        reliability.run_comparison(
+            lab[3], inference, UUID(lab[1]), ReliabilityInput.model_validate(action)
+        )
+    )
+    assert len(calls) == 3 and all(o.advice for o in run.outputs)
+    assert all(
+        p["response_format"]["json_schema"] == calls[0]["response_format"]["json_schema"]
+        for p in calls
+    )
+    for call, request in zip(calls, run.requests, strict=True):
+        assert call["response_format"] == {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "grounded_advice",
+                "strict": True,
+                "schema": request.response_schema,
+            },
+        }
+        assert call["messages"][1]["content"] == request.context
+        assert call["messages"][0]["content"] == reliability.COMPACT_SYSTEM
+    assert "secret-unselected-value" in json.dumps(calls[0])
+    assert "secret-unselected-value" not in json.dumps(calls[1:])
+
+
+def test_focused_citations_must_be_present_in_selected_view(lab):
+    client, project, fake, settings, _ = lab
+    sources = client.get(f"/api/projects/{project}/sources").json()
+    additional = upload(
+        client,
+        project,
+        b"# Inspection history\nmaterials counts stored items.\n",
+        "other.md",
+        "knowledge",
+    ).json()
+    current = client.get(f"/api/projects/{project}").json()["knowledge_revision"]
+    selection = select_knowledge(
+        client, project, [s["id"] for s in sources] + [additional["id"]], expected=current
+    )
+    assert selection.status_code == 201
+    # Capture an unrelated attributed field, guaranteed present only in the full view.
+    action = context_action(lab)
+    chunks = client.get(f"/api/projects/{project}/knowledge/search?q=materials").json()
+    ref = next(e["chunk"]["citation_id"] for e in chunks if e["source"]["id"] == additional["id"])
+    action["field_rules"]["rules"].append(
+        dict(
+            field="materials",
+            kind="integer",
+            definition="Count of stored items.",
+            unit="items",
+            citation_id=ref,
+            source_quote="materials counts stored items.",
+        )
+    )
+    action["decision_inputs"]["materials"] = "9"
+    captured = reliability.capture(settings, UUID(project), ReliabilityInput.model_validate(action))
+    irrelevant = next(e for e in captured.evidence if str(e.source_id) == additional["id"])
+
+    async def wrong_source(**kwargs):
+        return compact([str(irrelevant.citation_id)]), 45
+
+    fake.measured_advice = wrong_source
+    run = execute(lab, action)
+    assert run["outputs"][0]["advice"] is not None
+    for output in run["outputs"][1:]:
+        assert output["schema_valid"] and output["draft"] is not None
+        assert output["advice"] is None and output["citations_valid"] is False
+        assert "ADVICE_CITATION" in output["error"]
+
+
+@pytest.mark.parametrize("mode", ["context_selection", "decision_contract"])
+def test_selected_views_cannot_bypass_full_record_holdout(lab, mode):
+    from quartermaster import teaching
+    from quartermaster.contracts.teaching import TestInput
+    from quartermaster.holdouts import case_fingerprint
+    from tests.test_teaching import FakeInference
+
+    test = asyncio.run(
+        teaching.advise(
+            lab[3],
+            FakeInference(),
+            UUID(lab[1]),
+            TestInput(
+                situation="Reserved different question.\n" + json.dumps(lab[4]["decision_inputs"])
+            ),
+        )
+    )
+    with connect(lab[3].database_path) as c:
+        c.execute(
+            "INSERT INTO evaluation_holdouts VALUES (?,?,?,?)",
+            (lab[1], str(test.case.case_id), case_fingerprint(test.case), str(test.id)),
+        )
+    action = context_action(lab)
+    if mode == "decision_contract":
+        action[mode] = action.pop("context_selection")
+        contract_adapter(lab)
+    response = lab[0].post(url(lab), json=action)
+    assert response.status_code == 409 and "RELIABILITY_HELD_OUT" in response.text
+    assert not lab[2].calls
+
+
+def contract_action(lab):
+    action = context_action(lab)
+    action["decision_contract"] = action.pop("context_selection")
+    return action
+
+
+def contract_adapter(lab, decision="answer"):
+    original = lab[2].measured_advice
+
+    async def measured(*, system, context, parameters, compact, decision_only=False):
+        if decision_only:
+            return DecisionOnly(decision=decision), 8
+        return await original(
+            system=system, context=context, parameters=parameters, compact=compact
+        )
+
+    lab[2].measured_advice = measured
+
+
+def test_decision_contract_changes_only_schema_and_never_credits_label_as_advice(lab):
+    contract_adapter(lab)
+    action = contract_action(lab)
+    action["decision_inputs"]["unrelated"] = "unselected-private-value"
+    before = lab[0].get(f"/api/projects/{lab[1]}").json()
+    run = execute(lab, action)
+    assert run["schema_version"] == "quartermaster.reliability-run/v5"
+    assert run["revision"] == 4 and run["status"] == "completed"
+    a, b = run["requests"]
+    assert [a["arm"], b["arm"]] == ["compact_contract", "decision_only"]
+    for key in ("system", "context", "parameters"):
+        assert a[key] == b[key]
+    assert a["system"] == reliability.CONTRACT_SYSTEM
+    assert b["response_schema"] == DecisionOnly.model_json_schema()
+    assert a["response_schema"] == compact_response_schema(a["context"])
+    assert run["full_context"] != a["context"]
+    assert "unselected-private-value" in run["full_context"]
+    assert "unselected-private-value" not in a["context"]
+    selected = json.loads(a["context"])
+    assert selected["structured_inputs"] == {"visits": "2"}
+    assert selected["field_interpretations"][0]["value"] == 2
+    assert selected["approved_lessons"] == []
+    assert run["outputs"][0]["advice"] is not None
+    minimal = run["outputs"][1]
+    assert minimal["draft"] == {"decision": "answer"} and minimal["schema_valid"]
+    assert minimal["advice"] is None and minimal["citations_valid"] is None
+    diagnostics = lab[0].get(f"{url(lab)}/{run['id']}/diagnostics").json()[1]
+    assert diagnostics == dict(
+        arm="decision_only",
+        citation_count=None,
+        citation_status="not_applicable",
+        sentence_endings_valid=None,
+    )
+    page = lab[0].get(f"/projects/{lab[1]}/reliability?run_id={run['id']}").text
+    assert "Decision-contract experiment" in page
+    assert "Citations and prose quality not applicable" in page
+    assert "/reviews/decision_only" not in page
+    assert lab[0].get(f"/api/projects/{lab[1]}").json() == before
+    assert lab[0].get(f"{url(lab)}/{run['id']}/reviews").json() == []
+    for request in run["requests"]:
+        assert request["input_sha256"] == reliability.digest(
+            {k: v for k, v in request.items() if k != "input_sha256"}
+        )
+
+
+@pytest.mark.parametrize("decision", ["answer", "clarify", "abstain"])
+def test_decision_only_http_schema_and_strict_completion_validation(lab, decision):
+    calls = []
+    alias = model_alias("a" * 64)
+    ref = lab[4]["field_rules"]["rules"][0]["citation_id"]
+
+    def respond(request):
+        if request.method == "GET":
+            return httpx.Response(200, json={"data": [{"id": alias}]})
+        payload = json.loads(request.content)
+        calls.append(payload)
+        content = (
+            json.dumps({"decision": decision})
+            if len(calls) == 2
+            else compact([ref]).model_dump_json()
+        )
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"finish_reason": "stop", "message": {"content": content}}],
+                "usage": {"completion_tokens": 8},
+            },
+        )
+
+    inference = LocalInference(lab[3], transport=httpx.MockTransport(respond), alias=alias)
+    run = asyncio.run(
+        reliability.run_comparison(
+            lab[3],
+            inference,
+            UUID(lab[1]),
+            ReliabilityInput.model_validate(contract_action(lab)),
+        )
+    )
+    assert len(calls) == 2 and run.outputs[1].draft == DecisionOnly(decision=decision)
+    for payload, request in zip(calls, run.requests, strict=True):
+        assert payload["response_format"]["json_schema"]["schema"] == request.response_schema
+        assert payload["response_format"]["json_schema"]["strict"] is True
+    assert {k: v for k, v in calls[0].items() if k != "response_format"} == {
+        k: v for k, v in calls[1].items() if k != "response_format"
+    }
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"decision": "recommend"},
+        {"decision": True},
+        {"decision": "answer", "reason": "Unsupported extra text."},
+        {"decision": "clarify", "question": "What?"},
+    ],
+)
+def test_minimal_decision_refuses_missing_invalid_and_extra_fields(payload):
+    with pytest.raises(ValidationError):
+        DecisionOnly.model_validate(payload)
+
+
+@pytest.mark.parametrize("other", ["context_selection", "decision_selection", "lesson_ablation"])
+def test_decision_contract_cannot_mix_experiments(lab, other):
+    action = contract_action(lab)
+    action[other] = (
+        context_action(lab)["context_selection"]
+        if other == "context_selection"
+        else True
+        if other == "decision_selection"
+        else ablation_action(lab)[0]["lesson_ablation"]
+    )
+    assert lab[0].post(url(lab), json=action).status_code == 422
+    assert not lab[2].calls
+
+
+def test_decision_contract_preflights_adapter_and_recovers_without_retry(lab):
+    response = lab[0].post(url(lab), json=contract_action(lab))
+    assert response.status_code == 422 and "RELIABILITY_ADAPTER" in response.text
+    assert lab[0].get(url(lab)).json() == []
+    captured = reliability.capture(
+        lab[3], UUID(lab[1]), ReliabilityInput.model_validate(contract_action(lab))
+    )
+    reliability.save(lab[3], captured)
+    reliability.recover(lab[3])
+    restored = reliability.get_run(lab[3], UUID(lab[1]), captured.id)
+    assert restored.status == "interrupted" and restored.requests == captured.requests
+    assert not lab[2].calls
+
+
+@pytest.mark.parametrize("change", ["context", "system", "parameters", "version", "advice"])
+def test_decision_contract_snapshots_reject_mixed_controls_or_advice_credit(lab, change):
+    contract_adapter(lab)
+    document = execute(lab, contract_action(lab))
+    if change in ("context", "system", "parameters"):
+        document["requests"][1][change] = {} if change == "parameters" else "changed"
+    if change == "version":
+        document["schema_version"] = "quartermaster.reliability-run/v4"
+    if change == "advice":
+        document["outputs"][1]["advice"] = document["outputs"][0]["advice"]
+    with pytest.raises(ValidationError):
+        ReliabilityRun.model_validate_json(json.dumps(document))
+
+
+def test_decision_contract_failure_and_review_do_not_create_quality_credit(lab):
+    contract_adapter(lab)
+    run = execute(lab, contract_action(lab))
+    response = lab[0].post(
+        f"{url(lab)}/{run['id']}/reviews/decision_only",
+        json={
+            "expected_revision": 0,
+            "factual_quality": "pass",
+            "clarification_relevance": "pass",
+            "unsupported_assertions": "pass",
+            "citation_relevance": "pass",
+            "decision_usefulness": "useful",
+            "notes": "A label is not advice.",
+        },
+    )
+    assert response.status_code == 409 and "RELIABILITY_REVIEW" in response.text
+    with connect(lab[3].database_path) as c:
+        for table in ("reliability_reviews", "training_examples", "feedback", "adviser_versions"):
+            assert c.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0
+
+
+@pytest.mark.parametrize("failure", ["extra_field", "bad_decision", "length", "connection"])
+def test_minimal_failures_are_durable_without_retry_or_advice_credit(lab, failure):
+    calls = []
+    alias = model_alias("a" * 64)
+    ref = lab[4]["field_rules"]["rules"][0]["citation_id"]
+
+    def respond(request):
+        if request.method == "GET":
+            return httpx.Response(200, json={"data": [{"id": alias}]})
+        calls.append(json.loads(request.content))
+        content, finish = compact([ref]).model_dump_json(), "stop"
+        if len(calls) == 2:
+            if failure == "connection":
+                raise httpx.ConnectError("Local diagnostic connection failed.")
+            if failure == "extra_field":
+                content = '{"decision":"answer","reason":"Not allowed."}'
+            if failure == "bad_decision":
+                content = '{"decision":"recommend"}'
+            if failure == "length":
+                content, finish = '{"decision":"answer"}', "length"
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"finish_reason": finish, "message": {"content": content}}],
+                "usage": {"completion_tokens": 8},
+            },
+        )
+
+    run = asyncio.run(
+        reliability.run_comparison(
+            lab[3],
+            LocalInference(lab[3], transport=httpx.MockTransport(respond)),
+            UUID(lab[1]),
+            ReliabilityInput.model_validate(contract_action(lab)),
+        )
+    )
+    assert len(calls) == 2 and run.status == "completed"
+    output = run.outputs[1]
+    assert output.error and not output.schema_valid
+    assert output.advice is None and output.draft is None and output.citations_valid is None
+    assert output.citation_status == "not_applicable"
+    if failure != "connection":
+        assert output.completion_tokens == 8
+    saved = reliability.get_run(lab[3], UUID(lab[1]), run.id)
+    assert saved == run

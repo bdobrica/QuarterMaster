@@ -42,6 +42,12 @@ def verify_adapter(output, job, run):
             or hash_file(path) != record.sha256
         ):
             raise DomainError("TRAINING_HASH: Adapter file hash or size mismatch.")
+    verify_lora_structure(adapter, job.recipe)
+    return manifest
+
+
+def verify_lora_structure(adapter, recipe):
+    """Shared fixed-model PEFT/framing checks; callers verify their own versioned lineage."""
     if (adapter / "adapter_config.json").stat().st_size > 32_000:
         raise DomainError("TRAINING_CONFIG: Adapter configuration is too large.")
     config = json.loads((adapter / "adapter_config.json").read_bytes())
@@ -50,8 +56,8 @@ def verify_adapter(output, job, run):
         or config.get("revision") != MODEL_REVISION
         or config.get("peft_type") != "LORA"
         or config.get("task_type") != "CAUSAL_LM"
-        or config.get("r") != job.recipe.rank
-        or config.get("lora_alpha") != job.recipe.alpha
+        or config.get("r") != recipe.rank
+        or config.get("lora_alpha") != recipe.alpha
         or set(config.get("target_modules", [])) != {"q_proj", "v_proj"}
         or config.get("use_dora", False)
         or config.get("modules_to_save")
@@ -75,13 +81,12 @@ def verify_adapter(output, job, run):
             not ("lora_A" in name or "lora_B" in name)
             or value["dtype"] not in {"F32", "F16", "BF16"}
             or len(value["shape"]) != 2
-            or job.recipe.rank not in value["shape"]
+            or recipe.rank not in value["shape"]
             or len(offsets) != 2
             or not 0 <= offsets[0] < offsets[1]
             or offsets[1] > path.stat().st_size - length - 8
         ):
             raise DomainError("TRAINING_TENSORS: Unexpected LoRA tensor structure.")
-    return manifest
 
 
 def portable_files(path):

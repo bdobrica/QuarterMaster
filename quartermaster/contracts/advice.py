@@ -37,6 +37,14 @@ class Advice(BaseModel):
             raise ValueError("Advice cites inaccessible evidence")
 
 
+class DecisionOnly(BaseModel):
+    """Experimental label, never advice. Versioned by the v5 comparison envelope."""
+
+    model_config = ConfigDict(extra="forbid", strict=True, frozen=True)
+
+    decision: Literal["answer", "clarify", "abstain"]
+
+
 class CompactAdvice(BaseModel):
     """Opt-in short response. Shape and citation checks do not prove factual quality."""
 

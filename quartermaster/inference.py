@@ -9,7 +9,7 @@ import httpx2 as httpx
 from pydantic import ValidationError
 
 from quartermaster.config import Settings
-from quartermaster.contracts.advice import CompactAdvice
+from quartermaster.contracts.advice import CompactAdvice, DecisionOnly
 from quartermaster.contracts.teaching import GroundedAdvice
 from quartermaster.errors import DomainError
 from quartermaster.generation import PARAMETERS as PARAMETERS
@@ -117,12 +117,33 @@ class LocalInference:
         draft, _ = await self.measured_advice(system=system, context=context, parameters=parameters)
         return draft
 
-    async def measured_advice(self, *, system, context, parameters=None, compact=False):
+    async def measured_advice(
+        self,
+        *,
+        system,
+        context,
+        parameters=None,
+        compact=False,
+        schema_context=None,
+        decision_only=False,
+    ):
         """Development comparison entry point; no mutable per-request usage state."""
-        schema = compact_response_schema(context) if compact else response_schema(context)
+        if decision_only and (not compact or schema_context is not None):
+            raise DomainError("LOCAL_INPUT: Decision-only decoding requires its own schema.")
+        if schema_context is not None and not compact:
+            raise DomainError("LOCAL_INPUT: A shared schema context requires compact advice.")
+        # Context-selection experiments hold the full control's schema constant.
+        # Only citation IDs enter the schema; the full context is not sent as a message.
+        schema = (
+            DecisionOnly.model_json_schema()
+            if decision_only
+            else compact_response_schema(schema_context if schema_context is not None else context)
+            if compact
+            else response_schema(context)
+        )
         content, tokens = await self._completion(system, context, parameters, schema)
         try:
-            model = CompactAdvice if compact else GroundedAdvice
+            model = DecisionOnly if decision_only else CompactAdvice if compact else GroundedAdvice
             return model.model_validate_json(content), tokens
         except (ValueError, ValidationError):
             raise CompletionError(

@@ -306,9 +306,10 @@ Implementation and verification: [Milestone 8 record](docs/milestone-8.md); oper
 
 ## Inference reliability follow-up — before another bank LoRA attempt
 
-The owner review prioritizes inference design over another GPU run. Keep the base
-weights active and the failed job/artifacts intact. This development comparison is
-separate from the protected frozen suite and creates no training supervision.
+The earlier owner reviews prioritized inference design over another GPU run. The
+latest review authorizes preparation of focused decision-only learning after one
+explicit-contract baseline. Keep base weights active and failed artifacts intact.
+Development comparisons and pending AI drafts are not approved supervision.
 
 - [x] Implement and verify an opt-in compact `quartermaster.advice/v2` contract while preserving v1 replay/export.
 - [x] Implement owner-configured integer/category field rules with exact source attribution and explicit review confirmation.
@@ -319,16 +320,48 @@ separate from the protected frozen suite and creates no training supervision.
 - [x] Report missing citations separately from accessible supplied citations and expose sentence-ending diagnostics without claiming complete prose.
 - [x] Add separate read-only structured assertion checks against captured field states, typed values, units and definition citations; explicitly leave adviser prose unchecked.
 - [x] Run a new-development lesson ablation and record technical findings separately from owner ratings: 16/16 schema-valid, zero citations, all clarify; no configuration accepted for normal advice.
-- [ ] Obtain owner quality review of the lesson ablation; automatic formatting checks and operator observations do not replace it.
+- [x] Obtain owner quality review of the lesson ablation: all known-interval/history/unknown-category outputs fail; missing-interval relevant-only is partially correct. No output accepted as fully useful; lesson selection alone is insufficient.
+- [x] Implement and verify a no-lessons decision-selection comparison with existing, answer-first and decision-gated instructions; preserve all other request inputs and prior snapshots.
+- [x] Run it on four fresh development records and record diagnostics/technical observations separately: 11/12 schema-valid, all readable outputs clarify without citations; no instruction variant accepted.
+- [x] Obtain owner review of Experiment A: instruction additions did not resolve clarification bias; preserve all twelve attempts as negative evidence, with no accepted variant.
+- [x] Implement and verify Experiment B: explicit reviewed field selections, traceable verbatim definition spans, full original context retained, identical compact system/schema/settings and no lessons.
+- [x] Run Experiment B on fresh records and preserve the resource-failed attempt separately; a bounded isolated repeat completed 12/12 valid outputs, with expected-decision matches 1/4 full and 2/4 in each focused arm. Both direct answers lacked citations and were rejected; no variant accepted for normal operation.
+- [x] Obtain owner quality review of Experiment B: focused packaging improves one decision type, with no extra decision-label benefit from typed facts; all advice remains unaccepted, including dictionary-versus-case attribution errors.
+- [x] Implement and CPU-test Experiment C: compact versus minimal decision-only schemas with identical focused interpreted context, shared task instructions/settings and no lessons; minimal labels receive no advice/citation quality credit.
+- [x] Complete the separate bounded decision-only comparison on eight fresh answerable, ambiguous/missing and unsupported development requests: all raw labels abstain in both arms, with no decision-selection benefit; strict compact/minimal contract validity 5/8 and 8/8. Preserve exact requests/responses and prior experiments; no configuration accepted.
+- [x] Obtain owner review of Experiment C: strict minimal output does not improve action discrimination; a schema/label diagnostic precedes further architecture or training changes.
+- [x] Run a small diagnostic on three saved development contexts: original/reversed enum, neutral codes, rotated mapping and plain classification. Preserve exact prompts, expanded grammar, input/output token IDs and pre-sampling log probabilities; no prior records or active settings changed.
+- [x] Obtain owner review of representation sensitivity and the missing model-visible contract confound; no decoder defect is established.
+- [x] Run one fixed explicit-contract baseline on twelve fresh cross-domain synthetic development cases, preserving rendered prompts, grammar and token diagnostics: 12/12 valid, all answer, 4/12 proposed-label matches and four unsupported false answers. Labels remain pending owner review; no prompt variants or runtime rollout.
+- [x] Prepare 60 separate AI-drafted decision-only teaching cases, 20 per proposed label across five domains, with editable per-case review and no automatic import/training.
+- [x] Propose frozen comparison gates, a finite single-candidate recipe and an explicit boundary from the existing full-advice trainer; document unimplemented training steps.
+- [x] Preserve the original sixty drafts and add twelve individually pending contrasts: identical backgrounds across answer/clarify/abstain questions; 72 proposed targets total, 24 per class.
+- [x] Prepare six ten-case teaching review batches and a separate contrastive batch, with per-case decisions/observations and no automatic approval importer.
+- [x] Prepare thirty separate AI-drafted evaluation-only references after sealing teaching, including two unseen teaching domains; keep every reference pending independent owner review, not frozen or run.
+- [x] Implement separate hash-bound review, recipe/job/manifest contracts and a bounded experimental CPU/GPU-stage runner; pending labels, stale approvals, modified references and unreviewed GPU commands are refused. Existing full-advice contracts stay intact.
+- [x] Run CPU-only draft tokenization and pinned SFT configuration preflight: all 72 sequences fit (508–554 tokens), with no GPU capability check, training or approval implied.
+- [x] Add evaluation-only raw counts, invalid-output confusion matrices, paired changes, per-class/domain scores and descriptive Wilson intervals alongside provisional gates; no general reliability or advice-quality claim.
+- [x] Reconcile the owner's six completed batch reviews: DP-001–060 approved with unchanged facts/labels and preserved observations, content hashes and AI origin; retain DP-061–072 and all thirty evaluation references as pending, with no job freeze or GPU authorization.
+- [x] Record the twelve contrastive approvals and explicit independent owner confirmation of DE-001–030; freeze all 72 teaching targets and 30 separate evaluation references with source/content hashes, unchanged model inputs and no GPU authorization. Run the frozen-job CPU preflight successfully.
+- [ ] Obtain owner review of the original twelve development baseline references before presenting their proposed-label score as owner-validated; keep them separate from the approved frozen selector suite and outside SFT.
+- [x] Independently review and freeze the new decision suite before training, with balanced labels and unseen teaching domains; exclude every protected case/rubric from teaching prompts and trainer mounts.
+- [x] Wire and CPU-test decision-specific adapter-to-GGUF verification and identical frozen base/candidate generation before executing a candidate; preserve strict decision contracts, all failures and evaluation/trainer separation. Verify actual safe CPU merge/conversion and fresh-runtime loading on a separate deterministic fixture.
+- [x] Record the owner's conditional GPU execution authorization after integration checks, binding the unchanged job/data/base hashes, pinned images, exact commands, finite resources and timeouts; no retry or promotion.
+- [x] Complete the separately bounded one-step GPU preflight on the longest reviewed sequence before candidate training: 554 tokens, one optimizer step, 4,728,545,280 peak allocated VRAM bytes on the local GTX 1660 Ti; no candidate created by preflight.
+- [x] Run one authorized bounded LoRA candidate using only reviewed decision supervision: 120 steps, verified adapter/GGUF and thirty identical frozen inputs per arm. Base 9/30, candidate 10/30; both 30/30 valid, candidate 7/10 unsupported false answers and more unnecessary clarifications. Quality gates fail; retain artifacts, no retry or promotion.
+- [ ] Reconsider a narrow deterministic sufficiency prototype only after this focused learning experiment; use explicit reviewed question identifiers and attributed conditions, without domain keyword policies.
+- [ ] Reduce duplicate-citation generation in a separate versioned change while retaining strict rejection and historical request/schema replay; do not repair rejected outputs by silently deduplicating them.
+- [ ] Consider decision/content separation only if a controlled comparison justifies additional complexity and latency.
 - [ ] Integrate model-generated structured claims and complete short explanations in a separate controlled experiment before claiming automatic contradiction rejection; do not certify arbitrary prose through keyword checks.
 - [ ] Establish reliable development behavior, then freeze a fresh controlled comparison without modifying historical suites.
-- [ ] Consider 30–50 varied, separately reviewed teaching examples only after the inference experiment supports further training; this count is a hypothesis, not a sufficiency guarantee.
+- [ ] Establish decision-only transfer before considering full-advice supervision or a multi-stage runtime; 60 proposed examples are an experimental starting point, not a sufficiency guarantee.
 
 Proposed quality thresholds remain unachieved: all outputs schema-valid on the small
 frozen suite, exact configured reference interpretation, no unnecessary questions on
 fully specified requests, no unsupported assertions, and owner-rated useful improvement
 over the comparator. A tiny perfect suite would not establish broad reliability.
 Implementation and verification: [inference reliability](docs/inference-reliability.md).
+Next experiment and review files: [decision-only learning](docs/decision-policy-experiment.md).
 
 ---
 
