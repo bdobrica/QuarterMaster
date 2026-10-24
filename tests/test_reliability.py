@@ -394,6 +394,7 @@ def test_v6_migration_preserves_bytes(lab):
     _, _, _, settings, _ = lab
     with connect(settings.database_path) as connection:
         before = [tuple(r) for r in connection.execute("SELECT * FROM adviser_revisions")]
+        connection.execute("DROP TABLE knowledge_proposals")
         connection.execute("DROP TABLE reliability_runs")
         connection.execute("DROP TABLE reliability_reviews")
         connection.execute("PRAGMA user_version=6")

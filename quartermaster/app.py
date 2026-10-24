@@ -13,6 +13,7 @@ from quartermaster.api.evaluation import router as evaluation_router
 from quartermaster.api.export import router as export_router
 from quartermaster.api.foundation import router as foundation_router
 from quartermaster.api.interview import router as interview_router
+from quartermaster.api.knowledge import router as knowledge_router
 from quartermaster.api.limits import BodyLimitMiddleware
 from quartermaster.api.reliability import router as reliability_router
 from quartermaster.api.routes import router, validation_error
@@ -44,6 +45,9 @@ def create_app(
             app.state.settings = settings if settings is not None else Settings()
             initialize_storage(app.state.settings)
             migrate(app.state.settings.database_path)
+            from quartermaster.knowledge_editing import recover as recover_knowledge
+
+            recover_knowledge(app.state.settings)
             recover_interviews(app.state.settings)
             recover_lessons(app.state.settings)
             recover_evaluations(app.state.settings)
@@ -66,6 +70,7 @@ def create_app(
     app = FastAPI(title="QuarterMaster", version="0.1.0.dev0", lifespan=lifespan)
     app.include_router(router)
     app.include_router(foundation_router)
+    app.include_router(knowledge_router)
     app.include_router(interview_router)
     app.include_router(teaching_router)
     app.include_router(evaluation_router)

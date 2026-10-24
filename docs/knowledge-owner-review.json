@@ -1,0 +1,16 @@
+{
+  "schema_version": "quartermaster.knowledge-owner-review/v1",
+  "recorded_at": "2026-10-24T20:40:29.227858+00:00",
+  "owner_statement": "Looks good.",
+  "scope": "Owner approval of the displayed knowledge-change replay answers and comparison, following policy approval. This records owner usefulness review, not factual certification or measured business lift.",
+  "proposal_id": "556e3621-f20d-4e46-8fe9-3138bc12493b",
+  "evidence_file": "knowledge-live-replay.json",
+  "evidence_sha256": "5451585ac2d6d893739c6ce5fa3b6c398748e48be6f63c67dd9f68936e9e2a13",
+  "test_run_ids": [
+    "8c597165-28b1-4e31-a095-e7c1ea612a3d",
+    "1990d328-dc2e-46d8-91d4-07e5310de69e",
+    "25fad55a-7a1b-481b-a4d5-59db23a4737b",
+    "7c4986df-c574-4892-976c-8e0a2b08a500"
+  ],
+  "preserved_limitation": "The fresh old-policy answer failed quote validation; it remains a failure. Both approved-policy answers validated and cite the updated policy."
+}

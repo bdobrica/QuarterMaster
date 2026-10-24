@@ -3,6 +3,7 @@
 import bisect
 import hashlib
 import re
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -54,11 +55,11 @@ def knowledge_history(settings: Settings, project_id):
 
 
 def revise_knowledge(
-    settings: Settings, project_id, selection: KnowledgeSelection
+    settings: Settings, project_id, selection: KnowledgeSelection, *, connection=None
 ) -> KnowledgeRevision:
-    with connect(settings.database_path) as connection:
-        read_spec(connection, project_id)
-        sources = [read_source(connection, project_id, sid) for sid in selection.source_ids]
+    with connect(settings.database_path) as reader:
+        read_spec(reader, project_id)
+        sources = [read_source(reader, project_id, sid) for sid in selection.source_ids]
     if any(source.label != "knowledge" or source.kind != "md" for source in sources):
         raise DomainError(
             "KNOWLEDGE_KIND: Select Markdown sources labeled knowledge for text retrieval."
@@ -80,8 +81,9 @@ def revise_knowledge(
         source_ids=selection.source_ids,
         source_hashes={str(s.id): s.sha256 for s in sources},
     )
-    with connect(settings.database_path) as connection:
-        connection.execute("BEGIN IMMEDIATE")
+    with nullcontext(connection) if connection else connect(settings.database_path) as connection:
+        if not connection.in_transaction:
+            connection.execute("BEGIN IMMEDIATE")
         previous = read_revision(connection, project_id)
         if selection.expected_revision != (previous.id if previous else None):
             raise DomainError(

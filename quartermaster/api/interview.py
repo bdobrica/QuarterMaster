@@ -52,14 +52,14 @@ def interview_page(project_id, request, provider_message=None):
     )
 
 
-async def form_values(request, allowed):
+async def form_values(request, allowed, *, integer_revision=True):
     require_same_origin(request, form=True)
     async with request.form(max_files=0, max_fields=15, max_part_size=16384) as form:
         if set(form) - set(allowed) or len(form.multi_items()) != len(form):
             raise form_error()
         data = dict(form)
     try:
-        if "expected_revision" in allowed:
+        if integer_revision and "expected_revision" in allowed:
             data["expected_revision"] = int(data.get("expected_revision", ""))
     except (ValueError, TypeError):
         raise form_error() from None

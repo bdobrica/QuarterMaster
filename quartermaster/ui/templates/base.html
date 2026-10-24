@@ -13,6 +13,7 @@
   <nav aria-label="Workshop help"><a href="/examples">Synthetic examples</a> · <a href="/help">Help and troubleshooting</a></nav>
   <main>
     {% if project is defined %}<nav aria-label="Adviser workflow" class="project-tabs">
+      <a href="/projects/{{ project.id }}/knowledge">Knowledge</a>
       <a href="/projects/{{ project.id }}">Teach</a>
       <a href="/projects/{{ project.id }}/test">Test</a>
       <a href="/projects/{{ project.id }}/test#lessons">Correct</a>

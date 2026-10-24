@@ -17,11 +17,13 @@ Implementation and actual four-case hosted results: [P0 print demo](docs/print-d
 
 ## P0 — Put knowledge in the driver's seat
 
-- [ ] Make **Knowledge** a primary screen: show the active articles, revisions, source text and search/retrieval results before any spreadsheet machinery.
-- [ ] Add plain-language **“Change our knowledge”**: builder LLM proposes a small edit to an existing Markdown article or a new article. Manual editing must also work.
-- [ ] Show a human-readable **before/after diff**, source attribution and the affected article. Require owner approval; rejection leaves the current KB unchanged.
-- [ ] On approval create a new immutable knowledge revision, reindex immediately, and display the new active version. Verify removed/superseded text cannot be retrieved as current policy.
-- [ ] Retest the original question **and an unseen one** using the same model/settings. Display changed retrieved excerpts and citations, not only the answer text.
+- [x] Make **Knowledge** a primary screen: show the active articles, revisions, source text and search/retrieval results before any spreadsheet machinery.
+- [x] Add plain-language **“Change our knowledge”**: builder LLM proposes a small edit to an existing Markdown article or a new article. Manual editing must also work.
+- [x] Show a human-readable **before/after diff**, source attribution and the affected article. Require owner approval; rejection leaves the current KB unchanged.
+- [x] On approval create a new immutable knowledge revision, reindex immediately, and display the new active version. Verify removed/superseded text cannot be retrieved as current policy.
+- [x] Retest the original question **and an unseen one** using the same model/settings. Display changed retrieved excerpts and citations, not only the answer text.
+
+Implementation and verification: [reviewed knowledge workflow](docs/knowledge-workflow.md). The owner approved the policy in the app. Four actual hosted requests show original hold → ready and fresh quote-validation failure → ready; both new-policy answers cite the retrieved replacement article. See [live replay evidence](docs/knowledge-live-replay.json). The fresh old-policy failure is preserved. The owner reviewed and approved the new answers and comparison; see [owner review](docs/knowledge-owner-review.json).
 
 **Gate:** “Portal e-signature counts as sign-off” becomes an approved policy edit; a fresh print job changes from hold/uncertain to ready **because the new policy was retrieved**, with a valid link to it.
 

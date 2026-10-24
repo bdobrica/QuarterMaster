@@ -1,6 +1,8 @@
 # QuarterMaster
 
 The fresh print-proof demo and its live hosted-model evidence are documented in [P0 print demo](docs/print-demo.md).
+Use the primary **Knowledge** tab to draft article changes, review a diff, approve policy revisions
+and compare retrieved evidence before/after. See [reviewed knowledge workflow](docs/knowledge-workflow.md).
 
 
 **A local factory for teachable AI advisers.** Describe a recurring decision, upload reference
