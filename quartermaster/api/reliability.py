@@ -12,12 +12,15 @@ from quartermaster.api.interview import form_values
 from quartermaster.api.routes import require_same_origin
 from quartermaster.contracts.reliability import (
     Arm,
+    FieldClaimCheck,
+    FieldClaims,
     QualityReview,
     QualityReviewInput,
     ReliabilityInput,
     ReliabilityRun,
 )
 from quartermaster.errors import DomainError
+from quartermaster.field_claims import check_claims
 from quartermaster.projects import get_adviser
 
 router = APIRouter()
@@ -45,6 +48,51 @@ def runs(project_id: UUID, request: Request):
 @router.get("/api/projects/{project_id}/reliability-runs/{run_id}", response_model=ReliabilityRun)
 def get_run(project_id: UUID, run_id: UUID, request: Request):
     return reliability.get_run(settings(request), project_id, run_id)
+
+
+@router.get("/api/projects/{project_id}/reliability-runs/{run_id}/diagnostics")
+def diagnostics(project_id: UUID, run_id: UUID, request: Request):
+    run = reliability.get_run(settings(request), project_id, run_id)
+    return [
+        {
+            "arm": output.arm,
+            "citation_count": output.citation_count,
+            "citation_status": output.citation_status,
+            "sentence_endings_valid": output.sentence_endings_valid,
+        }
+        for output in run.outputs
+    ]
+
+
+@router.post(
+    "/api/projects/{project_id}/reliability-runs/{run_id}/check-claims",
+    response_model=FieldClaimCheck,
+)
+def claims(project_id: UUID, run_id: UUID, action: FieldClaims, request: Request):
+    require_same_origin(request)
+    run = reliability.get_run(settings(request), project_id, run_id)
+    return check_claims(run, action)
+
+
+@router.post("/projects/{project_id}/reliability/{run_id}/check-claims")
+async def claims_form(project_id: UUID, run_id: UUID, request: Request):
+    data = await form_values(request, {"claims"})
+    try:
+        action = FieldClaims.model_validate_json(data.get("claims", ""))
+    except ValidationError:
+        raise DomainError(
+            "FIELD_CLAIMS: Supply distinct fields, exact state/value/unit and citation UUIDs."
+        ) from None
+    config = settings(request)
+    run = reliability.get_run(config, project_id, run_id)
+    return page(
+        request,
+        "field_claims.html",
+        project=get_adviser(config.database_path, project_id),
+        run=run,
+        action=action,
+        result=check_claims(run, action),
+    )
 
 
 @router.post("/api/projects/{project_id}/reliability-runs", response_model=ReliabilityRun)

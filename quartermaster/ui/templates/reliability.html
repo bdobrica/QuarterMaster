@@ -3,6 +3,7 @@
 <h1>Inference reliability · development comparison</h1>
 <p>Compare the unchanged base weights with current advice/v1, compact advice/v2, and compact advice/v2 with deterministic field interpretation. All arms receive the same decision-time inputs, source excerpts, field definitions and approved lessons. The compact arms also use shorter, question-focused instructions.</p>
 <p>This experiment does not change the active adviser or create training examples. Keep frozen evaluation cases and later outcomes out of development requests. Each comparison makes three bounded local CPU requests; no GPU or external builder is used.</p>
+<p>Optional lesson ablation makes four requests with compact v2 and field interpretation throughout: no lessons, all applied lessons, one selected relevant lesson, and one selected potentially irrelevant lesson. Only lesson context changes. Add <code>lesson_ablation</code> with <code>relevant_id</code>, <code>relevant_rationale</code>, <code>irrelevant_id</code> and <code>irrelevant_rationale</code>. These are experimental selections, not new approval or relevance labels. Existing lesson records are preserved.</p>
 <form method="post" action="/projects/{{ project.id }}/reliability">
 <label>Question, structured inputs and reviewed field definitions (JSON)<textarea name="configuration" required rows="14" maxlength="16000">{% if run %}{{ run.action.model_dump(mode='json')|tojson(indent=2) }}{% else %}{
   "situation": "What is known from this development situation?",
@@ -11,13 +12,14 @@
   "inputs_available_at_decision": true
 }{% endif %}</textarea></label>
 <p>Values are exact strings or null. Confirm decision-time availability and review rules before submitting. Each rule names a field, integer/category kind, definition, unit, sentinel/unknown/category tokens, accessible citation_id and verbatim source_quote. Find citations through the Teach knowledge search. No definitions are inferred automatically.</p>
-<button>Run three-arm development comparison</button>
+<button>Run selected development comparison</button>
 </form>
 <h2>Saved comparisons</h2>
 <ul>{% for entry in runs %}<li><a href="?run_id={{ entry.id }}">{{ entry.created_at }} · {{ entry.status }} · {{ entry.case.situation[:100] }}</a></li>{% else %}<li>No comparisons yet.</li>{% endfor %}</ul>
 {% if run %}
 <h2>Captured interpretation</h2>
 <p>Run {{ run.id }} · {{ run.status }} · {{ run.model_alias }} · Adviser snapshot {{ run.adviser.revision }}. Omitted {{ run.omitted_lessons }} lessons and {{ run.omitted_excerpts }} excerpts.</p>
+{% if run.action.lesson_ablation %}<p>Lesson ablation · Relevant: {{ run.action.lesson_ablation.relevant_id }} ({{ run.action.lesson_ablation.relevant_rationale }}). Potentially irrelevant: {{ run.action.lesson_ablation.irrelevant_id }} ({{ run.action.lesson_ablation.irrelevant_rationale }}).</p>{% endif %}
 {% if run.error %}<p role="alert">{{ run.error }}</p>{% endif %}
 <p>These facts follow the reviewed rules exactly. Attribution verifies source bytes, not the correctness of the owner's definitions. No cross-field reconciliation or missing-data inference is performed.</p>
 <table><thead><tr><th>Field</th><th>Raw</th><th>State</th><th>Value / unit</th><th>Meaning</th></tr></thead><tbody>
@@ -27,7 +29,8 @@
 <p>Valid JSON and accessible citations do not establish factual correctness. Factual quality, clarification relevance, unsupported claims, citation relevance and usefulness require review; unreviewed values stay unassessed. Owner preference does not prove observed business lift. No combined quality score is calculated.</p>
 {% for output in run.outputs %}{% set rating = reviews.get(output.arm) %}
 <article><h3>{{ output.arm }}</h3>
-<p>Schema valid: {{ output.schema_valid }} · Citations accessible: {{ output.citations_valid }} · {{ output.elapsed_seconds }} seconds · Completion tokens: {{ output.completion_tokens if output.completion_tokens is not none else 'unavailable' }} · Output characters: {{ output.output_characters if output.output_characters is not none else 'unavailable' }}</p>
+<p>Schema valid: {{ output.schema_valid }} · {% if output.citation_status == 'none_provided' %}No citations provided{% elif output.citation_status == 'accessible' %}All {{ output.citation_count }} supplied citations accessible{% elif output.citation_status == 'inaccessible' %}Inaccessible citations supplied{% else %}Citations not assessed{% endif %} · {{ output.elapsed_seconds }} seconds · Completion tokens: {{ output.completion_tokens if output.completion_tokens is not none else 'unavailable' }} · Output characters: {{ output.output_characters if output.output_characters is not none else 'unavailable' }}</p>
+{% if output.sentence_endings_valid is not none %}<p>Sentence-ending punctuation: {{ 'present' if output.sentence_endings_valid else 'missing in one or more fields; review for truncation' }}. Punctuation alone does not prove a complete explanation.</p>{% endif %}
 {% if output.error %}<p role="alert">{{ output.error }}</p>{% endif %}
 {% if output.advice %}<pre>{{ output.advice.model_dump(mode='json')|tojson(indent=2) }}</pre>{% endif %}
 {% if output.draft %}<details><summary>Saved experimental draft · verify facts before use</summary><pre>{{ output.draft.model_dump(mode='json')|tojson(indent=2) }}</pre></details>{% endif %}
@@ -42,6 +45,13 @@
 </article>{% endfor %}
 <h2>Accessible source excerpts</h2>
 {% for item in run.evidence %}<details><summary>{{ item.citation_id }} · {{ item.source_name }} · lines {{ item.line_start }}–{{ item.line_end }}</summary><pre>{{ item.text }}</pre></details>{% endfor %}
+<h2>Check explicit field assertions</h2>
+<p>Compare structured assertions against this run's captured facts. This can reject absent-as-zero, sentinel-as-measurement, or unknown-as-yes/no claims. It does not extract claims from the model's prose or certify that prose. This check creates no teaching examples or ratings.</p>
+<form method="post" action="/projects/{{ project.id }}/reliability/{{ run.id }}/check-claims">
+<label>Assertions (JSON)<textarea name="claims" required rows="5" maxlength="16000">{"claims": []}</textarea></label>
+<p>Supply 1–20 distinct assertions with field, state, value, unit and citation_id. Use exact typed values and the definition's citation. Non-value states require null value and unit.</p>
+<button>Check supplied assertions only</button></form>
+<details><summary>Captured approved lesson inventory · selections differ by arm</summary>{% for lesson in run.lessons %}<p>{{ lesson.id }} · revision {{ lesson.revision }} · {{ lesson.text.applicability }} · {{ lesson.text.instruction }}</p>{% endfor %}</details>
 <details><summary>Exact captured requests and hashes</summary>{% for item in run.requests %}<h3>{{ item.arm }} · {{ item.input_sha256 }}</h3><pre>{{ item.model_dump(mode='json')|tojson(indent=2) }}</pre>{% endfor %}</details>
 {% endif %}
 {% endblock %}

@@ -50,6 +50,7 @@ Approved lessons are advisory instructions, not factual evidence. Do not invent 
 business policies, consent, eligibility, outcomes or hidden internal reasoning.
 """
 ARMS = ("current_v1", "compact_v2", "interpreted_v2")
+LESSON_ARMS = ("no_lessons", "all_lessons", "relevant_lesson", "irrelevant_lesson")
 RUN_SECONDS = 600
 
 
@@ -128,11 +129,31 @@ def capture(settings, project_id, action):
     # interpretation arm adds only deterministic, attributed derivations.
     data["structured_inputs"] = action.decision_inputs
     data["field_rules"] = action.field_rules.model_dump(mode="json")
+    ablation = action.lesson_ablation
+    if ablation:
+        ids = {item.id for item in lessons}
+        if omitted[0] or not {ablation.relevant_id, ablation.irrelevant_id} <= ids:
+            raise DomainError(
+                "RELIABILITY_LESSONS: Select two distinct applied lessons from this project. "
+                "All applied lessons must fit without omissions for the all-lessons arm."
+            )
     requests = []
-    for arm in ARMS:
+    for arm in LESSON_ARMS if ablation else ARMS:
         body = dict(data)
-        if arm == "interpreted_v2":
+        if arm == "interpreted_v2" or ablation:
             body["field_interpretations"] = [f.model_dump(mode="json") for f in facts]
+        if ablation:
+            chosen = {
+                "no_lessons": [],
+                "all_lessons": lessons,
+                "relevant_lesson": [item for item in lessons if item.id == ablation.relevant_id],
+                "irrelevant_lesson": [
+                    item for item in lessons if item.id == ablation.irrelevant_id
+                ],
+            }[arm]
+            body["approved_lessons"] = [
+                {"text": item.text.model_dump(mode="json")} for item in chosen
+            ]
         serialized = json.dumps(body, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         if len(serialized.encode()) > MAX_CONTEXT_BYTES:
             raise DomainError(
@@ -149,6 +170,9 @@ def capture(settings, project_id, action):
         )
         requests.append(ReliabilityRequest(**request, input_sha256=digest(request)))
     return ReliabilityRun(
+        schema_version="quartermaster.reliability-run/v2"
+        if ablation
+        else "quartermaster.reliability-run/v1",
         id=uuid4(),
         project_id=project_id,
         revision=1,

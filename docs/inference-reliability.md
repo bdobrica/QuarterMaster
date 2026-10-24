@@ -41,6 +41,12 @@ the new compact schema bounds strings/arrays and constrains citations and the
 decision/question combinations. Validation still runs after generation. A valid
 shape, complete JSON and accessible citation IDs do not prove factual entailment.
 Empty references pass accessibility vacuously and provide no citation support.
+The UI reports these as **No citations provided**, separately from **All supplied
+citations accessible**. A read-only `/api/projects/{project_id}/reliability-runs/{run_id}/diagnostics`
+endpoint returns citation count/status and a sentence-ending punctuation check for
+each output, including historical runs without rewriting their saved bytes. A
+punctuated string can still be incomplete or wrong. This diagnostic neither
+certifies prose nor repairs it, and leaves schema-validity scores unchanged.
 
 ## Explicit field definitions
 
@@ -101,6 +107,81 @@ test that arm. Values must be exact strings or null. Later outcomes and ideal
 answers have no contract fields. The owner must still ensure free text and inputs
 contain only decision-time information; this is not semantic leakage detection.
 
+### Controlled lesson ablation
+
+To isolate lesson-context effects, include an optional `lesson_ablation` object:
+
+```json
+{
+  "relevant_id": "REPLACE_WITH_AN_APPLIED_LESSON_UUID",
+  "relevant_rationale": "Why this existing lesson appears to apply to this request.",
+  "irrelevant_id": "REPLACE_WITH_A_DIFFERENT_APPLIED_LESSON_UUID",
+  "irrelevant_rationale": "Why this lesson may be irrelevant to this request."
+}
+```
+
+These placeholders deliberately do not validate. Find exact IDs through
+`GET /api/projects/{project_id}/lessons`. Both selected records must be applied in
+this project, distinct and included in the captured inventory. Rationales record
+operator hypotheses, not verified relevance, owner quality ratings, new lesson
+approval or new instructions. Missing, pending, rejected and foreign selections
+fail before generation. The comparison refuses to call an arm “all lessons” if
+any applied lesson would be omitted by existing context limits.
+
+| Arm | Approved lessons in context |
+| --- | --- |
+| `no_lessons` | None |
+| `all_lessons` | All captured applied lessons |
+| `relevant_lesson` | Only the selected relevant lesson |
+| `irrelevant_lesson` | Only the selected potentially irrelevant lesson |
+
+All four arms use exactly the previous interpreted-v2 system, compact schema,
+field interpretations, source excerpts, mission, input values, model alias and
+generation parameters. Only the `approved_lessons` array differs. Role rationales
+and arm names are not added to the model context. This is a manual controlled
+ablation, not an automatic retrieval/filtering policy or a prompt rewrite.
+
+New ablation snapshots use `quartermaster.reliability-run/v2`; historical three-arm
+snapshots remain readable as v1, with their original request hashes. No database
+migration is needed (schema remains 7). Older application versions cannot read
+the new four-arm documents; use the compatible application for the experiment
+copy. The same 600-second comparison bound, durable per-output revisions, single
+running comparison guard, cancellation/restart handling and no-retry policy apply.
+Each completed four-arm run has six revisions including initial/final states.
+
+Citation relevance and question relevance still require separate review. The
+field interpreter establishes typed facts; it cannot detect contradictions in
+arbitrary adviser prose. Generating structured claims and changing sentence
+formatting must be captured separately from the lesson-only ablation.
+
+### Narrow checks on explicit claims
+
+Each saved comparison offers “Check explicit field assertions,” also available as
+`POST /api/projects/{project_id}/reliability-runs/{run_id}/check-claims`. The
+`quartermaster.field-claims/v1` input contains 1–20 distinct `claims`, each with
+`field`, `state`, `value`, `unit`, and the definition's `citation_id`. Numbers must
+be integers rather than numeric strings. Non-value states require null value and
+unit. Extra fields, duplicate fields and ambiguous value/state combinations fail
+validation. This check is read-only: no ratings, teaching or adviser changes.
+
+The checker compares only explicit assertions with the captured owner-configured
+interpretations. It rejects a measurement of zero for an absent number, a numeric
+sentinel used as elapsed days, yes/no asserted from an unknown category, a wrong
+unit, an unconfigured field, or a citation different from the field's attributed
+definition. Results use `quartermaster.field-claim-check/v1`, pin the run/rules hash,
+and report separate state/value/unit/citation mismatches. No banking semantics or
+substring searches occur in the engine.
+
+This is a foundation for contradiction rejection, **not automatic validation of
+the generated advice**. Compact v2 has no structured claim field. Assertions are
+submitted explicitly by the operator/API caller; a caller can omit a false prose
+assertion or submit correct claims beside false prose. Responses therefore always
+say `advice_prose_checked: false`. A match proves consistency with configured
+scalar facts only, not correctness of the rules, citation relevance, completeness,
+necessary clarification, business usefulness or factual entailment of free text.
+
+### Default three-arm design comparison
+
 Each request captures the same base alias, adviser snapshot, selected full source
 excerpts and approved lessons in three arms before any generation:
 
@@ -147,6 +228,8 @@ detect every paraphrase, altered subset or non-JSON copy. Use distinct developme
 records and keep protected cases/rubrics out of prompts and supervision.
 
 ## Verification and remaining gates
+
+### Initial three-arm comparison
 
 `make test`: **506 passed**. `make lint`: passed (108 Python files formatted).
 The 44 new reliability checks cover strict contracts, scalar states/units, source
@@ -230,3 +313,99 @@ captured ablation; this experiment does not establish the cause. Keep the origin
 approved lessons intact until any proposed edit is reviewed. Useful development
 behavior, a fresh controlled evaluation, v2 integration/export and MVP acceptance
 remain pending. More LoRA supervision is not justified by these format results alone.
+
+### Lesson ablation — 24 October 2026
+
+The owner's follow-up requested a lesson-only comparison before changing approved
+lesson text, promoting v2 or spending another GPU cycle. Four new development
+records were selected from the original pre-cutoff region: source rows 24266
+(known four-day interval), 24110 (interval omitted), 10002 (no earlier contact),
+and 10005 (unknown default). The selected ten decision-input columns exclude
+outcomes and post-call fields. Source values were checked against the original
+download. Prior recorded development/teaching vectors and source rows were
+excluded; these are distinct records, not proven independent clients.
+
+All 16 local CPU generations used the previous interpreted-v2 system/schema,
+source excerpts, reviewed field rules, mission, base GGUF and generation settings.
+Within each case only the lesson array differed; exact bodies/hashes and lesson
+revisions were checked. The three approved lesson records were never edited.
+Known/history/default requests selected the existing interpretation lesson as
+relevant and the missing-interval lesson as potentially irrelevant. The missing
+interval request selected the interval lesson as relevant and the prioritization
+lesson as potentially irrelevant. These selections are operator hypotheses.
+
+| Arm | Schema valid | Outputs providing citations | Reported completion tokens, total |
+| --- | --- | --- | --- |
+| No lessons | 4/4 | 0/4 | 745 |
+| All three | 4/4 | 0/4 | 646 |
+| One relevant | 4/4 | 0/4 | 752 |
+| One potentially irrelevant | 4/4 | 0/4 | 723 |
+
+Every response chose `clarify`. All twelve scalar state/value/unit checks passed,
+but no arm met the requested foundation behavior across the cases. No quality
+gain, factual-quality score or owner preference is claimed. Fixed arm order and
+shared CPU runtime/cache also prevent timing comparisons as benchmarks.
+
+Technical inspection found:
+
+- Known four days: the no-lessons arm acknowledges four days but asks about
+  contact/outcome information. All/irrelevant arms ask for the supplied interval;
+  the relevant arm invents ambiguity between equivalent elapsed-day descriptions.
+- Absent interval: the relevant interval lesson produces the needed interval/dates
+  question, but its reason calls absence a sentinel and invents a contradiction.
+  Other arms ask for subscription status, supplied definitions or prioritization.
+- No earlier contact: all/irrelevant arms drift toward elapsed-time questions.
+  The no-lessons arm repeats the original question; the relevant arm invents a
+  default-field conflict and returns `"clarify"` as the question text.
+- Unknown default: no-lessons/relevant arms initially acknowledge unknown means
+  neither yes nor no, then truncate or ask for default again. All/irrelevant arms
+  turn to elapsed-time questions.
+
+Lesson context changes the outputs and can amplify irrelevant clarification in
+these cases. Failures without lessons show it is not the sole problem. Selecting
+one apparently relevant lesson does not establish reliable application. Sentence
+ending punctuation is present in all fields for only two of the sixteen outputs;
+this is a diagnostic, not proof that those two explanations are complete. The
+formatting problem is **not fixed** by this comparison. No automatic selector,
+default v2 rollout, new training targets or LoRA run is justified by these results.
+
+The first probe was deliberately stopped after one saved generation because a
+planned later case overlapped earlier teaching. Its partial snapshot remains
+interrupted under `data/bank-marketing/lesson-ablation-01/` and is excluded from
+the results. A subsequent input-only preflight found no unused four-day record
+in the small 4,000-row sample and made zero model calls. The completed comparison
+therefore selected fresh input-only records from the original development region.
+Both failures are retained; no automatic model retry was introduced.
+
+Ignored evidence lives under `data/bank-marketing/lesson-ablation-02/`, including
+setup/actions, original-input provenance, four complete run snapshots, diagnostics,
+results, verification, HTTP checks, trusted operator scripts and hash manifests.
+The new editable `data/bank-marketing/lesson-ablation-review.md` contains the sixteen
+outputs, technical observations and blank owner review fields. Existing review
+files remain byte-identical and no notes were imported into ratings or SFT.
+
+The pinned probe image is
+`sha256:0ff4c73d3bc839ccd4e78851712fb84182208749449304972a5cd94fb192948c`.
+The final review UI image, adding separate structured assertion checks without
+changing generation, is
+`sha256:022e80605768b2b9371d889def38b6e57829790011c8e904af0ed05adf564d31`.
+It is available on localhost **18012**, with a separate schema-7 database copy.
+The original bank app and the previous comparison database, sources, lessons,
+supervision, failed job, frozen suites and owner ratings were verified unchanged.
+
+`make test`: **536 passed**. `make lint`: passed (110 Python files formatted).
+Thirty additional focused cases cover lesson-only controls, invalid/unapplied
+selections, omissions, historical snapshots, restart handling, citation presence,
+strict structured assertions, exact value/unit/source matching, cross-project
+access and forms. All four real saved pages/diagnostics and nine read-only claim
+checks passed over localhost HTTP, including absent-as-zero, absent-as-sentinel,
+sentinel-as-measurement and unknown-as-no rejection. Their result page states
+explicitly that adviser prose is unchecked. No new model/package export test or
+GPU test ran; v2 standalone export remains unimplemented.
+
+The next controlled experiment should address the persistent tendency to clarify
+despite an answer being supplied, alongside the constrained-string cutoff. It
+should isolate question/mission framing or a structured-claim response design,
+without editing approved lessons or asserting that a passing scalar claim check
+certifies free text. Owner quality review, reliable development behavior, a fresh
+frozen comparison and normal v2 integration remain pending.

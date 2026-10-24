@@ -12,7 +12,15 @@ from quartermaster.contracts.teaching import AppliedLesson, EvidenceSnapshot, Gr
 FieldName = Annotated[str, StringConstraints(pattern=r"^[A-Za-z_][A-Za-z0-9_.-]{0,63}$")]
 Value = Annotated[str, StringConstraints(max_length=100)]
 Quote = Annotated[str, StringConstraints(min_length=1, max_length=500)]
-Arm = Literal["current_v1", "compact_v2", "interpreted_v2"]
+Arm = Literal[
+    "current_v1",
+    "compact_v2",
+    "interpreted_v2",
+    "no_lessons",
+    "all_lessons",
+    "relevant_lesson",
+    "irrelevant_lesson",
+]
 Digest = Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
 
 
@@ -71,11 +79,27 @@ class FieldInterpretation(Contract):
     source_quote: Quote
 
 
+class LessonAblation(Contract):
+    """Operator-selected experimental roles, never new lesson approval or quality labels."""
+
+    relevant_id: UUIDValue
+    relevant_rationale: ShortText
+    irrelevant_id: UUIDValue
+    irrelevant_rationale: ShortText
+
+    @model_validator(mode="after")
+    def distinct(self):
+        if self.relevant_id == self.irrelevant_id:
+            raise ValueError("Select different lessons for the two experimental roles")
+        return self
+
+
 class ReliabilityInput(Contract):
     situation: Text
     decision_inputs: dict[FieldName, Value | None] = Field(max_length=30)
     field_rules: FieldRules
     inputs_available_at_decision: Literal[True]
+    lesson_ablation: LessonAblation | None = None
 
     @field_validator("inputs_available_at_decision", mode="before")
     @classmethod
@@ -105,9 +129,37 @@ class ReliabilityOutput(Contract):
     completion_tokens: int | None = Field(default=None, ge=0)
     output_characters: int | None = Field(default=None, ge=0)
 
+    @property
+    def citation_count(self):
+        if self.draft is None:
+            return None
+        advice = self.draft if isinstance(self.draft, CompactAdvice) else self.draft.advice
+        return len(advice.evidence_refs)
+
+    @property
+    def citation_status(self):
+        if self.citation_count is None:
+            return "not_assessed"
+        if self.citation_count == 0:
+            return "none_provided"
+        return "accessible" if self.citations_valid else "inaccessible"
+
+    @property
+    def sentence_endings_valid(self):
+        # A diagnostic only. Punctuation cannot establish a complete explanation.
+        if not isinstance(self.draft, CompactAdvice):
+            return None
+        return all(
+            text.rstrip().endswith((".", "!", "?"))
+            for text in (self.draft.recommendation, self.draft.reason, self.draft.question)
+            if text is not None
+        )
+
 
 class ReliabilityRun(Contract):
-    schema_version: Literal["quartermaster.reliability-run/v1"] = "quartermaster.reliability-run/v1"
+    schema_version: Literal[
+        "quartermaster.reliability-run/v1", "quartermaster.reliability-run/v2"
+    ] = "quartermaster.reliability-run/v1"
     id: UUIDValue
     project_id: UUIDValue
     revision: int = Field(ge=1)
@@ -126,9 +178,26 @@ class ReliabilityRun(Contract):
     omitted_excerpts: int
     interpretations: list[FieldInterpretation]
     rules_sha256: Digest
-    requests: list[ReliabilityRequest] = Field(min_length=3, max_length=3)
-    outputs: list[ReliabilityOutput] = Field(max_length=3)
+    requests: list[ReliabilityRequest] = Field(min_length=3, max_length=4)
+    outputs: list[ReliabilityOutput] = Field(max_length=4)
     error: str | None = None
+
+    @model_validator(mode="after")
+    def experiment_arms(self):
+        ablation = self.action.lesson_ablation is not None
+        expected = (
+            ["no_lessons", "all_lessons", "relevant_lesson", "irrelevant_lesson"]
+            if ablation
+            else ["current_v1", "compact_v2", "interpreted_v2"]
+        )
+        version = (
+            "quartermaster.reliability-run/v2" if ablation else "quartermaster.reliability-run/v1"
+        )
+        if self.schema_version != version or [r.arm for r in self.requests] != expected:
+            raise ValueError("Run version and ordered requests must match the selected experiment")
+        if [o.arm for o in self.outputs] != expected[: len(self.outputs)]:
+            raise ValueError("Outputs must follow captured request order without duplicates")
+        return self
 
 
 Assessment = Literal["pass", "fail", "not_assessed"]
@@ -152,3 +221,49 @@ class QualityReview(QualityReviewInput):
     arm: Arm
     revision: int = Field(ge=1)
     created_at: AwareDatetime
+
+
+class FieldClaim(Contract):
+    """Explicit assertion to compare with captured facts; never inferred from prose."""
+
+    field: FieldName
+    state: Literal["absent", "missing", "unknown", "sentinel", "value", "invalid"]
+    value: int | Value | None
+    unit: ShortText | None
+    citation_id: UUIDValue
+
+    @model_validator(mode="after")
+    def typed_assertion(self):
+        if self.state != "value" and (self.value is not None or self.unit is not None):
+            raise ValueError("Non-value states cannot assert a value or measurement unit")
+        if self.state == "value" and self.value is None:
+            raise ValueError("A value claim must supply its exact typed value")
+        return self
+
+
+class FieldClaims(Contract):
+    schema_version: Literal["quartermaster.field-claims/v1"] = "quartermaster.field-claims/v1"
+    claims: list[FieldClaim] = Field(min_length=1, max_length=20)
+
+    @model_validator(mode="after")
+    def distinct_fields(self):
+        if len({c.field for c in self.claims}) != len(self.claims):
+            raise ValueError("Supply one assertion per field")
+        return self
+
+
+class FieldClaimResult(Contract):
+    field: FieldName
+    matches: bool
+    mismatches: list[Literal["unconfigured_field", "state", "value", "unit", "citation_id"]]
+
+
+class FieldClaimCheck(Contract):
+    schema_version: Literal["quartermaster.field-claim-check/v1"] = (
+        "quartermaster.field-claim-check/v1"
+    )
+    run_id: UUIDValue
+    rules_sha256: Digest
+    all_claims_match: bool
+    advice_prose_checked: Literal[False] = False
+    results: list[FieldClaimResult] = Field(min_length=1, max_length=20)

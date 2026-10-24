@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Explicit field assertion check</h1>
+<p>This compares only the supplied structured assertions with the captured field interpretations. It does not read or validate the adviser's prose, determine citation relevance, or establish usefulness. Nothing is saved as a lesson, review or training target.</p>
+<p>All supplied assertions match: {{ result.all_claims_match }}. Adviser prose checked: false.</p>
+<pre>{{ result.model_dump(mode='json')|tojson(indent=2) }}</pre>
+<details><summary>Assertions checked</summary><pre>{{ action.model_dump(mode='json')|tojson(indent=2) }}</pre></details>
+<p><a href="/projects/{{ project.id }}/reliability?run_id={{ run.id }}">Back to the captured comparison</a></p>
+{% endblock %}

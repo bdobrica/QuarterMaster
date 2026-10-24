@@ -315,6 +315,12 @@ separate from the protected frozen suite and creates no training supervision.
 - [x] Capture controlled current-v1 / compact-v2 / interpreted-v2 base-model comparisons with durable outputs and usage measurements.
 - [x] Keep factual quality, clarification relevance, unsupported assertions, citation relevance and usefulness separate from output validity.
 - [x] Run independent development probes and record semantic failures as well as completions.
+- [x] Add an opt-in lesson-only ablation with explicit relevant/irrelevant selections, exact revisions, and unchanged interpreted-v2 generation; refuse silently omitted or unapplied lessons.
+- [x] Report missing citations separately from accessible supplied citations and expose sentence-ending diagnostics without claiming complete prose.
+- [x] Add separate read-only structured assertion checks against captured field states, typed values, units and definition citations; explicitly leave adviser prose unchecked.
+- [x] Run a new-development lesson ablation and record technical findings separately from owner ratings: 16/16 schema-valid, zero citations, all clarify; no configuration accepted for normal advice.
+- [ ] Obtain owner quality review of the lesson ablation; automatic formatting checks and operator observations do not replace it.
+- [ ] Integrate model-generated structured claims and complete short explanations in a separate controlled experiment before claiming automatic contradiction rejection; do not certify arbitrary prose through keyword checks.
 - [ ] Establish reliable development behavior, then freeze a fresh controlled comparison without modifying historical suites.
 - [ ] Consider 30–50 varied, separately reviewed teaching examples only after the inference experiment supports further training; this count is a hypothesis, not a sufficiency guarantee.
 

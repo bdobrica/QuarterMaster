@@ -299,6 +299,17 @@ The ordinary Test, training, frozen-suite replay and standalone export paths ret
 their existing contracts. Compact output is experimental until development quality
 and a fresh controlled evaluation justify extending those paths. No GPU retry is implied.
 
+An optional four-arm lesson ablation holds the interpreted compact system, contract,
+facts, sources and generation parameters constant while selecting no lessons, all
+applied lessons, or one operator-selected relevant/potentially irrelevant lesson.
+It captures selection rationales and exact lesson revisions without modifying the
+approved records. This tests applicability hypotheses on new development records;
+it does not install an automatic lesson selector. Missing citations are reported
+separately from accessibility. Sentence-ending checks are diagnostics, not proof
+of complete prose or factual entailment. A separate read-only assertion checker
+compares explicit structured claims with captured state/value/unit/citation facts;
+arbitrary generated prose is not certified by this check or the interpreter.
+
 ### Consolidated learning (LoRA)
 
 - Owner may promote reviewed before/after pairs into supervised training examples.
