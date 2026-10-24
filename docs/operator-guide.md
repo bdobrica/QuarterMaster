@@ -4,6 +4,12 @@ QuarterMaster is a trusted single-user application. Start with the [README](../R
 The [synthetic walkthrough](../quartermaster/ui/static/examples/) contains no real business data;
 its scenarios are also available at `/examples` in the running application. Help is at `/help`.
 
+Test also links to the opt-in [inference reliability development comparison](inference-reliability.md).
+It compares current and compact responses with reviewed field definitions using unchanged base
+weights. These experiments and separate quality reviews do not alter active advice or create SFT
+examples. Back up before upgrading: database schema 7 adds append-only experiment/review tables;
+older application versions require their pre-upgrade database backup.
+
 ## Installation and exposure
 
 The ordinary application requires Docker Engine with Compose v2, initial internet access for

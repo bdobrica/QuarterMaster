@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Inference reliability · development comparison</h1>
+<p>Compare the unchanged base weights with current advice/v1, compact advice/v2, and compact advice/v2 with deterministic field interpretation. All arms receive the same decision-time inputs, source excerpts, field definitions and approved lessons. The compact arms also use shorter, question-focused instructions.</p>
+<p>This experiment does not change the active adviser or create training examples. Keep frozen evaluation cases and later outcomes out of development requests. Each comparison makes three bounded local CPU requests; no GPU or external builder is used.</p>
+<form method="post" action="/projects/{{ project.id }}/reliability">
+<label>Question, structured inputs and reviewed field definitions (JSON)<textarea name="configuration" required rows="14" maxlength="16000">{% if run %}{{ run.action.model_dump(mode='json')|tojson(indent=2) }}{% else %}{
+  "situation": "What is known from this development situation?",
+  "decision_inputs": {},
+  "field_rules": {"reviewed": true, "rules": []},
+  "inputs_available_at_decision": true
+}{% endif %}</textarea></label>
+<p>Values are exact strings or null. Confirm decision-time availability and review rules before submitting. Each rule names a field, integer/category kind, definition, unit, sentinel/unknown/category tokens, accessible citation_id and verbatim source_quote. Find citations through the Teach knowledge search. No definitions are inferred automatically.</p>
+<button>Run three-arm development comparison</button>
+</form>
+<h2>Saved comparisons</h2>
+<ul>{% for entry in runs %}<li><a href="?run_id={{ entry.id }}">{{ entry.created_at }} · {{ entry.status }} · {{ entry.case.situation[:100] }}</a></li>{% else %}<li>No comparisons yet.</li>{% endfor %}</ul>
+{% if run %}
+<h2>Captured interpretation</h2>
+<p>Run {{ run.id }} · {{ run.status }} · {{ run.model_alias }} · Adviser snapshot {{ run.adviser.revision }}. Omitted {{ run.omitted_lessons }} lessons and {{ run.omitted_excerpts }} excerpts.</p>
+{% if run.error %}<p role="alert">{{ run.error }}</p>{% endif %}
+<p>These facts follow the reviewed rules exactly. Attribution verifies source bytes, not the correctness of the owner's definitions. No cross-field reconciliation or missing-data inference is performed.</p>
+<table><thead><tr><th>Field</th><th>Raw</th><th>State</th><th>Value / unit</th><th>Meaning</th></tr></thead><tbody>
+{% for fact in run.interpretations %}<tr><td>{{ fact.field }}</td><td>{{ fact.raw_value }}</td><td>{{ fact.state }}</td><td>{{ fact.value }} / {{ fact.unit or 'none' }}</td><td>{{ fact.meaning }}</td></tr>{% endfor %}
+</tbody></table>
+<h2>Outputs and separate reviews</h2>
+<p>Valid JSON and accessible citations do not establish factual correctness. Factual quality, clarification relevance, unsupported claims, citation relevance and usefulness require review; unreviewed values stay unassessed. Owner preference does not prove observed business lift. No combined quality score is calculated.</p>
+{% for output in run.outputs %}{% set rating = reviews.get(output.arm) %}
+<article><h3>{{ output.arm }}</h3>
+<p>Schema valid: {{ output.schema_valid }} · Citations accessible: {{ output.citations_valid }} · {{ output.elapsed_seconds }} seconds · Completion tokens: {{ output.completion_tokens if output.completion_tokens is not none else 'unavailable' }} · Output characters: {{ output.output_characters if output.output_characters is not none else 'unavailable' }}</p>
+{% if output.error %}<p role="alert">{{ output.error }}</p>{% endif %}
+{% if output.advice %}<pre>{{ output.advice.model_dump(mode='json')|tojson(indent=2) }}</pre>{% endif %}
+{% if output.draft %}<details><summary>Saved experimental draft · verify facts before use</summary><pre>{{ output.draft.model_dump(mode='json')|tojson(indent=2) }}</pre></details>{% endif %}
+{% if run.status != 'running' %}<form method="post" action="/projects/{{ project.id }}/reliability/{{ run.id }}/reviews/{{ output.arm }}">
+<input type="hidden" name="expected_revision" value="{{ rating.revision if rating else 0 }}">
+{% for field, title in [('factual_quality','Supplied facts interpreted correctly'), ('clarification_relevance','Questions necessary and relevant'), ('unsupported_assertions','No unsupported factual assertions'), ('citation_relevance','Citations relevant to the answer')] %}
+<label>{{ title }}<select name="{{ field }}">{% for value in ['not_assessed','pass','fail'] %}<option value="{{ value }}" {% if rating and rating[field] == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
+{% endfor %}
+<label>Decision usefulness<select name="decision_usefulness">{% for value in ['not_assessed','useful','not_useful'] %}<option value="{{ value }}" {% if rating and rating.decision_usefulness == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
+<label>Evidence and observations<textarea name="notes" required maxlength="4000" rows="3">{{ rating.notes if rating else '' }}</textarea></label>
+<button>Save evaluation-only review</button></form>{% endif %}
+</article>{% endfor %}
+<h2>Accessible source excerpts</h2>
+{% for item in run.evidence %}<details><summary>{{ item.citation_id }} · {{ item.source_name }} · lines {{ item.line_start }}–{{ item.line_end }}</summary><pre>{{ item.text }}</pre></details>{% endfor %}
+<details><summary>Exact captured requests and hashes</summary>{% for item in run.requests %}<h3>{{ item.arm }} · {{ item.input_sha256 }}</h3><pre>{{ item.model_dump(mode='json')|tojson(indent=2) }}</pre>{% endfor %}</details>
+{% endif %}
+{% endblock %}

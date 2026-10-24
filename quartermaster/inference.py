@@ -9,6 +9,7 @@ import httpx2 as httpx
 from pydantic import ValidationError
 
 from quartermaster.config import Settings
+from quartermaster.contracts.advice import CompactAdvice
 from quartermaster.contracts.teaching import GroundedAdvice
 from quartermaster.errors import DomainError
 from quartermaster.generation import PARAMETERS as PARAMETERS
@@ -65,10 +66,41 @@ def response_schema(context: str) -> dict:
     return {"oneOf": branches}
 
 
+def compact_response_schema(context: str) -> dict:
+    """Version 2 only; keep the version 1 schema byte-for-byte replayable."""
+    schema = CompactAdvice.model_json_schema()
+    refs = schema["properties"]["evidence_refs"]
+    accessible = [i["citation_id"] for i in json.loads(context)["retrieved_evidence"]]
+    if accessible:
+        refs["items"] = {"type": "string", "enum": accessible}
+    else:
+        refs["maxItems"] = 0
+    schema["required"] = list(schema["properties"])
+    branches = []
+    for decision in ("answer", "clarify", "abstain"):
+        branch = deepcopy(schema)
+        branch["properties"]["decision"] = {"type": "string", "const": decision}
+        branch["properties"]["question"] = (
+            {"type": "string", "minLength": 1, "maxLength": 160}
+            if decision == "clarify"
+            else {"type": "null"}
+        )
+        branches.append(branch)
+    return {"oneOf": branches}
+
+
 class Inference(Protocol):
     async def advise(
         self, *, system: str, context: str, parameters: dict | None = None
     ) -> GroundedAdvice: ...
+
+
+class CompletionError(DomainError):
+    """Sanitized failure retaining token usage, never raw incomplete model text."""
+
+    def __init__(self, message, status=422, *, completion_tokens=None):
+        super().__init__(message, status)
+        self.completion_tokens = completion_tokens
 
 
 class LocalInference:
@@ -82,6 +114,23 @@ class LocalInference:
     async def advise(
         self, *, system: str, context: str, parameters: dict | None = None
     ) -> GroundedAdvice:
+        draft, _ = await self.measured_advice(system=system, context=context, parameters=parameters)
+        return draft
+
+    async def measured_advice(self, *, system, context, parameters=None, compact=False):
+        """Development comparison entry point; no mutable per-request usage state."""
+        schema = compact_response_schema(context) if compact else response_schema(context)
+        content, tokens = await self._completion(system, context, parameters, schema)
+        try:
+            model = CompactAdvice if compact else GroundedAdvice
+            return model.model_validate_json(content), tokens
+        except (ValueError, ValidationError):
+            raise CompletionError(
+                "LOCAL_JSON: Model returned invalid or incomplete advice; retry.",
+                completion_tokens=tokens,
+            ) from None
+
+    async def _completion(self, system, context, parameters, schema):
         parameters = checked_parameters(parameters)
         alias = self.alias or identity(self.settings)
         if self.lock.locked():
@@ -100,7 +149,7 @@ class LocalInference:
                 "json_schema": {
                     "name": "grounded_advice",
                     "strict": True,
-                    "schema": response_schema(context),
+                    "schema": schema,
                 },
             },
         }
@@ -123,7 +172,15 @@ class LocalInference:
                             "LOCAL_MODEL: Local server is not the configured base model."
                         )
                     response = await self.read(client, "POST", base + "/chat/completions", body)
-            return GroundedAdvice.model_validate_json(completed_choice(response))
+            usage = response.get("usage")
+            tokens = usage.get("completion_tokens") if isinstance(usage, dict) else None
+            if type(tokens) is not int or tokens < 0:
+                tokens = None
+            try:
+                content = completed_choice(response)
+            except DomainError as exc:
+                raise CompletionError(exc.message, exc.status, completion_tokens=tokens) from None
+            return content, tokens
         except (TimeoutError, httpx.TimeoutException):
             raise DomainError("LOCAL_TIMEOUT: Local advice timed out; retry explicitly.") from None
         except httpx.HTTPError:

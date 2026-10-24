@@ -544,7 +544,13 @@ def test_populated_v5_migration_preserves_all_old_tables_and_artifacts(workshop)
     artifact = config.artifact_root / "original.bin"
     artifact.write_bytes(b"original source bytes")
     with connect(config.database_path) as connection:
-        for table in ("training_examples", "training_runs", "adviser_versions"):
+        for table in (
+            "reliability_runs",
+            "reliability_reviews",
+            "training_examples",
+            "training_runs",
+            "adviser_versions",
+        ):
             connection.execute(f"DROP TABLE {table}")
         tables = [
             r[0] for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -557,7 +563,7 @@ def test_populated_v5_migration_preserves_all_old_tables_and_artifacts(workshop)
         assert before == {
             t: [tuple(r) for r in connection.execute(f'SELECT * FROM "{t}"')] for t in tables
         }
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 6
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 7
     assert artifact.read_bytes() == b"original source bytes"
     assert client.get(base(project)).status_code == 200
 

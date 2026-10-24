@@ -1,5 +1,9 @@
 # Response completion and compact prompts
 
+Follow-up: the owner's review led to a separate [inference reliability development
+comparison](inference-reliability.md), with compact advice/v2, attributed field rules
+and separate quality reviews. This record and its failed GPU result remain historical.
+
 The [bank acceptance baseline](bank-marketing-acceptance.md) exposed truncated JSON
 and factual errors in complete answers. These are separate failure modes. New advice
 uses a finite 1,024-token output profile, temperature 0, seed 17 and thinking disabled.

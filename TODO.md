@@ -304,6 +304,28 @@ Implementation and verification: [Milestone 8 record](docs/milestone-8.md); oper
 
 ---
 
+## Inference reliability follow-up — before another bank LoRA attempt
+
+The owner review prioritizes inference design over another GPU run. Keep the base
+weights active and the failed job/artifacts intact. This development comparison is
+separate from the protected frozen suite and creates no training supervision.
+
+- [x] Implement and verify an opt-in compact `quartermaster.advice/v2` contract while preserving v1 replay/export.
+- [x] Implement owner-configured integer/category field rules with exact source attribution and explicit review confirmation.
+- [x] Capture controlled current-v1 / compact-v2 / interpreted-v2 base-model comparisons with durable outputs and usage measurements.
+- [x] Keep factual quality, clarification relevance, unsupported assertions, citation relevance and usefulness separate from output validity.
+- [x] Run independent development probes and record semantic failures as well as completions.
+- [ ] Establish reliable development behavior, then freeze a fresh controlled comparison without modifying historical suites.
+- [ ] Consider 30–50 varied, separately reviewed teaching examples only after the inference experiment supports further training; this count is a hypothesis, not a sufficiency guarantee.
+
+Proposed quality thresholds remain unachieved: all outputs schema-valid on the small
+frozen suite, exact configured reference interpretation, no unnecessary questions on
+fully specified requests, no unsupported assertions, and owner-rated useful improvement
+over the comparator. A tiny perfect suite would not establish broad reliability.
+Implementation and verification: [inference reliability](docs/inference-reliability.md).
+
+---
+
 ## MVP release gate — explicit owner journey
 
 The owner-approved [bank-marketing acceptance session](docs/bank-marketing-acceptance.md)

@@ -285,6 +285,20 @@ Historical 512-token parameters and `context/v1` prompts remain replayable. New
 `quartermaster.export/v2` packages capture their evaluated generation parameters
 and prompt version explicitly; the runtime also supports original version 1 packages.
 
+The opt-in [inference reliability comparison](docs/inference-reliability.md) tests a
+compact `quartermaster.advice/v2` response and owner-configured, attributed scalar
+interpretation on development situations. It captures three base-weight requests with
+identical source information, definitions and lessons before generating any output.
+The compact arms use a separate question-focused system prompt; their comparison with
+v1 assesses that combined inference design, not the response schema alone. The third
+arm adds deterministic interpretation while holding the compact prompt constant.
+No domain rules live in the engine. Schema validity and citation accessibility are
+automatic checks; factual quality, clarification relevance, unsupported assertions,
+citation relevance and usefulness remain separate evaluation-only human assessments.
+The ordinary Test, training, frozen-suite replay and standalone export paths retain
+their existing contracts. Compact output is experimental until development quality
+and a fresh controlled evaluation justify extending those paths. No GPU retry is implied.
+
 ### Consolidated learning (LoRA)
 
 - Owner may promote reviewed before/after pairs into supervised training examples.

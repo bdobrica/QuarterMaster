@@ -14,6 +14,7 @@ from quartermaster.api.export import router as export_router
 from quartermaster.api.foundation import router as foundation_router
 from quartermaster.api.interview import router as interview_router
 from quartermaster.api.limits import BodyLimitMiddleware
+from quartermaster.api.reliability import router as reliability_router
 from quartermaster.api.routes import router, validation_error
 from quartermaster.api.teaching import router as teaching_router
 from quartermaster.api.training import router as training_router
@@ -24,6 +25,7 @@ from quartermaster.errors import DomainError
 from quartermaster.evaluations import recover_evaluations
 from quartermaster.inference import Inference, LocalInference
 from quartermaster.interviews import recover_interviews
+from quartermaster.reliability import recover as recover_reliability
 from quartermaster.teaching import recover_lessons
 from quartermaster.training import recover_examples
 
@@ -46,6 +48,7 @@ def create_app(
             recover_lessons(app.state.settings)
             recover_evaluations(app.state.settings)
             recover_examples(app.state.settings)
+            recover_reliability(app.state.settings)
             app.state.inference = (
                 inference if inference is not None else LocalInference(app.state.settings)
             )
@@ -68,6 +71,7 @@ def create_app(
     app.include_router(evaluation_router)
     app.include_router(training_router)
     app.include_router(export_router)
+    app.include_router(reliability_router)
     app.add_middleware(BodyLimitMiddleware)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "ui" / "static"), "static")
     app.add_exception_handler(RequestValidationError, validation_error)
