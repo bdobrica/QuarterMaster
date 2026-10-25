@@ -36,6 +36,15 @@ Recommended next work, before resuming the ordinary backlog:
 2. Inspect the small LoRA candidate's failed preference replay before any further authorized training. Improve training only against reviewed targets; compare exact before/after errors and retain the base unless useful improvement is demonstrated.
 3. Run an uncoached nontechnical trial and fix its first concrete blockers. Then resume remaining migration/compatibility and review-routing tasks in their P0 order.
 
+Owner-material follow-up — 2026-10-26:
+
+- [x] Investigate the failed 4B preference replay before further training. A read-only real-GPU probe verified all four complete target/loss masks and the exact frozen public job. Price-token loss decreased only 1.1–2.8%; completion loss decreased 0.8–1.3%. This does not establish useful free predictions, unseen quality or a sole failure cause. No new training, model selection or historical artifact rewrite occurred. See the [investigation record](docs/operator-guide.md#investigating-the-failed-preference-replay).
+- [ ] Rehearse with actual imported apartment material and three owner-supplied EUR judgments/reasons. The owner authorized choosing the listings and restated their directional policies; those policies do not supply numerical price targets. Preserve source claims separately from subjective assumptions and keep a different listing for the new-case question.
+- [ ] Run the owner-requested **agent-simulated workflow check** with these targets, review/correction reuse and a bounded improvement request. The owner deferred their UI inspection. Keep the separate uncoached human-trial criterion open; an agent simulation cannot verify it.
+- [ ] After the judgments are available, verify a bounded improvement against the captured current selection, exact owner-target errors, meaningful missing facts and genuinely new cases. Retain the base unless the owner explicitly selects a useful candidate; policy/retrieval effects are not LoRA quality gains.
+
+Follow-up baseline: `make test` passed (**919 passed, 7 skipped, 2 deselected**); `make lint` passed (204 Python files). The first sandbox invocation hit uv's read-only cache; the authorized host run passed. A verified private rehearsal copy is under ignored `data/rehearsal-20261026/owner/`; original collection bytes/publications remain unchanged. Diagnostic evidence is under `data/rehearsal-20261026/lora-investigation/`. No new training run or human trial is claimed.
+
 ## Muster integration — 2026-10-25
 
 - [x] Bring Muster's source, templates/assets, portable bundle tools and regression fixtures into this repo. Run Collect in the same FastAPI server with correct mounted navigation and lifecycle cleanup; no external checkout/service dependency.
