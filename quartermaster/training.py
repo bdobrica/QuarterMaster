@@ -361,6 +361,10 @@ def freeze_dataset(settings, project_id, action):
     with connect(settings.database_path) as connection:
         connection.execute("BEGIN IMMEDIATE")
         spec = read_spec(connection, project_id)
+        if spec.model.model_copy(update={"adapter_artifact": None}) != ModelSpec():
+            raise DomainError(
+                "PREDICTION_PATH: Use reviewed numbers or choices under Teach for this model.", 409
+            )
         records = selected(connection, project_id, action.example_ids)
         suite = evaluations.read_document(
             connection,
@@ -537,16 +541,24 @@ def recover_examples(settings):
                 )
 
 
-def resource_warning(settings):
+def resource_warning(settings, model=None):
+    from quartermaster.model_pins import CAPABLE_REVISION
+
+    model = model or ModelSpec.for_revision(settings.local_model_revision)
+    large = model.base_revision == CAPABLE_REVISION
     free = shutil.disk_usage(settings.data_dir).free
     return {
         "free_bytes": free,
-        "minimum_free_bytes": 12_000_000_000,
-        "minimum_vram_bytes": 5_500_000_000,
-        "message": "Requires a local NVIDIA GPU with at least 6 GB VRAM, 10 GiB RAM "
-        "limit and at least 12 GB free disk plus image space. Quick: 12 steps, "
-        "20-minute training limit; standard: 48 steps, 60 minutes. Conversion "
-        "and CPU evaluation add time. A few examples cannot establish quality.",
+        "minimum_free_bytes": 32_000_000_000 if large else 12_000_000_000,
+        "minimum_vram_bytes": 7_500_000_000 if large else 5_500_000_000,
+        "message": (
+            f"Your operator needs a compatible local NVIDIA graphics card with "
+            f"{8 if large else 6} GB video memory, up to {24 if large else 10} GiB computer "
+            f"memory during conversion, and {32 if large else 12} GB free disk plus image space. "
+            "The usual improvement has a 20-minute training limit; conversion and comparison "
+            "add bounded time. You choose whether to use the resulting version. "
+            "A few examples cannot establish quality."
+        ),
     }
 
 
@@ -560,12 +572,13 @@ def promote(settings, project_id, version_id, action):
     from quartermaster.training_artifacts import verify_candidate
 
     verify_candidate(settings, version)
+    job = read_job(settings, run)
     with connect(settings.database_path) as connection:
         connection.execute("BEGIN IMMEDIATE")
         previous = read_spec(connection, project_id)
         if previous.revision != action.expected_revision:
             raise DomainError("PROJECT_CHANGED: Reload before selecting an active version.", 409)
-        changes = {"model": ModelSpec(adapter_artifact=version.id)}
+        changes = {"model": job.model.model_copy(update={"adapter_artifact": version.id})}
         if version.schema_version == "quartermaster.adviser-version/v2":
             changes["outputs"] = "quartermaster.prediction/v1"
         else:
@@ -579,7 +592,9 @@ def retain_base(settings, project_id, action):
         previous = read_spec(connection, project_id)
         if previous.revision != action.expected_revision:
             raise DomainError("PROJECT_CHANGED: Reload before retaining the base.", 409)
-        return append_spec(connection, previous, model=ModelSpec())
+        return append_spec(
+            connection, previous, model=previous.model.model_copy(update={"adapter_artifact": None})
+        )
 
 
 def ratings(settings, project_id, version_id):

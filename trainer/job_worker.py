@@ -9,6 +9,7 @@ from pathlib import Path
 
 from worker import convert, load_model, save, training_args
 
+from quartermaster.contracts.adviser import ModelSpec
 from quartermaster.contracts.training import (
     ArtifactFile,
     TrainingJob,
@@ -16,7 +17,7 @@ from quartermaster.contracts.training import (
     TrainingRow,
 )
 from quartermaster.spike.artifacts import verify_snapshot
-from quartermaster.spike.spec import MODEL_ID, MODEL_REVISION, digest
+from quartermaster.spike.spec import digest
 
 
 def fail_deadline(signum, frame):
@@ -38,7 +39,7 @@ def load_job():
         return job, [TrainingRow.model_validate_json(line) for line in rows.splitlines()]
     job = TrainingJob.model_validate_json(raw)
     if (
-        job.model.adapter_artifact is not None
+        job.model != ModelSpec()
         or job.recipe.steps != (12 if job.recipe.preset == "quick" else 48)
         or job.recipe.seconds != (1200 if job.recipe.preset == "quick" else 3600)
         or digest(Path("/input/train.jsonl")) != job.dataset_sha256
@@ -68,13 +69,14 @@ def load_job():
     return job, rows
 
 
-def preflight(output):
+def preflight(output, job=None):
     import torch
 
     if not torch.cuda.is_available():
         raise ValueError("GPU_UNAVAILABLE")
     info = torch.cuda.get_device_properties(0)
-    if info.total_memory < 5_500_000_000 or info.major < 7:
+    quantized = job is not None and job.recipe.precision == "nf4-float16"
+    if info.total_memory < (7_500_000_000 if quantized else 5_500_000_000) or info.major < 7:
         raise ValueError("GPU_CAPABILITY")
     save(
         output / "preflight.json",
@@ -85,7 +87,14 @@ def preflight(output):
             "compute_capability": [info.major, info.minor],
             "cuda": torch.version.cuda,
             "versions": {
-                p: importlib.metadata.version(p) for p in ("torch", "transformers", "trl", "peft")
+                p: importlib.metadata.version(p)
+                for p in (
+                    "torch",
+                    "transformers",
+                    "trl",
+                    "peft",
+                    *(["bitsandbytes"] if quantized else []),
+                )
             },
         },
     )
@@ -100,7 +109,14 @@ def train(base, output, job, rows):
     from trl import SFTTrainer
 
     set_seed(job.recipe.seed)
-    model, tokenizer = load_model(base)
+    quantized = job.recipe.precision == "nf4-float16"
+    model, tokenizer = load_model(base, quantized=quantized) if quantized else load_model(base)
+    if quantized:
+        from peft import prepare_model_for_kbit_training
+
+        model = prepare_model_for_kbit_training(
+            model, gradient_checkpointing_kwargs={"use_reentrant": False}
+        )
     data = []
     for row in rows:
         prompt = tokenizer.apply_chat_template(
@@ -123,16 +139,16 @@ def train(base, output, job, rows):
             bias="none",
             task_type="CAUSAL_LM",
             target_modules=["q_proj", "v_proj"],
-            base_model_name_or_path=MODEL_ID,
-            revision=MODEL_REVISION,
+            base_model_name_or_path=job.model.base_model_id,
+            revision=job.model.base_revision,
         ),
     )
     result = trainer.train()
     if trainer.state.global_step != job.recipe.steps or not math.isfinite(result.training_loss):
         raise ValueError("JOB_INCOMPLETE")
     adapter = output / "adapter"
-    trainer.model.peft_config["default"].base_model_name_or_path = MODEL_ID
-    trainer.model.peft_config["default"].revision = MODEL_REVISION
+    trainer.model.peft_config["default"].base_model_name_or_path = job.model.base_model_id
+    trainer.model.peft_config["default"].revision = job.model.base_revision
     trainer.model.save_pretrained(adapter, safe_serialization=True)
     with safe_open(adapter / "adapter_model.safetensors", framework="pt") as tensors:
         changed = False
@@ -174,10 +190,10 @@ def main():
     signal.signal(signal.SIGALRM, fail_deadline)
     signal.alarm(job.recipe.seconds if args.stage == "train" else 1200)
     base, output = Path("/base"), Path("/output")
-    verify_snapshot(base)
+    verify_snapshot(base, model_id=job.model.base_model_id, revision=job.model.base_revision)
     try:
         if args.stage == "preflight":
-            preflight(output)
+            preflight(output, job) if job.recipe.precision == "nf4-float16" else preflight(output)
         elif args.stage == "train":
             train(base, output, job, rows)
         else:

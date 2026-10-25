@@ -13,8 +13,10 @@ from uuid import UUID
 
 if __package__:
     from quartermaster.local_runtime import sha256
+    from quartermaster.model_pins import BASES, ORIGINAL_REVISION, model_limit
 else:
     from local_runtime import sha256
+    from model_pins import BASES, ORIGINAL_REVISION, model_limit
 
 
 def checked_file(path, maximum):
@@ -40,7 +42,14 @@ def verify(artifacts, candidate_id):
         raise ValueError("CANDIDATE_MANIFEST")
     run_id = str(UUID(record["training_run_id"]))
     directory = artifacts / "training" / run_id / "output/portable"
-    model = checked_file(directory / "model.gguf", 3_000_000_000)
+    revision = ORIGINAL_REVISION
+    if record["schema_version"] == "quartermaster.adviser-version/v2":
+        baseline = record["baseline"]
+        revision = baseline["base_revision"]
+        if revision not in BASES or BASES[revision] != baseline["base_model_id"]:
+            raise ValueError("CANDIDATE_BASE")
+    # The application additionally verifies the exact job/adapter lineage before selection.
+    model = checked_file(directory / "model.gguf", model_limit(revision))
     license_file = checked_file(directory / "LICENSE.model", 100_000)
     if (
         model.stat().st_size != record["model_size_bytes"]
@@ -107,7 +116,9 @@ class Gateway:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        for _ in range(60):
+        # The larger verified bundle can exceed the old 30-second cold-start window.
+        # Keep a finite 90-second bound; the client's complete request is also bounded.
+        for _ in range(180 if model.stat().st_size > 3_000_000_000 else 60):
             if self.process.poll() is not None:
                 break
             try:

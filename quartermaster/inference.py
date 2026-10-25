@@ -22,8 +22,8 @@ from quartermaster.generation import PARAMETERS as PARAMETERS
 from quartermaster.spike.spec import MODEL_REVISION
 
 
-def model_alias(sha256: str) -> str:
-    return f"qm-base-{MODEL_REVISION}-{sha256}"
+def model_alias(sha256: str, revision=MODEL_REVISION) -> str:
+    return f"qm-base-{revision}-{sha256}"
 
 
 def identity(settings: Settings) -> str:
@@ -31,7 +31,7 @@ def identity(settings: Settings) -> str:
         raise DomainError(
             "LOCAL_CONFIG: Set up the pinned local base model using docs/operator-guide.md."
         )
-    return model_alias(settings.local_model_sha256)
+    return model_alias(settings.local_model_sha256, settings.local_model_revision)
 
 
 def response_schema(context: str, *, bounded=False) -> dict:

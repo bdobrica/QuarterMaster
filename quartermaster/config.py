@@ -1,9 +1,12 @@
 """Environment-only configuration; importing this module touches no disk."""
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, HttpUrl, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from quartermaster.model_pins import CAPABLE_REVISION, ORIGINAL_REVISION
 
 
 class Settings(BaseSettings):
@@ -34,6 +37,7 @@ class Settings(BaseSettings):
     )
     local_base_url: HttpUrl | None = None
     local_model_sha256: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    local_model_revision: Literal[ORIGINAL_REVISION, CAPABLE_REVISION] = ORIGINAL_REVISION
     local_timeout_seconds: float = Field(default=180, ge=1, le=180)
     candidate_base_url: HttpUrl = HttpUrl("http://candidate:8080")
     comparison_base_url: HttpUrl | None = None

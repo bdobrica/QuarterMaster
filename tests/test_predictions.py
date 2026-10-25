@@ -607,6 +607,7 @@ def test_generic_export_runtime_has_no_builder_imports(tmp_path):
         "export_package.py",
         "inference.py",
         "generation.py",
+        "model_pins.py",
         "prediction_context.py",
         "standalone_runtime.py",
     )

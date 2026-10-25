@@ -51,11 +51,14 @@ Builder requests disclose instructions, actual context, schema, endpoint/model a
 
 ## Local model
 
-Run `make model-setup` explicitly to build/download/verify the supported base bundle; ordinary startup does not do this. It uses CPU conversion, not training. Copy the printed model fingerprint into `.env`:
+Run `make model-setup` explicitly to build/download/verify the supported base bundle; ordinary startup does not do this. It uses CPU conversion, not training. Default setup prepares the preferred 4B model separately from the historical bundle. Copy the printed fingerprint, revision, directory and memory limit into `.env`:
 
 ```dotenv
 QM_LOCAL_BASE_URL=http://inference:8080/v1
 QM_LOCAL_MODEL_SHA256=<printed SHA-256>
+QM_LOCAL_MODEL_REVISION=851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a
+QM_LOCAL_MODEL_DIR=./data/local-model-4b
+QM_LOCAL_MEMORY_LIMIT=6g
 QM_LOCAL_TIMEOUT_SECONDS=180
 ```
 
@@ -65,9 +68,15 @@ Start the advice profile with the read-only base-bundle override:
 docker compose -f compose.yaml -f compose.advice.yaml --profile advice up -d --build --wait
 ```
 
-The override lets the web service read the base bundle for export. Host Python deployments set `QM_LOCAL_MODEL_DIR` to their verified `data/local-model` directory and need a separately configured loopback inference endpoint. No existing artifact should be replaced to suppress a hash error.
+The override lets the web service read the selected bundle for export. Host Python deployments use the same verified directory and a separately configured loopback inference endpoint, for example `http://127.0.0.1:8081/v1`. Inside Compose use `http://inference:8080/v1`. Never replace an existing artifact to suppress a hash error.
 
-The supported base is `Qwen/Qwen3.5-0.8B` revision `2fc06364715b967f1860aea9cf38778875588b17`; llama.cpp is pinned in [trainer/Dockerfile](../trainer/Dockerfile). The Q8_0 model is about 812 MB. In the tested setup serving uses four CPU threads and a 4 GiB limit; responses may take minutes. Setup/conversion needs additional memory and disk. Historical written advice uses bounded thinking; typed predictions preserve historical `context/v4` and `context/v5`. Configured base advisers and newly prepared jobs use `context/v6`: compact facts, a complete visible response contract and explanation before target, shared with training/comparison/export. The bounded non-thinking 1,024-token profile is unchanged. Historical jobs, selected adapters and exports retain their captured profiles. Rebuild the prediction-trainer and standalone-runtime images before consuming new context-v6 jobs/packages. See [ADR 0009](adr/0009-visible-prediction-contract.md) and [generation settings](../quartermaster/generation.py).
+The preferred base is `Qwen/Qwen3.5-4B` revision `851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a`; llama.cpp remains pinned in [trainer/Dockerfile](../trainer/Dockerfile). The verified Q8_0 file is 4,482,402,848 bytes. Serving was tested with four CPU threads and a 6 GiB limit; the twelve capability controls took 24–44 seconds each. Real-browser requests took up to 65 seconds. These are local development observations, not latency guarantees. Setup/merge/conversion allows 24 GiB memory and needs at least 32 GB free artifact disk plus Docker image space.
+
+Installation affects new advisers. To move an existing adviser, open **Ask → Advanced → Use the installed local model**. It appends a version and preserves knowledge, reviewed teaching and historical models. It clears the previous adapter selection: adapters cannot transfer across these pinned bases. Requests fail clearly if the configured service and adviser base differ. Existing model/adapter records are never rewritten automatically.
+
+The earlier `Qwen/Qwen3.5-0.8B` pin `2fc06364715b967f1860aea9cf38778875588b17` remains readable/runnable with its original files and recipes. Explicit setup is `uv run --locked python -m quartermaster.setup_local --model-size 0.8b`; use its printed settings (original revision, `data/local-model`, 4 GiB). The default setting remains that original revision for existing installations until the operator changes it. This compatibility path did not pass all current generation controls.
+
+Historical written advice uses bounded thinking; typed predictions preserve historical `context/v4` and `context/v5`. Configured base advisers and new jobs use `context/v6`: compact facts, the complete visible response contract and explanation before target, shared with training/comparison/export. Keep the bounded non-thinking 1,024-token profile. Rebuild the prediction-trainer, candidate-runtime and standalone-runtime images before consuming the new model/recipe/packages. Selected historical adapters keep their captured prompts. See [ADR 0009](adr/0009-visible-prediction-contract.md), [ADR 0010](adr/0010-verified-local-model.md) and [generation settings](../quartermaster/generation.py).
 
 ## Training
 
@@ -94,7 +103,7 @@ docker image inspect quartermaster-trainer:prediction --format '{{.Id}}'
 docker image inspect quartermaster-runtime:m6 --format '{{.Id}}'
 ```
 
-The `prediction-trainer` target advertises only `training-job/v2`. For a historical version 1 job, build the `trainer` target instead; the worker rejects an incompatible image label before training. It always trains from the pinned base and compares generic candidates against the captured current selection. Up to five taught cases are replayed with identical context/settings. A rejected/unselected candidate leaves the current model and knowledge unchanged.
+The `prediction-trainer` target advertises `training-job/v2`, `lora-recipe/v2` and `context/v6`; preflight rejects stale images lacking required capabilities. For a historical version 1 job, build the `trainer` target instead; the worker rejects an incompatible image label before training. It always trains from the pinned base and compares generic candidates against the captured current selection. Up to five taught cases are replayed with identical context/settings. A rejected/unselected candidate leaves the current model and knowledge unchanged.
 
 After reviewing a queued job, hardware and the exact command, an operator can start the worker with those complete image IDs:
 
@@ -102,17 +111,21 @@ After reviewing a queued job, hardware and the exact command, an operator can st
 uv run --locked python -m quartermaster.training_worker \
   --run-gpu \
   --data-dir ./data/training-app \
-  --base ./data/spike/base-2fc06364715b967f1860aea9cf38778875588b17 \
-  --base-gguf ./data/local-model \
+  --base ./data/spike/base-851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a \
+  --base-gguf ./data/local-model-4b \
   --trainer-image sha256:REPLACE_WITH_TRAINER_IMAGE_ID \
   --runtime-image sha256:REPLACE_WITH_RUNTIME_IMAGE_ID
 ```
 
-These are operator instructions, not commands executed while implementing the generic connection. Queueing does not run the worker. Do not start it during ordinary documentation or CPU verification.
+These are operator templates: substitute verified paths and image IDs for the exact frozen base. Queueing does not run the worker. Do not start it during ordinary documentation or CPU verification.
 
-Standard passthrough requires a working NVIDIA Container Toolkit. The explicitly tested WSL alternative adds `--gpu-mode wsl`, exposing `/dev/dxg` and read-only `/usr/lib/wsl` driver files. It needs no privileged container, host install or daemon change. The tested host had a GTX 1660 Ti with 6 GiB VRAM; other GPU families/configurations remain unverified. See the [compatibility lesson](adr/0002-local-model-and-portable-runtime.md) before changing libraries, precision or kernels.
+Standard passthrough requires a working NVIDIA Container Toolkit. The explicitly tested WSL alternative adds `--gpu-mode wsl`, exposing `/dev/dxg` and read-only `/usr/lib/wsl` driver files without a privileged container or daemon change. The 4B NF4 run completed on an NVIDIA RTX 2070 SUPER with 8 GB video memory (compute 7.5); other GPU families remain unverified. See the [compatibility lesson](adr/0002-local-model-and-portable-runtime.md).
 
-Preflight requires compute capability ≥7, 5.5 billion VRAM bytes and 12 GB free artifact disk plus image space. Training has four CPUs and a 10 GiB RAM/swap bound. Quick is 12 steps/20 minutes; standard is 48 steps/60 minutes. Only the historical quick workflow was live-tested; a new generic four-example 12-step run completed on an RTX 2070 with 8 GiB using WSL passthrough, but its numerical outputs were unusable and the candidate was not promoted. These are hard bounds, not promised runtimes or memory guarantees. Oversized targets fail instead of truncating. There are separate bounded preflight/conversion/comparison stages, durable cancellation/failure and no cloud fallback or automatic retry. `cleanup_required` blocks further jobs until the recorded orphan is stopped/recovered.
+For 4B, preflight requires compute capability ≥7, at least 7.5 billion VRAM bytes and 32 GB free artifact disk plus images. The fixed `lora-recipe/v2` uses bitsandbytes 0.49.2 NF4 base weights, float16 compute and non-reentrant gradient checkpointing. LoRA targets, completion-only supervision and final JSON format remain aligned with inference; merge reloads the exact original base in float32 before Q8_0 conversion. The original 0.8B `lora-recipe/v1` remains float32 with its original 5.5-billion-byte VRAM and 12 GB disk checks.
+
+Training has four CPUs and a 10 GiB memory/swap bound; 4B conversion allows 24 GiB. Quick is 12 steps/20 minutes; standard is 48 steps/60 minutes. Only quick has been live-tested. These are hard bounds, not runtime or memory guarantees. Oversized targets fail instead of truncating. Separate preflight/conversion/comparison stages are bounded; cancellation/failure is durable with no cloud fallback or automatic retry. `cleanup_required` blocks further jobs until the recorded orphan is recovered.
+
+The real 4B run completed all twelve steps, nonzero-weight verification, safe merge, conversion and four taught-case replays. Its candidate abstained on all four without learning useful targets; it remains unselected. The controlled base and browser successes use approved policies/retrieved earlier decisions. They are separate evidence from weight personalization. A completed run or decreasing loss does not establish improvement.
 
 The trainer receives only its frozen input, verified base and output mounts, not the database, credentials, live source storage or held-out labels. A generic job includes its reviewed teaching/knowledge snapshot and excerpt lineage as data. Never bypass the global job lock or edit frozen manifests to recover a run.
 
@@ -125,7 +138,7 @@ docker build -f trainer/Dockerfile --target standalone-runtime -t quartermaster-
 docker image inspect quartermaster-standalone-runtime:local --format '{{.Id}}'
 ```
 
-Set `QM_EXPORT_RUNTIME_IMAGE` to that full ID in `.env`, then recreate the appropriate web Compose service with the same storage/profiles. A base export binds to a successful saved answer; a historical candidate export binds to its frozen evaluation. A generic `export/v4` binds to its reviewed dataset and taught-case comparison, carries its fixed answer format and responds with `prediction` at `/v1/advise`. All preserve their original context and model bytes, not later active edits. Old export versions keep their original semantics.
+Set `QM_EXPORT_RUNTIME_IMAGE` to that full ID in `.env`, then recreate the appropriate web Compose service with the same storage/profiles. A base export binds to a successful saved answer; a historical candidate export binds to its frozen evaluation. A generic `export/v4` (original base) or `export/v5` (4B) binds to its reviewed dataset and taught-case comparison, carries its fixed answer format and responds with `prediction` at `/v1/advise`. All preserve their original context and model bytes, not later active edits. Old export versions keep their original semantics and size limits. Version 5 requires the new labelled image and 6 GiB serving limit. The 4B path currently exports a completed generic candidate; the historical written-advice base export remains limited to the original base.
 
 Packages include the model/license, selected original knowledge, approved lessons and one disclosed reference situation. They exclude the builder database, raw reviews, training rows, rubric labels and provider credentials. Included free text may still be sensitive or subject to redistribution restrictions. An export is not a project backup. Reserve space for model copies and the runtime image; an archive alone does not install that image.
 
@@ -135,7 +148,7 @@ Run the independent check before claiming runtime success:
 make test-export EXPORT=/absolute/path/adviser.tar
 ```
 
-The checker extracts a fresh package and serves it in isolated CPU Compose with no external network, builder, database, GPU or frontier key. It validates reference-context identity, schema and citations. Keep its sanitized report. Packaging alone, mocked tests and historical checks do not prove that a new package starts or gives useful advice. A second-machine check and bundled offline images are not provided.
+The checker extracts a fresh package and serves it in isolated CPU Compose with no external network, builder, database, GPU or frontier key. It validates reference-context identity, schema and citations. Keep its sanitized report. Packaging alone, mocked tests and historical checks do not prove that a new package starts or gives useful advice. The real 4B candidate passed this fresh-container check with no builder database, external network or provider. Its valid abstention verifies runtime compatibility, not useful personalization. A second-machine check and bundled offline images are not provided.
 
 ## Backup and restore
 

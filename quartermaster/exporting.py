@@ -126,7 +126,7 @@ def frozen_lessons(connection, project_id, spec):
     ]
 
 
-def compose_text(image):
+def compose_text(image, model_size=0):
     # Fixed, reviewed application; no interpolated owner text, host paths or commands.
     return f"""services:
   adviser:
@@ -139,7 +139,7 @@ def compose_text(image):
     security_opt: ["no-new-privileges:true"]
     tmpfs: ["/tmp:rw,nosuid,nodev,size=64m"]
     init: true
-    mem_limit: 4g
+    mem_limit: {"6g" if model_size > 3_000_000_000 else "4g"}
     cpus: 4
     pids_limit: 128
     logging:
@@ -158,6 +158,7 @@ def compose_text(image):
 
 
 def operator_readme(manifest, size):
+    ram_gib = 6 if size > 3_000_000_000 else 4
     lineage = (
         f"Unchanged base; tested snapshot {manifest.source_test_id}.\n"
         "This is a working-adviser snapshot, not a claim of evaluated model improvement.\n"
@@ -166,13 +167,15 @@ def operator_readme(manifest, size):
         else f"Candidate {manifest.candidate_id}; evaluated suite {manifest.suite_id} "
         f"revision {manifest.suite_revision}."
     )
-    if manifest.schema_version == "quartermaster.export/v4":
+    if manifest.schema_version in ("quartermaster.export/v4", "quartermaster.export/v5"):
         lineage = (
             f"Candidate {manifest.candidate_id}; reviewed teaching {manifest.teaching_sha256}. "
             "Taught replay measures preference consistency, not unseen accuracy."
         )
     response_field = (
-        "prediction" if manifest.schema_version == "quartermaster.export/v4" else "advice"
+        "prediction"
+        if manifest.schema_version in ("quartermaster.export/v4", "quartermaster.export/v5")
+        else "advice"
     )
     return f"""# Standalone adviser
 
@@ -206,7 +209,7 @@ uses an internal loopback CPU engine. Logs intentionally omit advice and raw mod
 
 ## Resources and verification
 
-Requires a CPU supporting this portable llama.cpp build, Docker with 4 GiB RAM
+Requires a CPU supporting this portable llama.cpp build, Docker with {ram_gib} GiB RAM
 available for this service and four CPU threads. Model: {size} bytes; allow at least
 twice the archive size for archive plus extraction, plus image space. CPU advice
 can take minutes; one request at a time, 180-second limit, no automatic retries.
@@ -361,10 +364,16 @@ def create_base_export(settings, project_id, selection):
     from quartermaster.generation import ADVICE_PARAMETERS
     from quartermaster.inference import model_alias
     from quartermaster.local_runtime import verify
+    from quartermaster.model_pins import CAPABLE_REVISION
 
     if settings.export_runtime_image is None:
         raise DomainError("EXPORT_IMAGE: Configure the pinned standalone runtime image.", 409)
     run = teaching.get_test(settings, project_id, selection.test_id)
+    if run.adviser.model.base_revision == CAPABLE_REVISION:
+        raise DomainError(
+            "EXPORT_PREDICTION: Use a reviewed number/choice candidate for this installed model.",
+            409,
+        )
     if run.provider != "local":
         raise DomainError(
             "EXPORT_HOSTED: Hosted advice is not an offline export. Test a local model first.", 409
@@ -469,6 +478,7 @@ def create_base_export(settings, project_id, selection):
 def create_prediction_export(settings, project_id, version, run, portable):
     """Package the exact generic training/replay knowledge, with a typed offline response."""
     from quartermaster.generation import PARAMETERS
+    from quartermaster.model_pins import CAPABLE_REVISION
 
     job = training.read_job(settings, run)
     if (
@@ -477,7 +487,9 @@ def create_prediction_export(settings, project_id, version, run, portable):
         or version.answer_format != job.answer_format
     ):
         raise DomainError("EXPORT_TEACHING: Candidate teaching lineage differs.", 409)
-    spec = job.adviser.model_copy(update={"model": ModelSpec(adapter_artifact=version.id)})
+    spec = job.adviser.model_copy(
+        update={"model": job.model.model_copy(update={"adapter_artifact": version.id})}
+    )
     with connect(settings.database_path) as connection:
         sources = [
             read_source(connection, project_id, item.source.id) for item in job.teaching.knowledge
@@ -511,7 +523,11 @@ def create_prediction_export(settings, project_id, version, run, portable):
         evidence_ids=[e.citation_id for e in first.evidence],
     )
     data = dict(
-        schema_version="quartermaster.export/v4",
+        schema_version=(
+            "quartermaster.export/v5"
+            if job.model.base_revision == CAPABLE_REVISION
+            else "quartermaster.export/v4"
+        ),
         prompt_version=first.prompt_version,
         inference_parameters=PARAMETERS,
         id=uuid4(),
@@ -584,7 +600,7 @@ def write_package(
             (root / f"knowledge/sources/{source.id}.md").write_bytes(source_bytes(settings, source))
             for chunk in (c for c in material.chunks if c.source_id == source.id):
                 knowledge.verify_excerpt(settings, source, chunk)
-        (root / "compose.yaml").write_text(compose_text(settings.export_runtime_image))
+        (root / "compose.yaml").write_text(compose_text(settings.export_runtime_image, model_size))
         placeholder = ExportManifest(**data)
         (root / "README.md").write_text(operator_readme(placeholder, model_size))
         names = FIXED | {f"knowledge/sources/{s.id}.md" for s in sources}

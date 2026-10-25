@@ -23,18 +23,18 @@ USER 10001:10001
 ENTRYPOINT ["llama-server"]
 
 FROM runtime AS adviser-runtime
-COPY quartermaster/local_runtime.py /opt/quartermaster/local_runtime.py
+COPY quartermaster/local_runtime.py quartermaster/model_pins.py /opt/quartermaster/
 COPY LICENSE /licenses/QuarterMaster-LICENSE
 ENTRYPOINT ["python", "/opt/quartermaster/local_runtime.py"]
 
 FROM runtime AS candidate-runtime
-COPY quartermaster/local_runtime.py quartermaster/candidate_runtime.py /opt/quartermaster/
+COPY quartermaster/local_runtime.py quartermaster/candidate_runtime.py quartermaster/model_pins.py /opt/quartermaster/
 COPY LICENSE /licenses/QuarterMaster-LICENSE
 ENTRYPOINT ["python", "/opt/quartermaster/candidate_runtime.py"]
 
 FROM runtime AS standalone-runtime
 USER root
-LABEL io.quartermaster.export-contract="quartermaster.export/v4"
+LABEL io.quartermaster.export-contract="quartermaster.export/v5"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 UV_PYTHON_DOWNLOADS=never \
     UV_LINK_MODE=copy PATH="/opt/runtime/.venv/bin:$PATH"
 WORKDIR /opt/runtime
@@ -44,6 +44,7 @@ RUN uv sync --locked --no-dev --no-install-project --no-cache
 COPY quartermaster/__init__.py quartermaster/advice_context.py quartermaster/config.py \
      quartermaster/errors.py quartermaster/export_package.py quartermaster/inference.py \
      quartermaster/generation.py \
+     quartermaster/model_pins.py \
      quartermaster/prediction_context.py \
      quartermaster/standalone_runtime.py ./quartermaster/
 COPY quartermaster/contracts ./quartermaster/contracts
@@ -67,6 +68,7 @@ COPY --from=source /llama /llama
 COPY quartermaster/contracts /opt/trainer/quartermaster/contracts
 COPY quartermaster/spike /opt/trainer/quartermaster/spike
 COPY quartermaster/__init__.py /opt/trainer/quartermaster/__init__.py
+COPY quartermaster/model_pins.py /opt/trainer/quartermaster/model_pins.py
 COPY trainer/worker.py /opt/trainer/worker.py
 COPY trainer/job_worker.py /opt/trainer/job_worker.py
 COPY LICENSE /licenses/QuarterMaster-LICENSE
@@ -85,7 +87,9 @@ ENTRYPOINT ["python", "/opt/trainer/decision_worker.py"]
 
 # Explicit generic contract; never advertise legacy jobs as accepting owner datasets.
 FROM trainer AS prediction-trainer
-LABEL io.quartermaster.training-contract="quartermaster.training-job/v2"
+LABEL io.quartermaster.training-contract="quartermaster.training-job/v2" \
+      io.quartermaster.training-recipe="quartermaster.lora-recipe/v2" \
+      io.quartermaster.prediction-context="context/v6"
 COPY quartermaster/prediction_context.py quartermaster/prediction_jobs.py \
      quartermaster/advice_context.py quartermaster/generation.py quartermaster/errors.py \
      /opt/trainer/quartermaster/

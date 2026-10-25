@@ -3,21 +3,32 @@
 from typing import Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 from quartermaster.contracts.answers import AnswerFormat
 from quartermaster.contracts.project import Mission, Name
 from quartermaster.contracts.sources import UUIDValue
+from quartermaster.model_pins import BASES, CAPABLE_ID, CAPABLE_REVISION
 
 
 class ModelSpec(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
-    base_model_id: Literal["Qwen/Qwen3.5-0.8B"] = "Qwen/Qwen3.5-0.8B"
-    base_revision: Literal["2fc06364715b967f1860aea9cf38778875588b17"] = (
+    base_model_id: Literal["Qwen/Qwen3.5-0.8B", CAPABLE_ID] = "Qwen/Qwen3.5-0.8B"
+    base_revision: Literal["2fc06364715b967f1860aea9cf38778875588b17", CAPABLE_REVISION] = (
         "2fc06364715b967f1860aea9cf38778875588b17"
     )
     adapter_artifact: UUIDValue | None = None
+
+    @model_validator(mode="after")
+    def pinned_pair(self):
+        if BASES[self.base_revision] != self.base_model_id:
+            raise ValueError("The model and pinned revision must match")
+        return self
+
+    @classmethod
+    def for_revision(cls, revision):
+        return cls(base_model_id=BASES[revision], base_revision=revision)
 
 
 class DecisionDefinition(BaseModel):

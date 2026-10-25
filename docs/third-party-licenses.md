@@ -26,14 +26,18 @@ Runtime packages include FastAPI/Uvicorn for HTTP, Jinja2 for server-rendered HT
 ## Models and uploaded materials
 
 The repository ships **no model weights or adapters**. The opt-in local model path selects
-`Qwen/Qwen3.5-0.8B`, upstream revision `2fc06364715b967f1860aea9cf38778875588b17`, under
+the preferred `Qwen/Qwen3.5-4B`, upstream revision
+`851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a`, or the historical
+`Qwen/Qwen3.5-0.8B` revision `2fc06364715b967f1860aea9cf38778875588b17`. Both retain
 the upstream Apache-2.0 license. Its downloaded snapshot includes the original license, and the
 spike bundle copies it unchanged as `LICENSE.model`. Model and adapter bytes remain under ignored
 local artifact storage. Training or format conversion does not remove base-model obligations.
 See the [model/runtime ADR](adr/0002-local-model-and-portable-runtime.md) and [operator guide](operator-guide.md) for verification scope and operation.
 
 The optional trainer has its own [locked dependencies](../trainer/uv.lock), including PyTorch,
-Transformers, TRL and PEFT. CUDA wheels retain NVIDIA licensing; the project license does not
+Transformers, TRL, PEFT and bitsandbytes 0.49.2 (MIT). The latter supplies NF4 base
+quantization for the 4B recipe on the verified 8 GB GPU; it is absent from web and CPU
+serving images. CUDA wheels retain NVIDIA licensing; the project license does not
 relicense them or a host GPU driver. Explicit WSL GPU mode mounts the installed host driver
 read-only for local training; those driver bytes are not bundled in an exported model.
 

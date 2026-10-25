@@ -2,13 +2,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
-from quartermaster.contracts.adviser import AdviserSpec, ProjectEdit
+from quartermaster.contracts.adviser import AdviserSpec, ModelSpec, ProjectEdit
 from quartermaster.contracts.project import Project, ProjectCreate
 from quartermaster.db import connect
 from quartermaster.errors import DomainError
 
 
-def create_project(database: Path, draft: ProjectCreate) -> Project:
+def create_project(database: Path, draft: ProjectCreate, *, model=None) -> Project:
     project = Project(
         id=uuid4(), created_at=datetime.now(UTC), name=draft.name, mission=draft.mission
     )
@@ -18,7 +18,11 @@ def create_project(database: Path, draft: ProjectCreate) -> Project:
             (str(project.id), project.name, project.mission, project.created_at.isoformat()),
         )
         spec = AdviserSpec(
-            id=project.id, revision=1, created_at=project.created_at, **draft.model_dump()
+            id=project.id,
+            revision=1,
+            created_at=project.created_at,
+            **draft.model_dump(),
+            **({"model": model} if model else {}),
         )
         connection.execute(
             "INSERT INTO adviser_revisions VALUES (?, ?, ?)",
@@ -118,7 +122,26 @@ def configure_answer(database, project_id, answer_format, expected_revision):
                 "Create another adviser for a different kind of decision.",
                 409,
             )
-        return append_spec(connection, previous, answer_format=answer_format)
+        return append_spec(
+            connection, previous, answer_format=answer_format, outputs="quartermaster.prediction/v1"
+        )
+
+
+def use_local_base(settings, project_id, action):
+    """Explicit compatible-base switch; retain every source, judgment and old version."""
+    if settings.local_base_url is None or settings.local_model_sha256 is None:
+        raise DomainError("LOCAL_CONFIG: Ask the operator to set up the local adviser first.", 409)
+    model = ModelSpec.for_revision(settings.local_model_revision)
+    with connect(settings.database_path) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        previous = read_spec(connection, project_id)
+        if previous.revision != action.expected_revision:
+            raise DomainError("PROJECT_CHANGED: Reload before changing the local model.", 409)
+        if previous.answer_format is None:
+            raise DomainError("ANSWER_FORMAT: Save the adviser's answer settings first.", 409)
+        if previous.model == model:
+            return previous
+        return append_spec(connection, previous, model=model, outputs="quartermaster.prediction/v1")
 
 
 def require_answer_format(spec, answer_format):

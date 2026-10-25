@@ -19,6 +19,7 @@ from quartermaster.contracts.export import (
     RuntimeConfiguration,
 )
 from quartermaster.errors import DomainError
+from quartermaster.model_pins import CAPABLE_REVISION, model_limit
 
 FIXED = {
     "adviser.json",
@@ -31,7 +32,7 @@ FIXED = {
     "reference.json",
 }
 MANIFEST = "manifests/export.json"
-MAX_TOTAL = 3_100_000_000
+MAX_TOTAL = 6_100_000_000
 
 
 def sha256(path):
@@ -92,6 +93,10 @@ def verify_package(root):
         if reference.case.case_id is None:
             raise ValueError("The frozen reference needs its original case ID")
         spec = config.adviser
+        if (manifest.schema_version == "quartermaster.export/v5") != (
+            spec.model.base_revision == CAPABLE_REVISION
+        ):
+            raise ValueError("The 4B model requires the version 5 package/runtime boundary")
         if (manifest.prompt_version in ("context/v4", "context/v5", "context/v6")) != (
             config.answer_format is not None
         ):
@@ -138,7 +143,7 @@ def verify_package(root):
         model = checked_path(root, "model/model.gguf")
         with model.open("rb") as stream:
             if (
-                not 1_000_000 < model.stat().st_size < 3_000_000_000
+                not 1_000_000 < model.stat().st_size < model_limit(spec.model.base_revision)
                 or stream.read(8) != b"GGUF\3\0\0\0"
             ):
                 raise ValueError("Expected bounded GGUF v3")
@@ -233,7 +238,7 @@ def extract_verified(archive, destination):
                     or not entry.isfile()
                     or entry.size < 0
                     or entry.size
-                    > (3_000_000_000 if entry.name == "model/model.gguf" else 32_000_000)
+                    > (6_000_000_000 if entry.name == "model/model.gguf" else 32_000_000)
                 ):
                     raise ValueError("Unsupported archive entry")
                 names.add(entry.name)

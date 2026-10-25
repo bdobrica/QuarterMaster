@@ -131,7 +131,7 @@ def execute_next(settings, engine):
             run = advance(settings, run, "converting")
             (output / "portable").mkdir(mode=0o700)
             engine.convert(run, job)
-            files = portable_files(output / "portable")
+            files = portable_files(output / "portable", job.model)
             run = advance(settings, run, "evaluating")
             suite = evaluations.get_suite(
                 settings, run.project_id, job.suite_id, job.suite_revision
@@ -263,7 +263,7 @@ def execute_predictions(settings, engine, run, job):
     run = advance(settings, run, "converting")
     (output / "portable").mkdir(mode=0o700)
     engine.convert(run, job)
-    files = portable_files(output / "portable")
+    files = portable_files(output / "portable", job.model)
     run = advance(settings, run, "evaluating")
     pairs = engine.evaluate(run, job, job, files)
     if [p.case_id for p in pairs] != [e.case.case_id for e in job.examples[:5]]:
@@ -417,7 +417,11 @@ class DockerEngine:
     def name(self, run, stage):
         return f"qm-training-{run.id}-{stage}"
 
-    def args(self, run, stage, image, mounts, gpu=False):
+    def args(self, run, stage, image, mounts, gpu=False, model=None):
+        from quartermaster.model_pins import CAPABLE_REVISION
+
+        large = model is not None and model.base_revision == CAPABLE_REVISION
+        memory = "24g" if large and stage == "convert" else "10g"
         args = [
             "docker",
             "run",
@@ -431,8 +435,8 @@ class DockerEngine:
             "--cap-drop=ALL",
             "--security-opt=no-new-privileges",
             "--pids-limit=256",
-            "--memory=10g",
-            "--memory-swap=10g",
+            f"--memory={memory}",
+            f"--memory-swap={memory}",
             "--cpus=4",
             "--log-driver=none",
             "--user",
@@ -478,7 +482,7 @@ class DockerEngine:
         return args
 
     def stage(self, run, job, stage, mounts, gpu=False):
-        self.command([*self.args(run, stage, self.trainer_image, mounts, gpu), stage])
+        self.command([*self.args(run, stage, self.trainer_image, mounts, gpu, job.model), stage])
         deadline = time.monotonic() + (job.recipe.seconds + 30 if stage == "train" else 1230)
         while time.monotonic() < deadline:
             check_cancel(self.settings, run)
@@ -500,8 +504,24 @@ class DockerEngine:
     def preflight(self, run, job):
         if shutil.disk_usage(self.settings.data_dir).free < 12_000_000_000:
             raise DomainError("TRAINING_DISK: Free at least 12 GB plus Docker image space.")
-        verify_snapshot(self.base)
+        from quartermaster.model_pins import CAPABLE_REVISION
+
+        if job.model.base_revision == CAPABLE_REVISION:
+            if shutil.disk_usage(self.settings.data_dir).free < 32_000_000_000:
+                raise DomainError("TRAINING_DISK: Free at least 32 GB for the installed model.")
+            verify_snapshot(
+                self.base, model_id=job.model.base_model_id, revision=job.model.base_revision
+            )
+        else:
+            verify_snapshot(self.base)
         self.base_record = verify_base_gguf(self.base_gguf)
+        if (
+            self.base_record["model_id"] != job.model.base_model_id
+            or self.base_record["revision"] != job.model.base_revision
+        ):
+            raise DomainError(
+                "TRAINING_BASE: Use the original and portable files for this adviser's base."
+            )
         runtime = json.loads(self.command(["docker", "image", "inspect", self.runtime_image]))[0]
         trainer = json.loads(self.command(["docker", "image", "inspect", self.trainer_image]))[0]
         if (
@@ -509,6 +529,17 @@ class DockerEngine:
             != LLAMA_REVISION
             or trainer["Config"].get("Labels", {}).get("io.quartermaster.training-contract")
             != job.schema_version
+            or (
+                job.recipe.schema_version == "quartermaster.lora-recipe/v2"
+                and trainer["Config"].get("Labels", {}).get("io.quartermaster.training-recipe")
+                != "quartermaster.lora-recipe/v2"
+            )
+            or (
+                job.schema_version == "quartermaster.training-job/v2"
+                and any(e.input.prompt_version == "context/v6" for e in job.examples)
+                and trainer["Config"].get("Labels", {}).get("io.quartermaster.prediction-context")
+                != "context/v6"
+            )
         ):
             raise DomainError("TRAINING_IMAGE: Build the documented pinned trainer/runtime stages.")
         folder = training.directory(self.settings, run.id)
@@ -560,7 +591,11 @@ class DockerEngine:
         outputs = {}
         generic = getattr(suite, "schema_version", None) == "quartermaster.training-job/v2"
         baseline_path, baseline_sha = self.base_gguf, self.base_record["sha256"]
-        baseline_alias = model_alias(baseline_sha)
+        baseline_alias = (
+            model_alias(baseline_sha, suite.model.base_revision)
+            if generic
+            else model_alias(baseline_sha)
+        )
         if generic and suite.baseline.adapter_artifact:
             from quartermaster.training_artifacts import verify_candidate
 

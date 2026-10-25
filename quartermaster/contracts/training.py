@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import AwareDatetime, Field, field_validator
+from pydantic import AwareDatetime, Field, field_validator, model_validator
 
 from quartermaster.contracts.advice import Case
 from quartermaster.contracts.adviser import AdviserSpec, ModelSpec
@@ -50,7 +50,9 @@ class ExampleSend(Consent):
 
 
 class Recipe(Contract):
-    schema_version: Literal["quartermaster.lora-recipe/v1"] = "quartermaster.lora-recipe/v1"
+    schema_version: Literal["quartermaster.lora-recipe/v1", "quartermaster.lora-recipe/v2"] = (
+        "quartermaster.lora-recipe/v1"
+    )
     preset: Literal["quick", "standard"]
     steps: Literal[12, 48]
     max_length: Literal[2048] = 2048
@@ -58,9 +60,15 @@ class Recipe(Contract):
     alpha: Literal[8] = 8
     learning_rate: Literal[0.00001] = 0.00001
     seed: Literal[17] = 17
-    precision: Literal["float32"] = "float32"
+    precision: Literal["float32", "nf4-float16"] = "float32"
     completion_only_loss: Literal[True] = True
     seconds: Literal[1200, 3600]
+
+    @model_validator(mode="after")
+    def precision_version(self):
+        if (self.schema_version == "quartermaster.lora-recipe/v1") != (self.precision == "float32"):
+            raise ValueError("Quantized base training requires the version 2 recipe")
+        return self
 
 
 class TrainingSelection(Contract):
@@ -101,6 +109,15 @@ class TrainingJob(Contract):
     model: ModelSpec = Field(default_factory=ModelSpec)
     recipe: Recipe
 
+    @model_validator(mode="after")
+    def historical_engine(self):
+        if (
+            self.model != ModelSpec()
+            or self.recipe.schema_version != "quartermaster.lora-recipe/v1"
+        ):
+            raise ValueError("Historical advice jobs keep their original base and float32 recipe")
+        return self
+
 
 class TrainingRun(Contract):
     schema_version: Literal["quartermaster.training-run/v1"] = "quartermaster.training-run/v1"
@@ -135,7 +152,8 @@ class TrainingRun(Contract):
 
 class ArtifactFile(Contract):
     sha256: Digest
-    size_bytes: int = Field(gt=0, le=3_000_000_000)
+    # Portable 4B Q8_0 files exceed 3 GB. Consumers also enforce the pinned model's limit.
+    size_bytes: int = Field(gt=0, le=6_000_000_000)
 
 
 class TrainingManifest(Contract):

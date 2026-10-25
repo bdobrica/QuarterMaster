@@ -59,6 +59,25 @@ def test_base_setup_publishes_verified_bundle_and_rebuilds_runtime_on_reuse(prep
     assert not any(c[0] == "build-trainer" for c in calls)
 
 
+def test_larger_base_setup_uses_separate_bundle_and_bounded_conversion(preparer, monkeypatch):
+    from quartermaster.model_pins import CAPABLE_ID, CAPABLE_REVISION
+
+    root, calls, fake = preparer
+    setup_local.prepare(root, skip_build=True)
+    original = {p.name: p.read_bytes() for p in (root / "local-model").iterdir()}
+    (root / "spike" / f"base-{CAPABLE_REVISION}").mkdir()
+    seen = []
+    monkeypatch.setattr(
+        setup_local, "verify_snapshot", lambda path, **pins: seen.append((path, pins))
+    )
+    setup_local.prepare(root, skip_build=True, model_size="4b")
+    manifest = json.loads((root / "local-model-4b/manifest.json").read_bytes())
+    assert manifest["model_id"] == CAPABLE_ID and manifest["revision"] == CAPABLE_REVISION
+    assert seen[0][1] == {"model_id": CAPABLE_ID, "revision": CAPABLE_REVISION}
+    assert [c for c in calls if c[0] == "convert-base"][-1][2]["memory"] == "24g"
+    assert {p.name: p.read_bytes() for p in (root / "local-model").iterdir()} == original
+
+
 def test_base_conversion_failure_never_publishes_or_retries(preparer):
     root, calls, fake = preparer
     fake.fail = True

@@ -91,7 +91,18 @@ class Run:
         self.event(stage, "completed")
         return result.stdout.strip()
 
-    def container(self, stage, image, arguments, mounts, *, gpu=False, online=False, timeout=1200):
+    def container(
+        self,
+        stage,
+        image,
+        arguments,
+        mounts,
+        *,
+        gpu=False,
+        online=False,
+        timeout=1200,
+        memory="10g",
+    ):
         name = f"qm-spike-{self.id}-{stage}"
         args = [
             "docker",
@@ -104,8 +115,8 @@ class Run:
             "--cap-drop=ALL",
             "--security-opt=no-new-privileges",
             "--pids-limit=256",
-            "--memory=10g",
-            "--memory-swap=10g",
+            f"--memory={memory}",
+            f"--memory-swap={memory}",
             "--cpus=4",
             "--user",
             f"{os.getuid()}:{os.getgid()}",

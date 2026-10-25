@@ -15,7 +15,7 @@ from uuid import UUID
 
 from quartermaster.config import Settings
 from quartermaster.contracts.advice import Case
-from quartermaster.contracts.adviser import AdviserSpec
+from quartermaster.contracts.adviser import AdviserSpec, ModelSpec
 from quartermaster.contracts.answers import CategoryAnswer, NumberAnswer
 from quartermaster.generation import ADVICE_PARAMETERS
 from quartermaster.inference import LocalInference
@@ -122,6 +122,7 @@ async def run(settings, report_path, *, thinking=False):
     report = {
         "purpose": "synthetic development capability check; not unseen accuracy or LoRA quality",
         "model_sha256": settings.local_model_sha256,
+        "model_revision": settings.local_model_revision,
         "thinking": thinking,
         "results": [],
     }
@@ -133,6 +134,7 @@ async def run(settings, report_path, *, thinking=False):
             name="Synthetic capability control",
             mission=mission,
             answer_format=fmt,
+            model=ModelSpec.for_revision(settings.local_model_revision),
         )
         item = assemble(spec, Case(case_id=UUID(int=index + 1), situation=situation), fmt, [])
         if thinking:

@@ -60,6 +60,7 @@ class ExportManifest(Contract):
         "quartermaster.export/v2",
         "quartermaster.export/v3",
         "quartermaster.export/v4",
+        "quartermaster.export/v5",
     ] = "quartermaster.export/v1"
     id: UUIDValue
     project_id: UUIDValue
@@ -106,6 +107,10 @@ class ExportManifest(Contract):
             checked_parameters(self.inference_parameters)
         except DomainError:
             raise ValueError("Unsupported inference parameters") from None
+        if self.schema_version != "quartermaster.export/v5" and any(
+            item.size_bytes > 3_000_000_000 for item in self.files.values()
+        ):
+            raise ValueError("Large portable models require a version 5 export")
         lineage = (
             self.candidate_id,
             self.training_run_id,
@@ -116,7 +121,7 @@ class ExportManifest(Contract):
             self.suite_revision,
             self.suite_sha256,
         )
-        if self.schema_version == "quartermaster.export/v4":
+        if self.schema_version in ("quartermaster.export/v4", "quartermaster.export/v5"):
             if (
                 any(v is None for v in lineage[:5])
                 or any(v is not None for v in lineage[5:])
@@ -125,6 +130,10 @@ class ExportManifest(Contract):
                 or self.teaching_sha256 is None
                 or self.prompt_version not in ("context/v4", "context/v5", "context/v6")
                 or self.inference_parameters != PARAMETERS
+                or (
+                    self.schema_version == "quartermaster.export/v5"
+                    and self.prompt_version != "context/v6"
+                )
             ):
                 raise ValueError("Generic export requires reviewed teaching and candidate lineage")
             return self

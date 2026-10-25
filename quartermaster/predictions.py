@@ -27,7 +27,7 @@ from quartermaster.prediction_context import (
     serialize,
     validate,
 )
-from quartermaster.prediction_jobs import verify_job
+from quartermaster.prediction_jobs import recipe_for, verify_job
 from quartermaster.projects import read_spec, require_answer_format
 
 
@@ -129,6 +129,7 @@ def prepare(settings, project_id, import_id, action):
             project_id=project_id,
             created_at=training.now(),
             adviser=spec,
+            model=spec.model.model_copy(update={"adapter_artifact": None}),
             baseline=spec.model,
             answer_format=action.answer_format,
             teaching=dataset,
@@ -136,7 +137,7 @@ def prepare(settings, project_id, import_id, action):
             examples=rows,
             dataset_sha256=hashlib.sha256(raw).hexdigest(),
             source_hashes={str(k.source.id): k.source.sha256 for k in dataset.knowledge},
-            recipe=training.recipe("quick"),
+            recipe=recipe_for(spec.model, "quick"),
         )
         verify_job(job, raw)
         folder = training.directory(settings, job.id) / "input"
@@ -202,7 +203,12 @@ async def ask(settings, adapter, project_id, action):
 
         verify_candidate(settings, version)
         run = training.get_run(settings, project_id, version.training_run_id)
-        prompt_version = training.read_job(settings, run).examples[0].input.prompt_version
+        job = training.read_job(settings, run)
+        if spec.model.model_copy(update={"adapter_artifact": None}) != job.model:
+            raise DomainError(
+                "PREDICTION_MODEL: This version belongs to a different base model.", 409
+            )
+        prompt_version = job.examples[0].input.prompt_version
         if run.status != "completed" or run.candidate_id != version.id or not version.smoke_passed:
             raise DomainError("CANDIDATE_STATE: Select a completed adviser version.", 409)
         if settings.candidate_base_url is None:
@@ -211,6 +217,12 @@ async def ask(settings, adapter, project_id, action):
             settings,
             alias=f"qm-candidate-{version.model_sha256}",
             base_url=str(settings.candidate_base_url).rstrip("/") + f"/{version.id}/v1",
+        )
+    elif spec.model.base_revision != settings.local_model_revision:
+        raise DomainError(
+            "LOCAL_MODEL_CHANGED: A different local model is installed. "
+            "Open Advanced on Ask to use it while keeping your teaching and previous versions.",
+            409,
         )
     case = Case(case_id=uuid4(), situation=action.situation)
     item = assemble(

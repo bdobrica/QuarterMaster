@@ -6,6 +6,11 @@ import json
 import os
 from pathlib import Path
 
+if __package__:
+    from quartermaster.model_pins import BASES, model_limit
+else:
+    from model_pins import BASES, model_limit
+
 # Keep these pins identical to spike/spec.py (checked by CPU tests).
 MODEL_ID = "Qwen/Qwen3.5-0.8B"
 MODEL_REVISION = "2fc06364715b967f1860aea9cf38778875588b17"
@@ -39,8 +44,8 @@ def verify(directory):
     if (
         set(record) != expected
         or record["schema_version"] != "quartermaster.local-model/v1"
-        or record["model_id"] != MODEL_ID
-        or record["revision"] != MODEL_REVISION
+        or record["revision"] not in BASES
+        or BASES[record["revision"]] != record["model_id"]
         or record["llama_revision"] != LLAMA_REVISION
         or record["adapter_artifact"] is not None
         or record["format"] != "GGUF-Q8_0"
@@ -50,7 +55,7 @@ def verify(directory):
     if model.is_symlink() or license_file.is_symlink():
         raise ValueError("Model links are unsupported")
     if (
-        not 1_000_000 < model.stat().st_size < 3_000_000_000
+        not 1_000_000 < model.stat().st_size < model_limit(record["revision"])
         or model.stat().st_size != record["size_bytes"]
         or sha256(model) != record["sha256"]
         or not 0 < license_file.stat().st_size < 100_000
@@ -77,7 +82,7 @@ def main():
     if args.check:
         print("Pinned local base model and license verified.")
         return
-    alias = f"qm-base-{MODEL_REVISION}-{record['sha256']}"
+    alias = f"qm-base-{record['revision']}-{record['sha256']}"
     os.execvp(
         "llama-server",
         [

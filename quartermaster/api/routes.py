@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from quartermaster.builder import preview_estimate
+from quartermaster.contracts.adviser import ModelSpec
 from quartermaster.contracts.project import Project, ProjectCreate
 from quartermaster.db import check_schema, connect
 from quartermaster.projects import create_project, list_projects
@@ -63,7 +64,10 @@ def projects(request: Request):
 @router.post("/api/projects", response_model=Project, status_code=201)
 def new_project(draft: ProjectCreate, request: Request):
     require_same_origin(request)
-    return create_project(request.app.state.settings.database_path, draft)
+    config = request.app.state.settings
+    return create_project(
+        config.database_path, draft, model=ModelSpec.for_revision(config.local_model_revision)
+    )
 
 
 @router.post("/projects")
@@ -82,7 +86,10 @@ async def project_form(request: Request):
                 context={},
                 status_code=422,
             )
-    project = create_project(request.app.state.settings.database_path, draft)
+    config = request.app.state.settings
+    project = create_project(
+        config.database_path, draft, model=ModelSpec.for_revision(config.local_model_revision)
+    )
     if request.headers.get("hx-request") == "true":
         return templates.TemplateResponse(
             request=request,

@@ -24,6 +24,7 @@ services:
       QM_ADVISER_LOCAL_ONLY: ${QM_ADVISER_LOCAL_ONLY:-false}
       QM_LOCAL_BASE_URL: ${QM_LOCAL_BASE_URL:-}
       QM_LOCAL_MODEL_SHA256: ${QM_LOCAL_MODEL_SHA256:-}
+      QM_LOCAL_MODEL_REVISION: ${QM_LOCAL_MODEL_REVISION:-2fc06364715b967f1860aea9cf38778875588b17}
       QM_LOCAL_TIMEOUT_SECONDS: ${QM_LOCAL_TIMEOUT_SECONDS:-180}
       QM_COMPARISON_BASE_URL: ${QM_COMPARISON_BASE_URL:-}
       QM_COMPARISON_MODEL_SHA256: ${QM_COMPARISON_MODEL_SHA256:-}
@@ -44,13 +45,13 @@ services:
     image: quartermaster-local-runtime:m4
     pull_policy: never
     volumes:
-      - ./data/local-model:/model:ro
+      - ${QM_LOCAL_MODEL_DIR:-./data/local-model}:/model:ro
     read_only: true
     cap_drop: ["ALL"]
     security_opt: ["no-new-privileges:true"]
     tmpfs: ["/tmp:rw,nosuid,nodev,size=64m"]
     init: true
-    mem_limit: 4g
+    mem_limit: ${QM_LOCAL_MEMORY_LIMIT:-4g}
     cpus: 4
     pids_limit: 128
     healthcheck:

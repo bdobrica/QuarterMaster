@@ -199,6 +199,14 @@ async def advise(
     if spec.outputs == "quartermaster.prediction/v1":
         raise DomainError("PREDICTION_PATH: Use Ask for this number or choice adviser.", 409)
     hosted = spec.advice_mode == "hosted"
+    if (
+        not hosted
+        and not spec.model.adapter_artifact
+        and spec.model.base_revision != settings.local_model_revision
+    ):
+        raise DomainError(
+            "LOCAL_MODEL_CHANGED: Use the installed local model from Advanced on Ask.", 409
+        )
     provider = "local"
     if hosted:
         from quartermaster.inference import HostedInference, hosted_identity

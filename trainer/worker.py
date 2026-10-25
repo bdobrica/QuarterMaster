@@ -28,12 +28,12 @@ def save(path, value):
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
 
 
-def download(output):
+def download(output, model_id=MODEL_ID, revision=MODEL_REVISION):
     from huggingface_hub import snapshot_download
 
     snapshot_download(
-        MODEL_ID,
-        revision=MODEL_REVISION,
+        model_id,
+        revision=revision,
         local_dir=output,
         allow_patterns=[
             "*.json",
@@ -51,14 +51,14 @@ def download(output):
     save(
         output / "snapshot.json",
         {
-            "model_id": MODEL_ID,
-            "revision": MODEL_REVISION,
+            "model_id": model_id,
+            "revision": revision,
             "files": {p.name: digest(p) for p in output.iterdir() if p.is_file()},
         },
     )
 
 
-def load_model(base, gpu=True):
+def load_model(base, gpu=True, *, quantized=False):
     import torch
     from transformers import AutoConfig, AutoTokenizer, Qwen3_5ForCausalLM
 
@@ -68,15 +68,31 @@ def load_model(base, gpu=True):
         raise ValueError("This spike requires at least 6 GB VRAM")
     config = AutoConfig.from_pretrained(base, local_files_only=True, trust_remote_code=False)
     config = config.get_text_config()
+    options = {}
+    if quantized:
+        if not gpu:
+            raise ValueError("Quantized training requires the local GPU")
+        from transformers import BitsAndBytesConfig
+
+        options = {
+            "quantization_config": BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_compute_dtype=torch.float16,
+            ),
+            "device_map": {"": 0},
+        }
     # Full upstream checkpoint -> text-only class; native Transformers maps language_model keys.
     model, info = Qwen3_5ForCausalLM.from_pretrained(
         base,
         config=config,
-        dtype=torch.float32,
+        dtype=torch.float16 if quantized else torch.float32,
         attn_implementation="eager",
         local_files_only=True,
         trust_remote_code=False,
         output_loading_info=True,
+        **options,
     )
     if info.get("missing_keys") or info.get("mismatched_keys"):
         raise ValueError("Text-only checkpoint did not load all expected weights")
@@ -95,7 +111,7 @@ def load_model(base, gpu=True):
     model.config.eos_token_id = tokenizer.eos_token_id
     model.generation_config.eos_token_id = tokenizer.eos_token_id
     model.config.pad_token_id = tokenizer.pad_token_id
-    if gpu:
+    if gpu and not quantized:
         model.to("cuda")
     return model, tokenizer
 
@@ -382,11 +398,17 @@ def main():
     )
     parser.add_argument("--base", type=Path, default=Path("/base"))
     parser.add_argument("--output", type=Path, default=Path("/output"))
+    parser.add_argument("--model-size", choices=["0.8b", "4b"], default="0.8b")
     args = parser.parse_args()
     args.output.mkdir(exist_ok=True, parents=True)
     match args.stage:
         case "download":
-            download(args.output)
+            if args.model_size == "4b":
+                from quartermaster.model_pins import CAPABLE_ID, CAPABLE_REVISION
+
+                download(args.output, CAPABLE_ID, CAPABLE_REVISION)
+            else:
+                download(args.output)
         case "train":
             train(args.base, Path("/input/train.json"), args.output)
         case "preflight":

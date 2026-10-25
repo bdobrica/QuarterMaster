@@ -3,9 +3,10 @@
 import json
 from pathlib import Path
 
+from quartermaster.contracts.adviser import ModelSpec
 from quartermaster.contracts.training import TrainingManifest
 from quartermaster.errors import DomainError
-from quartermaster.spike.spec import MODEL_ID, MODEL_REVISION
+from quartermaster.model_pins import model_limit
 
 
 def verify_adapter(output, job, run):
@@ -48,18 +49,19 @@ def verify_adapter(output, job, run):
             or hash_file(path) != record.sha256
         ):
             raise DomainError("TRAINING_HASH: Adapter file hash or size mismatch.")
-    verify_lora_structure(adapter, job.recipe)
+    verify_lora_structure(adapter, job.recipe, job.model)
     return manifest
 
 
-def verify_lora_structure(adapter, recipe):
+def verify_lora_structure(adapter, recipe, model=None):
     """Shared fixed-model PEFT/framing checks; callers verify their own versioned lineage."""
+    model = model or ModelSpec()
     if (adapter / "adapter_config.json").stat().st_size > 32_000:
         raise DomainError("TRAINING_CONFIG: Adapter configuration is too large.")
     config = json.loads((adapter / "adapter_config.json").read_bytes())
     if (
-        config.get("base_model_name_or_path") != MODEL_ID
-        or config.get("revision") != MODEL_REVISION
+        config.get("base_model_name_or_path") != model.base_model_id
+        or config.get("revision") != model.base_revision
         or config.get("peft_type") != "LORA"
         or config.get("task_type") != "CAUSAL_LM"
         or config.get("r") != recipe.rank
@@ -95,13 +97,17 @@ def verify_lora_structure(adapter, recipe):
             raise DomainError("TRAINING_TENSORS: Unexpected LoRA tensor structure.")
 
 
-def portable_files(path):
+def portable_files(path, model_spec=None):
     from quartermaster.training import hash_file
 
     model, license_file = path / "model.gguf", path / "LICENSE.model"
     if path.is_symlink() or model.is_symlink() or license_file.is_symlink():
         raise DomainError("CANDIDATE_PATH: Model links are not supported.")
-    if not 1_000_000 < model.stat().st_size < 3_000_000_000:
+    if (
+        not 1_000_000
+        < model.stat().st_size
+        < model_limit((model_spec or ModelSpec()).base_revision)
+    ):
         raise DomainError("CANDIDATE_FORMAT: Model size is invalid.")
     with model.open("rb") as stream:
         if stream.read(8) != b"GGUF\x03\x00\x00\x00":
@@ -139,7 +145,7 @@ def verified_candidate(settings, version):
         raise DomainError("CANDIDATE_LINEAGE: Candidate and training contract differ.", 409)
     output = directory(settings, run.id) / "output"
     verify_adapter(output, job, run)
-    files = portable_files(output / "portable")
+    files = portable_files(output / "portable", job.model)
     if (
         version.job_sha256 != run.job_sha256
         or hash_file(output / "training.json") != version.training_manifest_sha256

@@ -221,18 +221,32 @@ def test_v11_migration_preserves_every_existing_document(client, settings, colle
         assert before == {t: [tuple(r) for r in db.execute(f'SELECT * FROM "{t}"')] for t in tables}
 
 
-def test_related_preferences_are_distinct_from_sources(client, settings, collection):
+@pytest.mark.parametrize("configured", [False, True])
+def test_related_preferences_are_distinct_from_sources(client, settings, collection, configured):
     project, _, target = setup(settings, collection)
+    if configured:
+        from quartermaster.contracts.answers import NumberAnswer
+        from quartermaster.projects import configure_answer
+
+        spec = get_adviser(settings.database_path, project)
+        configure_answer(
+            settings.database_path, project, NumberAnswer(kind="number", unit="EUR"), spec.revision
+        )
     adapter = Adapter(target)
     client.app.state.inference = adapter
     first = ask(client, project)
     review(client, project, first, "correct", target=target, reasoning="I value quiet surroundings")
     ask(client, project, text="A quiet apartment with a balcony")
     context = json.loads(adapter.calls[-1]["context"])
-    assert context["reviewed_owner_preferences"][0]["reasoning"] == "I value quiet surroundings"
-    assert "preference" in context["reviewed_owner_preferences"][0]["meaning"]
-    assert context["retrieved_evidence"]
-    assert all("reasoning" not in source for source in context["retrieved_evidence"])
+    preferences = context[
+        "previous_owner_decisions" if configured else "reviewed_owner_preferences"
+    ]
+    evidence = context["source_excerpts" if configured else "retrieved_evidence"]
+    assert preferences[0]["reasoning"] == "I value quiet surroundings"
+    assert "preference" in preferences[0]["meaning"]
+    assert evidence
+    assert all("reasoning" not in source for source in evidence)
+    assert "Earlier personal judgments used" in client.get(f"/projects/{project}/ask").text
     reply = client.get(f"/projects/{project}/knowledge?review={first['id']}")
     assert "Scope: describe when this preference should apply" in reply.text
 

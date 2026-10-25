@@ -64,7 +64,9 @@ def training_page(project_id: UUID, request: Request):
             for lesson in teaching.latest_lessons(config, project_id)
             if lesson.status == "applied"
         ],
-        resources=training.resource_warning(config),
+        resources=training.resource_warning(
+            config, get_adviser(config.database_path, project_id).model
+        ),
         categories=teaching.CATEGORIES,
         preferences=evaluations.PREFERENCES,
         candidate_suites={
@@ -275,8 +277,8 @@ def dataset(project_id: UUID, run_id: UUID, request: Request):
 
 @router.get(API + "/training-resources")
 def resources(project_id: UUID, request: Request):
-    get_adviser(settings(request).database_path, project_id)
-    return training.resource_warning(settings(request))
+    project = get_adviser(settings(request).database_path, project_id)
+    return training.resource_warning(settings(request), project.model)
 
 
 @router.post(API + "/training-runs/{run_id}/cancel", response_model=TrainingRun)

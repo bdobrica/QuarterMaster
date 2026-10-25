@@ -21,7 +21,7 @@ services:
     security_opt: ["no-new-privileges:true"]
     tmpfs: ["/tmp:rw,nosuid,nodev,size=64m"]
     init: true
-    mem_limit: 4g
+    mem_limit: ${QM_LOCAL_MEMORY_LIMIT:-4g}
     cpus: 4
     pids_limit: 128
     healthcheck:

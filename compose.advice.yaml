@@ -4,4 +4,4 @@ services:
     environment:
       QM_LOCAL_MODEL_DIR: /model
     volumes:
-      - ./data/local-model:/model:ro
+      - ${QM_LOCAL_MODEL_DIR:-./data/local-model}:/model:ro

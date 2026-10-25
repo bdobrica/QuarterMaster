@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, RedirectResponse
 
-from quartermaster import muster
+from quartermaster import muster, training
 from quartermaster.api.foundation import form_error, page, settings, validate_form
 from quartermaster.api.routes import require_same_origin
 from quartermaster.contracts.muster import (
@@ -31,10 +31,12 @@ def teaching_page(project_id: UUID, request: Request):
     from quartermaster.prediction_reviews import teaching
 
     config = settings(request)
+    project = get_adviser(config.database_path, project_id)
     return page(
         request,
         "muster_collections.html",
-        project=get_adviser(config.database_path, project_id),
+        project=project,
+        resources=training.resource_warning(config, project.model),
         publications=muster.publications(config),
         imports=muster.imports(config, project_id),
         reviewed=teaching(config, project_id),
@@ -45,12 +47,14 @@ def teaching_page(project_id: UUID, request: Request):
 @router.get("/projects/{project_id}/teach/{import_id}")
 def collection_page(project_id: UUID, import_id: UUID, request: Request):
     config = settings(request)
+    project = get_adviser(config.database_path, project_id)
     item = muster.get_import(config, project_id, import_id)
     bundle = muster.imported_bundle(config, item)
     return page(
         request,
         "muster_collection.html",
-        project=get_adviser(config.database_path, project_id),
+        project=project,
+        resources=training.resource_warning(config, project.model),
         item=item,
         bundle=bundle,
         knowledge=current_knowledge(config, project_id),

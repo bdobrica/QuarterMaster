@@ -4,10 +4,10 @@ import hashlib
 import json
 from uuid import uuid5
 
-from quartermaster.contracts.adviser import ModelSpec
 from quartermaster.contracts.prediction import ReviewedExample
 from quartermaster.contracts.training import Recipe
 from quartermaster.generation import PARAMETERS
+from quartermaster.model_pins import CAPABLE_REVISION
 from quartermaster.prediction_context import digest, schema_for, serialize, system_for, validate
 
 
@@ -22,17 +22,29 @@ def dataset_bytes(dataset):
     ).encode()
 
 
+def recipe_for(model, preset):
+    return Recipe(
+        preset=preset,
+        steps=12 if preset == "quick" else 48,
+        seconds=1200 if preset == "quick" else 3600,
+        **(
+            {"schema_version": "quartermaster.lora-recipe/v2", "precision": "nf4-float16"}
+            if model.base_revision == CAPABLE_REVISION
+            else {}
+        ),
+    )
+
+
 def verify_job(job, raw):
     """Pure public boundary, also used inside the trainer without the app database."""
     if (
-        job.model != ModelSpec()
-        or job.baseline != job.adviser.model
-        or job.recipe
-        != Recipe(
-            preset=job.recipe.preset,
-            steps=12 if job.recipe.preset == "quick" else 48,
-            seconds=1200 if job.recipe.preset == "quick" else 3600,
+        job.model != job.adviser.model.model_copy(update={"adapter_artifact": None})
+        or (
+            job.model.base_revision == CAPABLE_REVISION
+            and any(e.input.prompt_version != "context/v6" for e in job.examples)
         )
+        or job.baseline != job.adviser.model
+        or job.recipe != recipe_for(job.model, job.recipe.preset)
         or job.project_id != job.teaching.project_id
         or job.adviser.id != job.project_id
         or job.adviser.outputs != "quartermaster.prediction/v1"

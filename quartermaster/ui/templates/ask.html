@@ -11,6 +11,11 @@
 {% for run in runs %}<article><h2>{{ run.input.case.situation }}</h2>
 {% include 'prediction_result.html' %}<p><a href="/projects/{{ project.id }}/review#answer-{{ run.id }}">Review this answer</a></p></article>{% else %}<p>Teach a few examples, then describe a new situation here. Clarification or an explanation of missing support is a useful answer too.</p>{% endfor %}
 <details><summary>Advanced · adviser versions and comparison</summary>
+<p>Base: {{ project.model.base_model_id }} · pinned revision {{ project.model.base_revision }}.</p>
+{% if project.model.base_revision != local_model_revision %}
+<p>A different local base is installed. Your knowledge, judgments and previous adviser versions will be kept. Using it starts with the new base; your previous adapter belongs to its original model.</p>
+<form method="post" action="/projects/{{ project.id }}/local-base"><input type="hidden" name="expected_revision" value="{{ project.revision }}"><button>Use the installed local model</button></form>
+{% endif %}
 {% for run in improvements %}<p>{% if run.status == 'queued' %}Improvement prepared; waiting for the local worker.{% elif run.status == 'completed' %}New adviser version ready.{% else %}{{ run.status }}{% endif %}{% if run.error %} {{ run.error }}{% endif %}</p>{% endfor %}
 {% for candidate in candidates %}<article><h2>Version prepared {{ candidate.created_at }}</h2>
 <p>Replays of taught examples check consistency with your preferences. They do not measure unseen accuracy. The comparison uses the model selected when this improvement was prepared.</p>

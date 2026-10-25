@@ -19,7 +19,7 @@ from quartermaster.contracts.prediction import (
     PredictRequest,
 )
 from quartermaster.contracts.training import Promote, TrainingRun
-from quartermaster.projects import configure_answer, get_adviser
+from quartermaster.projects import configure_answer, get_adviser, use_local_base
 
 router = APIRouter()
 
@@ -65,6 +65,7 @@ def ask_page(project_id: UUID, request: Request):
         request,
         "ask.html",
         project=project,
+        local_model_revision=config.local_model_revision,
         answer_format=fmt,
         runs=predictions.history(config, project_id),
         candidates=candidates,
@@ -76,6 +77,20 @@ def ask_page(project_id: UUID, request: Request):
             for v in candidates
         },
     )
+
+
+@router.post("/api/projects/{project_id}/local-base")
+def local_base(project_id: UUID, action: VersionedAction, request: Request):
+    require_same_origin(request)
+    return use_local_base(settings(request), project_id, action)
+
+
+@router.post("/projects/{project_id}/local-base")
+async def local_base_form(project_id: UUID, request: Request):
+    require_same_origin(request, form=True)
+    action = validate_form(VersionedAction, await form_values(request, {"expected_revision"}))
+    use_local_base(settings(request), project_id, action)
+    return RedirectResponse(f"/projects/{project_id}/ask", status_code=303)
 
 
 @router.post("/api/projects/{project_id}/predictions", response_model=PredictionRun)

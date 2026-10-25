@@ -33,12 +33,13 @@ def run(args):
     if args.data_dir.exists():
         raise SystemExit("Use a new data directory; existing records will not be changed.")
     args.data_dir.mkdir(parents=True)
-    base = json.loads((Path("data/local-model") / "manifest.json").read_bytes())
+    base = json.loads((config.local_model_dir / "manifest.json").read_bytes())
     env = os.environ.copy()
     env.update(
         QM_DATA_DIR=str(args.data_dir),
         QM_LOCAL_BASE_URL=args.local_url,
         QM_LOCAL_MODEL_SHA256=base["sha256"],
+        QM_LOCAL_MODEL_REVISION=base["revision"],
     )
     if args.use_builder_for_collection or args.use_adviser_for_collection:
         prefix = "adviser" if args.use_adviser_for_collection else "builder"

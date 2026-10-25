@@ -31,9 +31,9 @@ def require_review(train: Path, review: Path) -> None:
         raise ValueError("Training fixture lacks matching explicit human approval")
 
 
-def verify_snapshot(base: Path) -> None:
+def verify_snapshot(base: Path, *, model_id=MODEL_ID, revision=MODEL_REVISION) -> None:
     record = json.loads((base / "snapshot.json").read_text())
-    if record["model_id"] != MODEL_ID or record["revision"] != MODEL_REVISION:
+    if record["model_id"] != model_id or record["revision"] != revision:
         raise ValueError("Wrong base model snapshot")
     if not record["files"] or "LICENSE" not in record["files"]:
         raise ValueError("Missing base model files/license")

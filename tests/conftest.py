@@ -33,6 +33,7 @@ def offline_environment(monkeypatch):
         "QM_ADVISER_LOCAL_ONLY",
         "QM_ADVISER_REASONING_EFFORT",
         "QM_LOCAL_BASE_URL",
+        "QM_LOCAL_MODEL_REVISION",
         "QM_LOCAL_MODEL_SHA256",
         "QM_LOCAL_TIMEOUT_SECONDS",
     ):

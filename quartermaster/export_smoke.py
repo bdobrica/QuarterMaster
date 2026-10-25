@@ -47,14 +47,21 @@ def verify_image(image, contract="quartermaster.export/v1"):
                     "quartermaster.export/v2",
                     "quartermaster.export/v3",
                     "quartermaster.export/v4",
+                    "quartermaster.export/v5",
                 },
                 "quartermaster.export/v2": {
                     "quartermaster.export/v2",
                     "quartermaster.export/v3",
                     "quartermaster.export/v4",
+                    "quartermaster.export/v5",
                 },
-                "quartermaster.export/v3": {"quartermaster.export/v3", "quartermaster.export/v4"},
-                "quartermaster.export/v4": {"quartermaster.export/v4"},
+                "quartermaster.export/v3": {
+                    "quartermaster.export/v3",
+                    "quartermaster.export/v4",
+                    "quartermaster.export/v5",
+                },
+                "quartermaster.export/v4": {"quartermaster.export/v4", "quartermaster.export/v5"},
+                "quartermaster.export/v5": {"quartermaster.export/v5"},
             }.get(contract, set())
         ):
             raise ValueError
@@ -84,7 +91,9 @@ def smoke(archive, report_path=None):
             root = outer / "adviser"
             manifest, _, _, reference = extract_verified(archive, root)
             root.chmod(0o755)
-            if (root / "compose.yaml").read_text() != compose_text(manifest.runtime_image):
+            if (root / "compose.yaml").read_text() != compose_text(
+                manifest.runtime_image, manifest.files["model/model.gguf"].size_bytes
+            ):
                 raise DomainError(
                     "EXPORT_COMPOSE: Only the fixed standard runtime "
                     "Compose recipe may be executed.",
@@ -150,7 +159,10 @@ def smoke(archive, report_path=None):
                     raise DomainError(
                         "EXPORT_RESPONSE: Standalone reply exceeded the response bound.", 409
                     )
-                if manifest.schema_version == "quartermaster.export/v4":
+                if manifest.schema_version in (
+                    "quartermaster.export/v4",
+                    "quartermaster.export/v5",
+                ):
                     response = RuntimePrediction.model_validate_json(raw)
                     if not set(response.prediction.evidence_refs) <= {
                         e.citation_id for e in response.evidence
