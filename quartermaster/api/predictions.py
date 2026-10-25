@@ -125,7 +125,7 @@ def improve_api(project_id: UUID, import_id: UUID, action: ImproveSelection, req
 @router.post("/projects/{project_id}/teach/{import_id}/improve")
 async def improve_form(project_id: UUID, import_id: UUID, request: Request):
     data = await form_values(
-        request, {"expected_revision", "kind", "unit", "choices", "acknowledge_resources"}
+        request, {"expected_revision", "kind", "unit", "choices", "acknowledge_resources", "preset"}
     )
     project = get_adviser(settings(request).database_path, project_id)
     action = validate_form(
@@ -136,6 +136,7 @@ async def improve_form(project_id: UUID, import_id: UUID, request: Request):
                 project.answer_format.model_dump() if project.answer_format else answer_format(data)
             ),
             "acknowledge_resources": data.get("acknowledge_resources") == "yes",
+            "preset": data.get("preset") or "quick",
         },
     )
     await run_in_threadpool(predictions.prepare, settings(request), project_id, import_id, action)

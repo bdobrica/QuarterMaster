@@ -156,6 +156,7 @@ class ImproveSelection(Contract):
     expected_revision: int = Field(ge=1)
     answer_format: AnswerFormat
     acknowledge_resources: Literal[True]
+    preset: Literal["quick", "standard"] = "quick"
 
     @model_validator(mode="before")
     @classmethod

@@ -15,6 +15,7 @@
 <p>{{ resources.message }}</p>
 <form method="post" action="/projects/{{ project.id }}/teach/{{ item.id }}/improve"><input type="hidden" name="expected_revision" value="{{ project.revision }}">
 {% if not project.answer_format %}{% set answer_format = none %}{% include 'answer_format.html' %}{% endif %}
+<label for="improvement-time">Time limit</label><select id="improvement-time" name="preset"><option value="quick">Quick check · up to 20 minutes of training</option><option value="standard">Longer improvement · up to 1 hour of training</option></select><p>Checking and preparing the new version takes additional time. A longer run does not guarantee better answers.</p>
 <label><input type="checkbox" name="acknowledge_resources" value="yes" required> I understand the local resource and time limits.</label><button>Improve my adviser</button></form>{% endif %}
 <details><summary>Advanced · publication details</summary><p>Manifest SHA-256 {{ item.manifest_sha256 }}. Hashes verify unchanged bytes; they do not prove a listing or article is true.</p><a href="/projects/{{ project.id }}/teach/{{ item.id }}/files/manifest.json">Download original manifest</a></details>
 {% endblock %}

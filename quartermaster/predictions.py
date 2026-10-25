@@ -137,7 +137,7 @@ def prepare(settings, project_id, import_id, action):
             examples=rows,
             dataset_sha256=hashlib.sha256(raw).hexdigest(),
             source_hashes={str(k.source.id): k.source.sha256 for k in dataset.knowledge},
-            recipe=recipe_for(spec.model, "quick"),
+            recipe=recipe_for(spec.model, action.preset),
         )
         verify_job(job, raw)
         folder = training.directory(settings, job.id) / "input"

@@ -772,3 +772,59 @@ def test_oversized_teaching_dataset_is_actionable_and_never_queued(
     assert reply.status_code == 409 and "100 reviewed answers" in reply.text
     assert "owner_decision" not in reply.text
     assert training.runs(settings, project) == []
+
+
+@pytest.mark.parametrize("fmt", [NUMBER, CATEGORY])
+def test_longer_improvement_freezes_existing_bounded_recipe_without_changing_old_job(
+    client, settings, collection, fmt
+):
+    from quartermaster.prediction_jobs import recipe_for
+
+    project, item, _ = setup(settings, collection, fmt)
+    request = selection(settings, project, fmt).model_dump(mode="json")
+    request.pop("preset")  # Existing clients keep the original quick behavior.
+    endpoint = f"/api/projects/{project}/muster/{item.id}/improve"
+    original = client.post(endpoint, json=request)
+    assert original.status_code == 200
+    old_run = training.get_run(settings, project, original.json()["id"])
+    path = training.directory(settings, old_run.id) / "input/job.json"
+    old_bytes = path.read_bytes()
+    old_job = training.read_job(settings, old_run)
+    assert old_job.recipe == recipe_for(old_job.model, "quick")
+
+    longer = client.post(endpoint, json={**request, "preset": "standard"})
+    assert longer.status_code == 200
+    run = training.get_run(settings, project, longer.json()["id"])
+    job = training.read_job(settings, run)
+    assert run.status == "queued"  # Preparing never executes training.
+    assert job.recipe == recipe_for(job.model, "standard")
+    assert job.recipe.steps == 48 and job.recipe.seconds == 3600
+    assert job.baseline == old_job.baseline
+    assert path.read_bytes() == old_bytes
+    assert job.examples == old_job.examples
+
+
+def test_longer_improvement_form_and_invalid_time_choice(client, settings, collection):
+    project, item, _ = setup(settings, collection)
+    request = selection(settings, project).model_dump(mode="json")
+    endpoint = f"/api/projects/{project}/muster/{item.id}/improve"
+    for extra in ({"preset": "unlimited"}, {"preset": "standard", "steps": 500}):
+        response = client.post(endpoint, json={**request, **extra})
+        assert response.status_code == 422
+    assert not training.runs(settings, project)
+    page = client.get(f"/projects/{project}/teach/{item.id}")
+    assert 'name="preset"' in page.text and "Longer improvement" in page.text
+    response = client.post(
+        f"/projects/{project}/teach/{item.id}/improve",
+        data={
+            "expected_revision": request["expected_revision"],
+            "kind": "number",
+            "unit": "EUR",
+            "acknowledge_resources": "yes",
+            "preset": "standard",
+        },
+        headers={"Origin": "http://testserver"},
+    )
+    assert response.status_code == 200
+    job = training.read_job(settings, training.runs(settings, project)[0])
+    assert job.recipe.preset == "standard" and job.recipe.seconds == 3600
