@@ -1,0 +1,13 @@
+{% set answer_key = review_id|string if review_id is defined else run.id|string %}
+{% set rating = answer_reviews.get(answer_key) %}
+<section aria-label="Review this answer">
+<p><strong>{{ 'Reviewed: Pass' if rating and rating.status == 'pass' else 'Reviewed: Fail' if rating and rating.status == 'fail' else 'Pending review' }}</strong>{% if run.error and not run.error.startswith("DEMO_NOT_RUN:") %} · Response failed{% endif %}</p>
+<form method="post" action="{{ review_url if review_url is defined else '/projects/' ~ project.id ~ '/tests/' ~ run.id ~ '/review' }}">
+<input type="hidden" name="expected_revision" value="{{ rating.revision if rating else 0 }}">
+<label>Review status<select name="status" aria-label="Review status"><option value="pending" {% if not rating or rating.status == 'pending' %}selected{% endif %}>Pending</option><option value="pass" {% if run.error or not run.advice %}disabled{% endif %} {% if rating and rating.status == 'pass' %}selected{% endif %}>Reviewed: Pass</option><option value="fail" {% if rating and rating.status == 'fail' %}selected{% endif %}>Reviewed: Fail</option></select></label>
+{% if compact|default(false) %}<input type="hidden" name="return_to" value="questions"><input type="hidden" name="correction" value="{{ rating.correction if rating else '' }}">{% else %}
+<details {% if rating and rating.correction %}open{% endif %}><summary>Correct this answer</summary><label>What should change?<textarea aria-label="What should change?" name="correction" maxlength="4000" rows="3">{{ rating.correction if rating else '' }}</textarea></label><p>This records your correction for review only. It does not change the adviser or create a training example.</p></details>{% endif %}
+<button>Save review</button></form>
+{% if rating and rating.correction and not compact|default(false) %}<p>To change the adviser, <a href="/projects/{{ project.id }}/knowledge#change">write a general policy change</a>. Keep reserved check questions out of teaching drafts.</p>{% endif %}
+{% if not compact|default(false) and answer_histories.get(answer_key) %}<details><summary>Review history</summary>{% for previous in answer_histories[answer_key]|reverse %}<p>{{ previous.status|capitalize }} · <time datetime="{{ previous.created_at.isoformat() }}" title="{{ previous.created_at.isoformat() }}" data-local-time>{{ previous.created_at.strftime('%d %b %Y, %H:%M UTC') }}</time></p>{% if previous.correction %}<p class="mission">{{ previous.correction }}</p>{% endif %}{% endfor %}</details>{% endif %}
+</section>

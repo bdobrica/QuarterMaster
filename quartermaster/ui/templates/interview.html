@@ -92,7 +92,7 @@
   </form>{% endif %}
 </section>
 <details><summary>Interview history · {{ history|length }} saved transitions</summary>
-{% for entry in history|reverse %}<p>Revision {{ entry.revision }} · {{ entry.status }} · {{ entry.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}{% if entry.proposal_origin %} · {{ entry.proposal_origin }}{% endif %}</p>{% endfor %}
+{% for entry in history|reverse %}<p>Revision {{ entry.revision }} · {{ entry.status }} · <time datetime="{{ entry.created_at.isoformat() }}" title="{{ entry.created_at.isoformat() }}" data-local-time>{{ entry.created_at.strftime("%d %b %Y, %H:%M UTC") }}</time>{% if entry.proposal_origin %} · {{ entry.proposal_origin }}{% endif %}</p>{% endfor %}
 <p><a href="/api/projects/{{ project.id }}/interview/revisions">Inspect full interview history (JSON)</a></p>
 </details>
 {% endblock %}

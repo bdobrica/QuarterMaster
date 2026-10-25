@@ -6,19 +6,18 @@
   <title>QuarterMaster · Adviser projects</title>
   <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
   <meta name="htmx-config" content='{"allowEval":false,"allowScriptTags":false,"selfRequestsOnly":true,"includeIndicatorStyles":false,"responseHandling":[{"code":"422","swap":true,"error":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <script src="{{ url_for('static', path='/local-time.js') }}" defer></script>
   <script src="{{ url_for('static', path='/vendor/htmx.min.js') }}" defer></script>
 </head>
-<body>
-  <header><a href="/">QuarterMaster</a><span>Local adviser workshop · Teach → Test → Correct → Export</span></header>
+<body class="{% block body_class %}{% endblock %}">
+  <header><a href="/">QuarterMaster</a><span>Local adviser workshop · Ask → Review → Improve</span></header>
   <nav aria-label="Workshop help"><a href="/examples">Synthetic examples</a> · <a href="/help">Help and troubleshooting</a></nav>
   <main>
     {% if project is defined %}<nav aria-label="Adviser workflow" class="project-tabs">
+      <a href="/projects/{{ project.id }}/test">Adviser</a>
       <a href="/projects/{{ project.id }}/knowledge">Knowledge</a>
-      <a href="/projects/{{ project.id }}">Teach</a>
-      <a href="/projects/{{ project.id }}/test">Test</a>
-      <a href="/projects/{{ project.id }}/test#lessons">Correct</a>
-      <a href="/projects/{{ project.id }}/export">Export</a>
-      <details><summary>Advanced</summary><a href="/projects/{{ project.id }}/train">Train</a> · <a href="/projects/{{ project.id }}/evaluations">Evaluate</a> · <a href="/projects/{{ project.id }}/reliability">Saved diagnostics</a></details>
+      <a href="/projects/{{ project.id }}/improvements">Improvements</a>
+      <details><summary>Advanced</summary><a href="/projects/{{ project.id }}">Sources and setup</a> · <a href="/projects/{{ project.id }}/train">Train from approved examples</a> · <a href="/projects/{{ project.id }}/evaluations">Check sets</a> · <a href="/projects/{{ project.id }}/reliability">Technical diagnostics</a> · <a href="/projects/{{ project.id }}/export">Export</a></details>
     </nav>{% endif %}
     {% block content %}{% endblock %}
   </main>

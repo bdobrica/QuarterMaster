@@ -314,8 +314,8 @@ async def advise(
 
 def feedback(settings, project_id, test_id, action):
     run = get_test(settings, project_id, test_id)
-    if run.advice is None:
-        raise DomainError("FEEDBACK_TEST: Give feedback on a successful advice response.")
+    if run.advice is None and action.category == "good":
+        raise DomainError("FEEDBACK_FAILED: This response failed. Describe what should change.")
     if not action.correction.strip():
         raise DomainError("FEEDBACK_EMPTY: Describe what was good or what should change.")
     record = Feedback(
@@ -371,7 +371,8 @@ def prepare_lesson(settings, project_id, lesson_id, action):
         {
             "mission": run.adviser.mission,
             "case": run.case.decision_input(),
-            "advice": run.advice.model_dump(mode="json"),
+            "advice": run.advice.model_dump(mode="json") if run.advice else None,
+            **({"response_error": run.error} if run.error else {}),
             "feedback_category": record.category,
             "owner_correction": record.correction,
         }

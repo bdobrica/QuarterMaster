@@ -2,6 +2,7 @@
 
 import asyncio
 import hashlib
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -107,8 +108,12 @@ def revised(record, **changes):
     )
 
 
-def create_suite(settings, project_id, action):
-    with connect(settings.database_path) as connection:
+def create_suite(settings, project_id, action, *, connection=None):
+    with (
+        nullcontext(connection)
+        if connection is not None
+        else connect(settings.database_path) as connection
+    ):
         read_spec(connection, project_id)
         return insert_revision(
             connection,
@@ -134,11 +139,16 @@ def editable(connection, project_id, suite_id, expected):
     return suite
 
 
-def save_case(settings, project_id, suite_id, action):
+def save_case(settings, project_id, suite_id, action, *, connection=None):
     run = teaching.get_test(settings, project_id, action.test_id)
     fingerprint = case_fingerprint(run.case)
-    with connect(settings.database_path) as connection:
-        connection.execute("BEGIN IMMEDIATE")
+    with (
+        nullcontext(connection)
+        if connection is not None
+        else connect(settings.database_path) as connection
+    ):
+        if not connection.in_transaction:
+            connection.execute("BEGIN IMMEDIATE")
         suite = editable(connection, project_id, suite_id, action.expected_revision)
         if len(suite.cases) >= 10 or any(c.case_sha256 == fingerprint for c in suite.cases):
             raise DomainError(

@@ -53,6 +53,26 @@ def settings(request):
 
 
 def page(request, name, **context):
+    project = context.get("project")
+    if project is not None:
+        from quartermaster.answer_reviews import answer_id
+        from quartermaster.answer_reviews import history as review_history
+        from quartermaster.training import versions
+
+        context["model_labels"] = {
+            item.id: f"Model v1.{index + 1}.0"
+            for index, item in enumerate(reversed(versions(settings(request), project.id)))
+        }
+        context["answer_id"] = answer_id
+        answer_histories = {}
+        for review in review_history(settings(request), project.id):
+            answer_histories.setdefault(str(review.answer_id), []).append(review)
+        context["answer_histories"] = answer_histories
+        context["answer_reviews"] = {key: entries[-1] for key, entries in answer_histories.items()}
+        history = knowledge_history(settings(request), project.id)
+        context["knowledge_labels"] = {
+            item.id: f"v1.{index}.0" for index, item in enumerate(reversed(history))
+        }
     return templates.TemplateResponse(request=request, name=name, context=context)
 
 

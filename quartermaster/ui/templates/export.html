@@ -5,7 +5,7 @@
 <p>Export a tested base adviser with its knowledge and approved corrections. No training is required. The package freezes the selected test's mission, business rules, knowledge and lessons.</p>
 {% if base_tests %}
 <form action="/projects/{{ project.id }}/export/base" method="post">
-<label>Successful base test<select name="test_id" required>{% for test in base_tests %}<option value="{{ test.id }}">{{ test.created_at.strftime('%Y-%m-%d %H:%M UTC') }} · {{ test.case.situation[:100] }}</option>{% endfor %}</select></label>
+<label>Successful base test<select name="test_id" required>{% for test in base_tests %}<option value="{{ test.id }}"><time datetime="{{ test.created_at.isoformat() }}" data-local-time>{{ test.created_at.strftime("%d %b %Y, %H:%M UTC") }}</time> · {{ test.case.situation[:100] }}</option>{% endfor %}</select></label>
 <label class="check"><input type="checkbox" name="acknowledge_contents" required>I reviewed this advice. Include its selected knowledge documents, approved lessons and reference situation. Exclude training rows, outcomes, raw corrections and credentials.</label>
 <button {% if not image %}disabled{% endif %}>Export tested base adviser</button>
 </form>
@@ -17,7 +17,7 @@
 <p>This preserves the candidate's historical evaluated context and settings.</p>
 <form action="/projects/{{ project.id }}/export" method="post">
 <label for="candidate_id">Evaluated weights and context</label>
-<select id="candidate_id" name="candidate_id" required>{% for candidate in candidates if candidate.smoke_passed %}<option value="{{ candidate.id }}">{{ candidate.created_at.strftime('%Y-%m-%d %H:%M UTC') }} · {{ candidate.id }} · {{ candidate.model_size_bytes }} model bytes · suite revision {{ candidate.suite_revision }}</option>{% endfor %}</select>
+<select id="candidate_id" name="candidate_id" required>{% for candidate in candidates if candidate.smoke_passed %}<option value="{{ candidate.id }}"><time datetime="{{ candidate.created_at.isoformat() }}" data-local-time>{{ candidate.created_at.strftime("%d %b %Y, %H:%M UTC") }}</time> · {{ model_labels[candidate.id] }} · {{ candidate.model_size_bytes }} model bytes · suite revision {{ candidate.suite_revision }}</option>{% endfor %}</select>
 <label class="check"><input type="checkbox" name="acknowledge_contents" required>I reviewed this candidate and understand the archive contains its selected knowledge source bytes, approved lesson text and one frozen evaluation situation with decision-time facts. Protect this business content. Training rows, raw corrections, outcomes, rubrics and builder credentials are excluded.</label>
 <button {% if not image or not candidates %}disabled{% endif %}>Create immutable package</button>
 </form>
@@ -25,7 +25,7 @@
 </details>
 <h2>Packages</h2>
 {% for export in exports %}<article><h3>Export {{ export.id }}</h3>
-<p>{{ export.created_at.strftime('%Y-%m-%d %H:%M UTC') }} · {% if export.candidate_id %}candidate {{ export.candidate_id }}{% else %}unchanged base · tested snapshot {{ export.source_test_id }}{% endif %} · adviser revision {{ export.evaluated_adviser_revision }}</p>
+<p><time datetime="{{ export.created_at.isoformat() }}" data-local-time>{{ export.created_at.strftime("%d %b %Y, %H:%M UTC") }}</time> · {% if export.candidate_id %}{{ model_labels.get(export.candidate_id, "Trained model") }}{% else %}unchanged base · tested snapshot {{ export.source_test_id }}{% endif %} · adviser revision {{ export.evaluated_adviser_revision }}</p>
 <p>Bytes and frozen reference context checked during packaging. Fresh runtime verification is a separate operator check; creating or downloading a package does not establish that it started.</p>
 <a class="button" href="/api/projects/{{ project.id }}/exports/{{ export.id }}/download">Download adviser archive</a> · <a href="/api/projects/{{ project.id }}/exports/{{ export.id }}">Inspect manifest</a>
 <p>After download, the operator runs <code>make test-export EXPORT=/absolute/adviser-{{ export.id }}.tar</code>. Keep the verification report with the archive. Extract into a new directory, ensure the pinned runtime image is installed, then run <code>docker compose up -d --wait --wait-timeout 360</code>. The browser interface is at <code>http://127.0.0.1:8081</code>.</p>

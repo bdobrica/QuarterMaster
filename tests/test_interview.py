@@ -659,6 +659,7 @@ def test_v2_migration_preserves_existing_documents(guided):
         connection.execute("DROP TABLE interview_revisions")
         for table in (
             "knowledge_proposals",
+            "answer_reviews",
             "reliability_runs",
             "reliability_reviews",
             "training_examples",

@@ -66,6 +66,9 @@ def knowledge_page(project_id: UUID, request: Request, q: str = "", article: UUI
         proposals=pending,
         diffs=diffs,
         history=knowledge_history(config, project_id),
+        summaries={
+            p.applied_revision: p.content.title for p in pending if p.applied_revision and p.content
+        },
         query=q,
         results=search(config, project_id, q),
         runs=list_tests(config, project_id),

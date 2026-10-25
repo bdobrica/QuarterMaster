@@ -49,7 +49,11 @@ def training_page(project_id: UUID, request: Request):
         runs=training.runs(config, project_id),
         candidates=candidates,
         reviews=reviews,
-        suites=[s for s in evaluations.list_suites(config, project_id) if s.status == "frozen"],
+        suites=[
+            s
+            for s in evaluations.list_suites(config, project_id)
+            if s.status == "frozen" or (s.cases and s.reviewed_at)
+        ],
         lessons=[
             lesson
             for lesson in teaching.latest_lessons(config, project_id)
@@ -212,12 +216,28 @@ async def freeze_form(project_id: UUID, request: Request):
                 "example_ids": form.getlist("example_ids"),
                 "suite_id": suite_id,
                 "suite_revision": int(revision),
-                "preset": form.get("preset"),
+                "preset": form.get("preset") or "quick",
                 "acknowledge_small_data": form.get("acknowledge_small_data") == "yes",
             }
         except (ValueError, TypeError):
             raise form_error() from None
-    training.freeze_dataset(settings(request), project_id, validate_form(TrainingSelection, data))
+    action = validate_form(TrainingSelection, data)
+    suite = evaluations.get_suite(settings(request), project_id, action.suite_id)
+    if suite.revision != action.suite_revision:
+        raise form_error()
+    if suite.status == "draft":
+        if not suite.reviewed_at:
+            raise form_error()
+        from quartermaster.contracts.evaluation import SuiteAction
+
+        suite = evaluations.freeze_suite(
+            settings(request),
+            project_id,
+            suite.id,
+            SuiteAction(expected_revision=suite.revision),
+        )
+        action = action.model_copy(update={"suite_revision": suite.revision})
+    training.freeze_dataset(settings(request), project_id, action)
     return redirect(project_id)
 
 

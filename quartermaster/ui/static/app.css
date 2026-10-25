@@ -37,3 +37,17 @@ summary { cursor: pointer; font-weight: 600; }
 .comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; }
 .comparison > div { min-width: 0; }
 @media (max-width: 40rem) { .comparison { grid-template-columns: 1fr; } }
+.question-table { font-size: .9rem; }
+.question-table td { min-width: 8rem; max-width: 24rem; overflow-wrap: anywhere; }
+.question-table form { margin-top: .5rem; gap: .4rem; }
+.question-table input, .question-table button, .question-table select { padding: .4rem; }
+.question-table details { margin: .5rem 0; }
+.question-table section { margin-bottom: .5rem; }
+.workspace-wide main { max-width: 90rem; }
+.question-table td:first-child { min-width: 2rem; }
+.question-table td:nth-child(2), .question-table td:nth-child(3) { min-width: 13rem; }
+.question-table td:nth-child(4) { min-width: 11rem; }
+.question-table td:nth-child(5) { min-width: 10rem; }
+.question-table td:nth-child(6) { min-width: 5rem; }
+.question-table p { margin: .4rem 0; }
+.question-table td section > p { font-size: .8rem; }

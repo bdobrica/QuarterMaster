@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Inference reliability · development comparison</h1>
+<h1>Technical diagnostics</h1>
+<p>For operators investigating model or data problems. You do not need this screen to teach or review your adviser. <a href="/projects/{{ project.id }}/test">Return to the adviser</a>.</p>
+<details><summary>Configure a development experiment</summary>
 <p>Compare the unchanged base weights with current advice/v1, compact advice/v2, and compact advice/v2 with deterministic field interpretation. All arms receive the same decision-time inputs, source excerpts, field definitions and approved lessons. The compact arms also use shorter, question-focused instructions.</p>
 <p>This experiment does not change the active adviser or create training examples. Keep frozen evaluation cases and later outcomes out of development requests. The default comparison makes three bounded local CPU requests; no GPU or external builder is used.</p>
 <p>Optional lesson ablation makes four requests with compact v2 and field interpretation throughout: no lessons, all applied lessons, one selected relevant lesson, and one selected potentially irrelevant lesson. Only lesson context changes. Add <code>lesson_ablation</code> with <code>relevant_id</code>, <code>relevant_rationale</code>, <code>irrelevant_id</code> and <code>irrelevant_rationale</code>. These are experimental selections, not new approval or relevance labels. Existing lesson records are preserved.</p>
@@ -17,10 +19,10 @@
 <p>Values are exact strings or null. Confirm decision-time availability and review rules before submitting. Each rule names a field, integer/category kind, definition, unit, sentinel/unknown/category tokens, accessible citation_id and verbatim source_quote. Find citations through the Teach knowledge search. No definitions are inferred automatically.</p>
 <button>Run selected development comparison</button>
 </form>
-<h2>Saved comparisons</h2>
-<ul>{% for entry in runs %}<li><a href="?run_id={{ entry.id }}">{{ entry.created_at }} · {{ entry.status }} · {{ entry.case.situation[:100] }}</a></li>{% else %}<li>No comparisons yet.</li>{% endfor %}</ul>
+</details><h2>Saved technical experiments</h2>
+<ul>{% for entry in runs %}<li><a href="?run_id={{ entry.id }}"><time datetime="{{ entry.created_at.isoformat() }}" title="{{ entry.created_at.isoformat() }}" data-local-time>{{ entry.created_at.strftime("%d %b %Y, %H:%M UTC") }}</time> · {{ entry.status }} · {{ entry.case.situation[:100] }}</a></li>{% else %}<li>No comparisons yet.</li>{% endfor %}</ul>
 {% if run %}
-<h2>Captured interpretation</h2>
+<h2>Experiment result</h2>{% if run.error %}<p role="alert">This experiment failed. Check local model availability and the saved error below before starting another request.</p>{% else %}<p>Review the saved outputs and supporting sources below. These technical checks do not certify answer quality.</p>{% endif %}<h2>Captured interpretation</h2>
 <p>Run {{ run.id }} · {{ run.status }} · {{ run.model_alias }} · Adviser snapshot {{ run.adviser.revision }}. Omitted {{ run.omitted_lessons }} lessons and {{ run.omitted_excerpts }} excerpts.</p>
 {% if run.action.lesson_ablation %}<p>Lesson ablation · Relevant: {{ run.action.lesson_ablation.relevant_id }} ({{ run.action.lesson_ablation.relevant_rationale }}). Potentially irrelevant: {{ run.action.lesson_ablation.irrelevant_id }} ({{ run.action.lesson_ablation.irrelevant_rationale }}).</p>{% endif %}
 {% if run.action.decision_selection %}<p>Decision-selection experiment · No approved lessons enter any request. Existing / answer-first / decision-gated instructions; all other captured request inputs are identical. The captured lesson inventory below is retained for audit only.</p>{% endif %}
@@ -35,10 +37,11 @@
 <p>Valid JSON and accessible citations do not establish factual correctness. Factual quality, clarification relevance, unsupported claims, citation relevance and usefulness require review; unreviewed values stay unassessed. Owner preference does not prove observed business lift. No combined quality score is calculated.</p>
 {% for output in run.outputs %}{% set rating = reviews.get(output.arm) %}
 <article><h3>{{ output.arm }}</h3>
+{% with review_id=answer_id('diagnostic', run.id, output.arm), review_url='/projects/' ~ project.id ~ '/answers/diagnostic/' ~ run.id ~ '/' ~ output.arm ~ '/review', run=output %}{% include "answer_review.html" %}{% endwith %}
 <p>Schema valid: {{ output.schema_valid }} · {% if output.citation_status == 'not_applicable' %}Citations and prose quality not applicable: decision label only{% elif output.citation_status == 'none_provided' %}No citations provided{% elif output.citation_status == 'accessible' %}All {{ output.citation_count }} supplied citations accessible{% elif output.citation_status == 'inaccessible' %}Inaccessible citations supplied{% else %}Citations not assessed{% endif %} · {{ output.elapsed_seconds }} seconds · Completion tokens: {{ output.completion_tokens if output.completion_tokens is not none else 'unavailable' }} · Output characters: {{ output.output_characters if output.output_characters is not none else 'unavailable' }}</p>
 {% if output.sentence_endings_valid is not none %}<p>Sentence-ending punctuation: {{ 'present' if output.sentence_endings_valid else 'missing in one or more fields; review for truncation' }}. Punctuation alone does not prove a complete explanation.</p>{% endif %}
 {% if output.error %}<p role="alert">{{ output.error }}</p>{% endif %}
-{% if output.advice %}<pre>{{ output.advice.model_dump(mode='json')|tojson(indent=2) }}</pre>{% endif %}
+{% if output.advice %}<details><summary>Structured model output (JSON)</summary><pre>{{ output.advice.model_dump(mode='json')|tojson(indent=2) }}</pre></details>{% endif %}
 {% if output.draft %}<details><summary>Saved experimental draft · verify facts before use</summary><pre>{{ output.draft.model_dump(mode='json')|tojson(indent=2) }}</pre></details>{% endif %}
 {% if run.status != 'running' and output.arm != 'decision_only' %}<form method="post" action="/projects/{{ project.id }}/reliability/{{ run.id }}/reviews/{{ output.arm }}">
 <input type="hidden" name="expected_revision" value="{{ rating.revision if rating else 0 }}">

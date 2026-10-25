@@ -5,12 +5,13 @@ from uuid import UUID
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 
-from quartermaster import evaluations, teaching
+from quartermaster import answer_reviews, evaluations, teaching
 from quartermaster.api.foundation import page, settings, validate_form
 from quartermaster.api.interview import form_values
 from quartermaster.api.routes import require_same_origin
 from quartermaster.contracts.adviser import AdviceEngineEdit, AdviserSpec
 from quartermaster.contracts.interview import VersionedAction
+from quartermaster.contracts.reviews import AnswerReviewInput
 from quartermaster.contracts.teaching import (
     Feedback,
     FeedbackInput,
@@ -237,3 +238,121 @@ async def advice_engine_form(project_id: UUID, request: Request):
     data["consent"] = data.get("consent") == "yes"
     edit_advice_engine(settings(request), project_id, validate_form(AdviceEngineEdit, data))
     return redirect(project_id)
+
+
+@router.post("/api/projects/{project_id}/tests/{test_id}/review")
+def review_api(project_id: UUID, test_id: UUID, action: AnswerReviewInput, request: Request):
+    require_same_origin(request)
+    return answer_reviews.save(settings(request), project_id, test_id, action)
+
+
+@router.post("/projects/{project_id}/tests/{test_id}/review")
+async def answer_review_form(project_id: UUID, test_id: UUID, request: Request):
+    data = await form_values(request, {"expected_revision", "status", "correction", "return_to"})
+    destination = data.pop("return_to", "answer")
+    if destination not in {"answer", "questions"}:
+        from quartermaster.api.foundation import form_error
+
+        raise form_error()
+    answer_reviews.save(
+        settings(request), project_id, test_id, validate_form(AnswerReviewInput, data)
+    )
+    path = (
+        "improvements" if destination == "questions" else f"test?test_id={test_id}#test-{test_id}"
+    )
+    return RedirectResponse(f"/projects/{project_id}/{path}", 303)
+
+
+@router.get("/projects/{project_id}/improvements")
+def improvements_page(project_id: UUID, request: Request, status: str = "all"):
+    from quartermaster.saved_questions import rows
+
+    if status not in {"all", "pending", "pass", "fail"}:
+        from quartermaster.errors import DomainError
+
+        raise DomainError("REVIEW_FILTER: Choose All, Pending, Pass or Fail.")
+    config = settings(request)
+    questions = rows(config, project_id)
+    return page(
+        request,
+        "improvements.html",
+        project=get_adviser(config.database_path, project_id),
+        questions=[row for row in questions if status == "all" or row["status"] == status],
+        status=status,
+    )
+
+
+@router.post("/projects/{project_id}/improvements/rerun")
+async def rerun_questions(project_id: UUID, request: Request):
+    from quartermaster.api.foundation import form_error
+    from quartermaster.saved_questions import rows
+
+    require_same_origin(request, form=True)
+    async with request.form(max_files=0, max_fields=12, max_part_size=1024) as form:
+        if set(form) - {"question_ids", "confirm"} or len(form.getlist("confirm")) > 1:
+            raise form_error()
+        ids = form.getlist("question_ids")
+        if not ids or len(ids) > 10 or len(ids) != len(set(ids)):
+            raise form_error()
+        confirm = form.get("confirm")
+        if confirm not in {None, "yes"}:
+            raise form_error()
+    questions = {str(row["entry"].id): row for row in rows(settings(request), project_id)}
+    if any(key not in questions for key in ids):
+        raise form_error()
+    selected = [questions[key] for key in ids]
+    if confirm != "yes":
+        return page(
+            request,
+            "question_rerun.html",
+            project=get_adviser(settings(request).database_path, project_id),
+            questions=selected,
+        )
+    for row in selected:
+        case = row["entry"].case
+        await teaching.advise(
+            settings(request),
+            request.app.state.inference,
+            project_id,
+            TestInput(situation=case.situation, choices=case.choices),
+        )
+    return RedirectResponse(f"/projects/{project_id}/improvements", 303)
+
+
+@router.post("/projects/{project_id}/answers/{kind}/{run_id}/{key}/review")
+async def output_review_form(project_id: UUID, kind: str, run_id: UUID, key: str, request: Request):
+    data = await form_values(request, {"expected_revision", "status", "correction"})
+    answer_reviews.save(
+        settings(request),
+        project_id,
+        run_id,
+        validate_form(AnswerReviewInput, data),
+        kind=kind,
+        key=key,
+    )
+    destinations = {
+        "evaluation": f"evaluations?run_id={run_id}",
+        "candidate": "train",
+        "diagnostic": f"reliability?run_id={run_id}",
+    }
+    return RedirectResponse(f"/projects/{project_id}/{destinations[kind]}", 303)
+
+
+@router.post("/projects/{project_id}/tests/{test_id}/save-question")
+async def save_question_form(project_id: UUID, test_id: UUID, request: Request):
+    from quartermaster.contracts.evaluation import SaveEvaluationCase
+    from quartermaster.saved_questions import save_question
+
+    data = await form_values(request, {"expectation"})
+    config = settings(request)
+    # Validate before creating any check set; saving is an explicit training exclusion.
+    action = validate_form(
+        SaveEvaluationCase,
+        {
+            "expected_revision": 1,
+            "test_id": test_id,
+            "rubric": {"expected_behavior": "any", "expectation": data.get("expectation")},
+        },
+    )
+    save_question(config, project_id, action)
+    return RedirectResponse(f"/projects/{project_id}/improvements", 303)

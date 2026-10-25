@@ -209,7 +209,7 @@ def test_blank_states_and_downloads_need_no_provider(client):
     for tab, expected in [
         ("", "No sources uploaded yet"),
         ("test", "No test responses yet"),
-        ("evaluations", "No evaluation suites yet"),
+        ("evaluations", "No check sets yet"),
         ("train", "No training examples yet"),
         ("export", "No evaluated candidates yet"),
     ]:

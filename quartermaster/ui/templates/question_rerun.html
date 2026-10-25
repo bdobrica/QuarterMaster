@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Check saved questions again</h1>
+<p>This makes {{ questions|length }} advice requests with the current adviser and knowledge. Earlier answers and their reviews stay saved; each new answer starts Pending.</p>
+{% if project.advice_mode == 'hosted' %}<p>The consented hosted provider receives your mission, each question, selected knowledge excerpts and approved routines. Check expectations, owner reviews and later outcomes are excluded. Provider charges may apply. There are no automatic retries.</p>{% else %}<p>These requests use your configured local model. No external provider is contacted.</p>{% endif %}
+<form method="post" action="/projects/{{ project.id }}/improvements/rerun">
+{% for row in questions %}<input type="hidden" name="question_ids" value="{{ row.entry.id }}"><p>{{ row.entry.case.situation }}</p>{% endfor %}
+<button name="confirm" value="yes">Run {{ questions|length }} requests</button></form>
+<p><a href="/projects/{{ project.id }}/improvements">Cancel</a></p>
+{% endblock %}

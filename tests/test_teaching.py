@@ -484,6 +484,7 @@ def test_recovery_and_v3_migration_preserve_history(workshop):
     with connect(config.database_path) as connection:
         for table in (
             "knowledge_proposals",
+            "answer_reviews",
             "reliability_runs",
             "reliability_reviews",
             "training_examples",
@@ -881,6 +882,7 @@ def test_v3_upgrade_preserves_populated_teaching_metadata_and_originals(workshop
         assert all(before.values())
         for table in (
             "knowledge_proposals",
+            "answer_reviews",
             "reliability_runs",
             "reliability_reviews",
             "training_examples",

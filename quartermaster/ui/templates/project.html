@@ -23,7 +23,7 @@
   </form>
   <details><summary>Mission history · {{ history|length }} revisions</summary>
     {% for revision in history|reverse %}<article>
-      <strong>{{ revision.name }}</strong> · Revision {{ revision.revision }} · {{ revision.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}
+      <strong>{{ revision.name }}</strong> · Revision {{ revision.revision }} · <time datetime="{{ revision.created_at.isoformat() }}" title="{{ revision.created_at.isoformat() }}" data-local-time>{{ revision.created_at.strftime("%d %b %Y, %H:%M UTC") }}</time>
       <p class="mission">{{ revision.mission }}</p>
       {% if revision.business_goal %}<p>Goal: {{ revision.business_goal }}</p>{% endif %}
     </article>{% endfor %}
@@ -69,7 +69,7 @@
   <form method="post" action="/projects/{{ project.id }}/knowledge">
     <input type="hidden" name="expected_revision" value="{{ knowledge.id if knowledge else '' }}">
     {% for source in sources if source.kind == 'md' and source.label == 'knowledge' %}
-    <label class="check"><input type="checkbox" name="source_id" value="{{ source.id }}" {% if knowledge and source.id in knowledge.source_ids %}checked{% endif %}>{{ source.display_name }} · {{ source.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</label>
+    <label class="check"><input type="checkbox" name="source_id" value="{{ source.id }}" {% if knowledge and source.id in knowledge.source_ids %}checked{% endif %}>{{ source.display_name }} · <time datetime="{{ source.created_at.isoformat() }}" title="{{ source.created_at.isoformat() }}" data-local-time>{{ source.created_at.strftime("%d %b %Y, %H:%M UTC") }}</time></label>
     {% else %}<p>Upload Markdown labeled knowledge to make it searchable.</p>{% endfor %}
     <button>Save selection and reindex</button>
   </form>
@@ -79,7 +79,7 @@
   </form>
   {% if knowledge %}<p>Active selection: {{ knowledge.source_ids|length }} sources.</p>{% endif %}
   <details><summary>Knowledge history · {{ knowledge_history|length }} revisions</summary>
-    {% for revision in knowledge_history %}<p>{{ revision.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }} · {{ revision.source_ids|length }} sources · <a href="/projects/{{ project.id }}/knowledge/search?revision={{ revision.id }}">Search this revision</a></p>{% endfor %}
+    {% for revision in knowledge_history %}<p><time datetime="{{ revision.created_at.isoformat() }}" title="{{ revision.created_at.isoformat() }}" data-local-time>{{ revision.created_at.strftime("%d %b %Y, %H:%M UTC") }}</time> · {{ revision.source_ids|length }} sources · <a href="/projects/{{ project.id }}/knowledge/search?revision={{ revision.id }}">Search this revision</a></p>{% endfor %}
   </details>
 </section>
 {% endblock %}
