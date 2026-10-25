@@ -1,112 +1,117 @@
-# QuarterMaster — MVP reset
+# QuarterMaster — the personal decision adviser
 
-> **Pitch:** Teach a useful AI adviser in plain English. Give it knowledge, ask for advice, correct a mistake, approve the proposed improvement, and see the difference.
+> **Collect → Teach → Ask → Review (optional) → Teach again.**
+>
+> QuarterMaster lets a person teach an AI how *they* make decisions, with their own knowledge, examples and corrections. The goal is to reproduce the owner's judgment and explain recommendations in the owner's terms—not to optimize an external benchmark.
 
-**Goal:** A convincing, nontechnical, five-minute live demo within a few focused development days. This is a prototype, not a release or an ML benchmark. See [TODO.md](TODO.md) for the execution order.
+**Product target:** a small, self-hosted, nontechnical MVP that demonstrates one genuine LoRA-powered improvement loop. [TODO.md](TODO.md) is the execution checklist; [README.md](README.md) is the honest entry point.
 
-## The bet
+## 1. Four things the owner does
 
-**The product is the improvement harness, not the model.** A model is replaceable. A well-maintained knowledge base, reviewed routines, clear evidence, and a fast correction loop are the enduring asset.
+1. **Collect.** Save web pages, files or notes. QuarterMaster uses an optional capable builder LLM to extract useful information and organize examples. The owner can inspect or fix extracted details without knowing a schema.
+2. **Teach.** Review examples and explain choices: “I'd offer €165,000, because…”, “I'd take this job”, “This customer should get a higher quote.” Record their preferred number or category, relevant considerations and reusable policies. These are the owner's judgments, not labels inferred from asking prices or historical outcomes.
+3. **Ask.** Present a new situation. The selected base model plus the owner's LoRA adapter uses current knowledge and approved experience to predict a number or category and explain it in familiar language. Before training, an explicitly labeled base-model preview may still be used.
+4. **Review (optional).** Accept, correct or elaborate on any answer. An accepted answer is positive teaching evidence; a corrected answer is new supervision. Skipping review means **no new label**, never implicit approval. The app captures a review once and feeds it into Teach automatically.
 
-QuarterMaster is an **adviser, not an actor**: it answers, recommends, asks one relevant question when needed, or says it lacks evidence. It never performs external business actions.
+The owner never has to manually jump back to Teach after reviewing an answer. Collect and Teach start the adviser; **Ask → Review → Improve → Ask** is the ongoing loop. *Improve* is the background machinery, not a fifth user task.
 
-One nontechnical owner should be able to:
+## 2. The improvement engine is the product
 
-1. Describe what the adviser helps with and add a few plain-language knowledge articles. **No spreadsheet required.**
-2. Ask a real question and see a short answer with clickable supporting sources and meaningful limitations.
-3. Say “this is wrong; here is why.” QuarterMaster proposes a small, understandable fix.
-4. Review a before/after diff, test the same and a fresh case, then approve or reject it.
-5. Optionally train behavior from reviewed examples and compare a LoRA candidate. **Training is never automatic.**
+A review preserves: original question/input, prediction, relevant sources and knowledge version, model/adapter version, owner's accepted or corrected target, optional explanation, and time. Records and earlier answers remain inspectable.
 
-## Two improvement lanes, one interface
+An acceptance or correction must identify the exact judgment being taught. A note alone does not approve a prediction, and a failed answer has no prediction to accept; the owner can still supply a correction. Repeated saves must not duplicate teaching evidence. A later review revision supersedes the earlier target for future teaching selections without rewriting already frozen datasets or answers.
 
-| The correction means… | Change | When effective |
-| --- | --- | --- |
-| “That policy/fact/definition changed.” | Edit a **knowledge article**; review diff, version and reindex | Immediately after approval; no weight change |
-| “Handle this kind of situation differently.” | Review a **behavior routine** (plain-language instruction and example); optionally collect examples for LoRA | Approved routine affects prompts immediately; **LoRA changes weights only after a separate reviewed training run** |
+After a review, a small background workflow:
 
-This distinction is important: a runtime routine can change observed behavior *without* training. The UI must always say whether an improvement came from knowledge, a routine, or new weights. An external LLM may **draft** an article, classify a correction, or propose examples, but it never silently publishes knowledge or labels.
+1. Retrieves related earlier decisions (including **before** and **after** corrections) to understand when a preference applies.
+2. Proposes the smallest useful destination: **source/extraction correction**, **knowledge/policy update**, **behavior example for LoRA**, **retrieval/context adjustment**, or a combination. It can group recurring corrections into a general lesson.
+3. Automatically stores the reviewed decision as reusable teaching evidence; produces readable drafts for any broader KB/routine change. The owner must be able to edit/reject inferred generalizations, especially conflicts with earlier preferences. Avoid repeatedly asking approval for the exact correction they just provided.
+4. Applies allowed, reversible KB changes and refreshes retrieval. Approved behavior examples join a versioned training set; **weights change only after a bounded LoRA training run**. No hidden or billable GPU execution.
+5. Compares proposed behavior with a few earlier owner-reviewed cases, displays meaningful changed answers, and allows a new model candidate to be selected or rejected. Failed changes do not erase prior versions.
 
-Do not force a choice when ambiguous. Show the proposed lane and let the owner switch it. For hard safety/business rules, use explicit owner-reviewed requirements and deterministic checks where possible; let the model reason about everything else. Keep rules readable, not a new DSL.
+The app can prepare the next training job automatically and suggest **“Your adviser has enough new examples to learn from—improve it now?”**. Training and promotion remain explicit for the MVP; a future owner-configured automatic mode can be considered after that loop is dependable.
 
-## The experience (three places, not twelve tabs)
+**Two speeds:** knowledge/context can improve on the next question; the trained decision behavior improves after LoRA training. Never say “the model learned” when only retrieval or a runtime instruction changed.
 
-- **Adviser:** a simple question box; concise answer, supporting knowledge, what is missing, and a prominent **Improve this answer** action.
-- **Knowledge:** readable articles/routines, add or change in natural language, review AI-drafted diffs, active versions and sources. This is the main product, not an upload appendix.
-- **Improvements:** pending proposals, before/after replay, a tiny saved test set, and an explicit **Train behavior (LoRA)** action under Advanced. Export and diagnostics also stay under Advanced.
+## 3. Knowledge and behavior are both first class
 
-Keep initial setup to mission + knowledge + **Try it**. Hide source-role selectors, case mapping, token/decoding controls and ML vocabulary unless the owner chooses Advanced. Spreadsheets remain an optional source of historical examples, never an onboarding requirement.
+- **Knowledge base:** original sources, extracted facts, human-authored policies, contextual notes and approved revisions. Source bytes and article history remain traceable. A person's preferences are valid policy input without external verification of whether their judgment is objectively fair or optimal.
+- **Training examples:** situation/context → owner's preferred numerical or categorical target → owner's explanation. AI-drafted targets are only proposals until the owner reviews them; a source listing's *asking price* does not automatically become the owner's preferred valuation.
+- **LoRA:** learns recurring decision patterns from reviewed examples. This is a deliberate product choice even when a specialized tabular model might outperform it on conventional numerical accuracy.
+- **Inference:** uses a swappable language model with the specific compatible adapter and current retrieved knowledge. A base-model swap generally requires a new adapter; the portable assets are the owner's KB, decisions and correction history.
 
-### Usability repair before more machinery
+The system distinguishes **what a source said** from **what the owner believes or prefers** in its explanation. That distinction is for intelligibility and accurate attribution, not a gate preventing subjective policies from influencing predictions.
 
-Owner review of the current app found that implemented capabilities are still difficult to use. The existing screens expose internal identifiers, evaluation setup and training vocabulary, and offer feedback inconsistently. Treat the following as P0 product requirements, not a documentation-only explanation of the current UI.
+## 4. A generic decision contract
 
-- **Readable versions and dates.** Show stable, project-scoped release labels such as **Knowledge v1.0.0 → v1.1.0**, paired with a short change summary and Current/Previous status. Start at v1.0.0; increment the minor number for an approved content change. Reserve major/patch distinctions until meaningful rules exist; version numbers do not certify compatibility or quality. Keep immutable UUIDs, hashes and UTC storage internally, available under Technical details. Labels must resolve consistently across history, answers and comparisons, including existing projects. Display local dates and times with a timezone label, optionally relative time; exact UTC remains in details. Do not assume the server timezone is the owner's timezone.
-- **Explain the comparison, not the test jargon.** Use **Check this change**, with **Try the earlier question again** (did this fix that answer?) and **Try another example** (does the same change help on a different situation?). Compare each question's answer using previous versus current knowledge; never imply that the two different questions are being compared with each other. Explain this with a concrete example and show two Before/After pairs. Keep the model/settings fixed, identify the changed knowledge, and disclose the four requests and potential charges before running. A new example is a transfer check, not automatically a protected training holdout.
-- **Review every answer in place.** Every response, including failed requests, invalid responses, saved check results and comparison outputs, has a consistent **Pending / Reviewed: Pass / Reviewed: Fail** control and **Correct this answer** action. Pending means not yet assessed; a technical failure is separately visible and never counts as a pass. A pass means the owner's judgment that the answer is acceptable for the stated question and expectations, not measured business success. Saving a rating must not require a correction or create a lesson. Corrections are separately drafted and approved. Returning a review to Pending preserves history.
-- **A familiar question table.** Under Improvements, provide a compact **Saved questions** table with question/name, expected answer or behavior, latest answer, review status, version and last run; filter Pending/Pass/Fail, open a row for sources and correction, and rerun selected rows with an explicit request/cost preview. Keep failed rows visible. Saving a question means “check this again after changes”; asking once or rating an answer must not require saving it. Preserve earlier runs and their reviews rather than overwriting a row's history. This uses the existing cases and runs, not a new spreadsheet ingestion subsystem.
-- **Separate checking from teaching without making owners learn evaluation terminology.** Replace “evaluation case/suite,” “held-out” and “freeze” in everyday flows with **Saved check question**, **Check set** and **Use this set for comparison**. Explain: “These questions check improvements; they are kept out of training.” Review controls remain available on these answers. A correction to a protected check answer may be recorded for review, but its question, answer, expectations and correction must not enter teaching or builder-drafting prompts. Offer a separate general-policy edit or independently authored teaching example; do not silently unreserve the check question or prefill teaching content from it. Preserve immutable comparison snapshots and training exclusions automatically when the owner explicitly starts a comparison/training run. Any AI-suggested questions or expectations still require review.
-- **Training is optional and guided.** Lead with “Train from approved examples” and a plain-language summary of selected teaching examples and separate check questions. Choose the existing bounded default recipe automatically; steps and other ML controls belong in Advanced. Explain missing prerequisites with a direct action rather than “freeze an unseen evaluation suite.” Show resource/time limits and explicit local GPU start/consent; do not invent duration or quality estimates. Preserve reviewed supervision, separate check data, immutable snapshots, manual candidate promotion and no implicit billable work.
-- **Diagnostics has an operator audience.** Keep existing experiments under **Advanced → Technical diagnostics**, described as troubleshooting model or data problems, unnecessary for teaching and reviewing an adviser. Start with what failed and a suggested next action; put raw JSON, hashes, experimental arms and developer codes in details. Keep historical experiments accessible without presenting their controls or results as the owner's quality dashboard.
+Do not bake real estate, customer support, marketing or a particular feature table into the core.
 
-**Usability gate:** An owner can find a saved question, mark any answer Pass/Fail/Pending, correct a failure, approve a change and understand both Before/After pairs without learning UUIDs or ML vocabulary. Optional training must explain its prerequisites without requiring manual evaluation freezing or step selection. Verify this in a real browser; passing backend tests alone does not satisfy the gate.
+- **Input:** a situation assembled from source material and/or a user's new question, with any available structured details and cited sources.
+- **Prediction:** either a **number with units** (price, duration, score, etc.) or a **category from the owner's choices**, optionally with a probability distribution.
+- **Explanation:** a short owner-facing summary of relevant considerations, knowledge articles and similar reviewed choices. Identify missing information and uncertainty without dumping prompts, traces or model internals.
+- **Review:** accept, change the number/category, explain why, or skip. Every reviewed result links back to the exact version that produced it.
 
-## Smallest useful architecture
+A model-generated confidence percentage must be labeled as an estimate, **not a calibrated real-world probability** until validated for that use. Supporting examples and KB passages explain the recommendation; they do not claim to reveal hidden neural reasoning.
 
-```text
-Owner's question
-    -> Adviser harness: mission + current knowledge/routines + case/history
-    -> Read-only retrieval (sources with stable IDs)
-    -> Swappable inference model (reason + answer, clarify, or abstain)
-    -> Validated advice + citations + version/decision summary
-    -> Owner correction
-    -> External-capable builder LLM drafts KB patch or behavior routine
-    -> Human reviews diff -> small replay gate -> approve -> versioned change
-                                     \-> optional reviewed LoRA job -> compare -> promote/reject
-```
+## 5. UI rule: ordinary language, almost zero setup
 
-Reuse **Python/FastAPI + Jinja/HTMX + SQLite + local artifacts** already in the repository. Reuse the working FTS5 knowledge index, lesson review, immutable records, evals, LoRA worker and standalone exporter. Refactor their *front door*; do not rebuild them.
+These four actions are the primary navigation: **Collect · Teach · Ask · Review**. Review has its own queue/history, not merely a feedback box under Ask. Use one primary action per screen, strong empty states, and familiar examples.
 
-**Knowledge first:** human-readable Markdown/articles are the source of truth. Every active article has an ID, title, provenance, version and optional owner. Changes produce a visible diff and fresh index. Include article title/headings with extracted passages. For the tiny demo corpus, favor complete relevant articles or existing FTS5 search over a vector database. Add embeddings/rerankers **only if retrieval demonstrably misses expected evidence**.
+| Say to the owner | Keep in Advanced / internal code |
+| --- | --- |
+| **Add examples** / **Save a page** | Ingestion job, parse, chunk, schema |
+| **Tell it what you'd choose** | Supervised label, SFT example |
+| **Explain what matters to you** | Knowledge revision, policy/routine |
+| **Improve my adviser** | LoRA recipe, adapter, GPU worker |
+| **See what changed** | Evaluation suite, frozen run, diff |
+| **Earlier version** / **Current version** | UUID, SHA-256, snapshot manifest |
 
-**One inference seam:** configure a capable OpenAI-compatible hosted model for the fastest useful demo, with explicit per-project consent before sending business content. Keep the existing local Qwen/llama.cpp path for privacy/offline use and later LoRA/export. Do not make the failing 0.8B model the only way to judge the product. A model swap must run the same small test set; no model chooser in the main UI. Hosted inference does **not** inherit the existing offline-export promise; show that distinction honestly.
+Never require users to understand **LoRA, JSONL, epochs, SHAP, embeddings, evaluation freezing, prompt budgets, model IDs or feature engineering**. Explain necessary tradeoffs through outcomes: “Takes time and may need a compatible GPU”; “This answer used your earlier choices”; “This knowledge change is already active.” Technical details remain available for operators.
 
-**Bounded reasoning:** provide mission, decision facts, applicable routines and retrieved evidence. Allow the model to decide whether to answer or ask for missing decisive information. Return one useful answer or one targeted question, not a compulsory interrogation. Do not demand or display hidden chain-of-thought. Explain instead through cited source text, relevant case facts, applicable routine, missing facts, model/KB versions and a short decision summary. Validate actual citation IDs; their existence alone is not proof of support.
+Use short, contextual questions; sensible defaults; clear saved/draft/active states; friendly recovery from failed extraction or training; and no hidden cloud use or surprise charges. A nontechnical person should succeed without watching a tutorial.
 
-**Small evaluation gate:** maintain **8–12 owner-reviewed situations**, including clear answer, missing input, conflicting sources, policy update and a near-neighbor. Keep them separate from training. After each proposal, replay changed and unaffected cases using the same model/settings, and display **helped / harmed / unchanged / failed** with human-readable examples. The three questions are: Was the advice useful and grounded? Did it ask only necessary questions? What did it cost in time/money? No blended score or additional academic probes. An LLM judge may assist, not certify success.
+## 6. Architecture: reuse what already works
 
-**Trace without theater:** each response records its model, prompt/routine/KB version, retrieved excerpts, outcome and latency/usage. Each training candidate records reviewed input examples, withheld test cases, base model, recipe, artifact, cost/time and comparison. The user can answer “what changed and why?” without pretending to see the model's internal thoughts.
+Keep FastAPI, Jinja2/HTMX, SQLite, immutable local artifacts and the existing source/knowledge/review, model, LoRA and export seams. A small builder-LLM interface may normalize saved HTML pages and draft knowledge/review proposals with disclosure and consent. Treat every uploaded page and model-generated extraction as untrusted; never run scripts inside pages.
 
-## Demo to build first: the print-proof adviser
+A minimal flow is:
 
-Use the repository's existing **synthetic print-shop** fixture; do not start with bank marketing.
+1. **Sources:** preserved HTML/Markdown/CSV/XLSX files and provenance.
+2. **Organizer:** extract examples, suggest fields, summarize missing data; owner can correct.
+3. **KB and experience store:** versioned source knowledge, policies, raw decisions, accepted/corrected supervision and related-case retrieval.
+4. **Trainer:** serialize only reviewed teaching examples; exclude reserved check cases; run bounded LoRA; store a candidate adapter and its provenance.
+5. **Adviser:** base model + compatible adapter + KB/context → typed answer and readable explanation.
+6. **Review router:** turn feedback into KB/extraction proposals and training examples, with revision-aware replay and rollback.
 
-1. Ask whether a job with confirmed final copy but no proof sign-off may be printed. Adviser says **hold**, citing the active policy.
-2. Say: “An e-signature in our proofing portal counts as customer sign-off.” QuarterMaster proposes a **knowledge edit**; owner reviews and approves it.
-3. Ask about a *different* job with confirmed copy and an e-signature. Adviser now says **ready**, citing the updated article. Show old/new KB revision and answers.
-4. Correct a behavior mistake: “If proof approval is unknown, ask about approval; don't ask unrelated questions.” Review a **routine** and retest an unseen case.
-5. Open Advanced to show that reviewed behavior examples can produce a **LoRA candidate**, with honest side-by-side results and manual promotion. A failed candidate stays rejected; that is a healthy outcome, not a demo failure.
+No separate vector database, multi-agent runtime, general web crawler, AutoML factory or learned numeric feature pipeline is necessary for the first demo. Add complexity only when it makes **Collect → Teach → Ask → Review** easier or more dependable.
 
-This is the business pitch: **a domain expert makes a useful, reviewable improvement in minutes without touching code, prompts, or weights.** A second synthetic domain (tool rental) is a smoke check for domain independence, not another bespoke build.
+### Compatibility while replacing the old workflow
 
-## What the existing project already proved
+The existing foundations have constraints that must be resolved before connecting the new loop:
 
-- Knowledge ingestion/versioning, source citations, correction review, frozen cases, LoRA training and independent local export are largely implemented and tested. Preserve these seams.
-- The real bank case is **not** a passed usefulness demo: the local model repeatedly asked irrelevant questions or returned invalid advice. The focused decision-only LoRA candidate matched **10/30** approved references versus **9/30** for base and still produced unsupported answers. **Do not train another bank candidate to save the demo.** Historical records stay available, but stop growing that experiment.
-- The already-tested standalone local exporter is valuable. Keep it working, but don't make offline packaging or another GPU run a blocker for the first live product demonstration.
+- **Preserve historical meaning.** Introduce compatible, versioned contracts and sequential migrations. Keep earlier advice, reviews, source bytes, datasets, model runs and exports readable and hash-verifiable. Old Pass/Fail ratings and free-text corrections are not automatically numerical/category labels or permission to train. Keep reviewed decisions and knowledge independent of the selected model; an incompatible adapter must be rejected without losing those assets.
+- **Separate ordinary history from reserved checks.** Saving an ordinary question or replaying a taught example must not reserve it against teaching. Explicitly reserved evaluation cases remain protected, including existing saved check questions. Their reviews can be stored and inspected but cannot feed training, synthetic-data prompts or the improvement router's teaching context. A replay of taught cases demonstrates consistency with prior preferences; it is not unseen evaluation evidence.
+- **Teach directly from owner decisions.** The current training-example path requires an applied lesson first. Replace that prerequisite for the new contracts: an explicit owner decision or eligible answer review is sufficient supervision, without approving a general rule or reentering a target. Broader inferred rules and AI-drafted targets still require review.
+- **Align the product response path.** Current training/comparisons use historical `context/v2`, while ordinary Ask uses `context/v3`; candidate and base exports also have different manifest constraints. The new prediction contract must reach serialization, inference validation, candidate checks and the standalone runtime through public contracts. Verify the product prompt/schema and finite generation settings together; retain historical profiles for historical records. This work does not require further bank experiments.
+- **Compare the model actually being replaced.** Candidate selection must show the currently selected adviser versus the proposed candidate with the same captured knowledge, examples, prompt and settings. Preserve a base comparison as an optional diagnostic. Keep knowledge-only replay separate so it cannot be described as a weight improvement.
+- **Make automatic capture dependable and consented.** Store feedback locally even without a builder provider. Persist routing progress, recover interrupted work without duplicate examples/proposals, and keep external calls behind consent covering the actual minimized content, including related decisions. Consent to hosted advice is not consent to send review history to a builder. No automatic provider retry or GPU execution follows a saved review.
 
-## Ruthless boundaries
+## 7. Demonstrate it with real estate; stay domain-generic
 
-**Not now:** customer-support platform, multi-agent orchestration, autonomous actions, arbitrary model marketplaces, GraphRAG, fine-tuning sweeps, enterprise governance, new metrics dashboards, causal business-lift claims, and more bank-marketing diagnostics. No new long research documents. Keep historical investigations in an archive/index rather than deleting useful negative evidence.
+First demo: save a modest set of real estate listing pages; use an assisted extraction pass; let the owner assign several **personal fair prices and reasons**; train a small LoRA adapter; ask about an unseen property; review and correct an estimate; automatically add the new decision to Teach; retrain a candidate when enough reviewed examples exist; compare understandable old/new predictions.
 
-**Demo-ready means:** on a fresh local project, a newcomer can create an adviser, get at least one genuinely useful cited response, change knowledge in natural language, approve a visible diff, see a correct change on a fresh case without regressing the basics, and understand exactly whether the change was knowledge, routine or LoRA. Prefer a working 90-second live story over another 100 test cases.
+Nearby transport, schools, shops, building age, maintenance concerns and other owner-selected considerations can appear in personal policies. Do not turn these into fixed real-estate fields or require a bespoke mapping/geospatial pipeline. The owner can explain why a consideration matters; the system reflects that explanation as an owner policy, not as a proven fact about people or property.
 
-## Research that drives these choices
+Then smoke-test a second unrelated decision type (e.g., a category choice or a custom-service quote) using the **same generic contracts**, without domain-specific code.
 
-- [Anthropic — Building effective agents](https://www.anthropic.com/research/building-effective-agents): begin with simple composable retrieval/tool workflows; extra agent layers have costs.
-- [Anthropic — Contextual Retrieval](https://www.anthropic.com/research/contextual-retrieval): preserve source context, consider full small documents and combine lexical/semantic retrieval only as needed.
-- [Ovadia et al. — Fine-Tuning or Retrieval?](https://arxiv.org/abs/2312.05934): retrieval is the more direct route to adding facts; fine-tuning is not a dependable fact database.
-- [Hu et al. — LoRA](https://arxiv.org/abs/2106.09685): low-rank adapters are a practical, separate behavior-adaptation mechanism.
-- [Anthropic — Demystifying evals for AI agents](https://www.anthropic.com/research/demystifying-evals-for-ai-agents): small representative tasks, human review, deterministic checks and visible regressions are useful before elaborate metrics.
+**MVP success:** a newcomer can collect material, teach a few judgments, obtain a typed prediction with an understandable explanation, optionally correct it, and see that review reappear automatically in the next teaching/training cycle. The app shows whether KB or weights actually changed. Owner acceptance is the measure of fit to their mental model; do not claim market accuracy, causal lift or calibrated probabilities.
 
-The research guides architecture; **the demo cases determine what to build next**.
+## 8. Honest status and scope
+
+Already demonstrated in the current codebase: consented hosted advice, reviewed KB edits, readable saved-question reviews, a small local LoRA training/export path and immutable comparison records. The print-shop demo established those *subsystems*, but **not** this new four-step generic personal-decision product. The old bank-model and print-shop experiments are historical implementation evidence, not the new MVP acceptance gate.
+
+**Not now:** autonomous posting/actions, multi-user hosting, arbitrary model marketplaces, large-scale scraping, custom LightGBM/SHAP pipelines, full POI enrichment, elaborate metrics, new bank experiments or domain-specific schemas. Keep historical docs for reference without placing them in the ordinary user journey.
+
+The guiding question for every change:
+
+> **Does this make it easier for a busy person to teach QuarterMaster a judgment, receive an understandable decision, or turn a review into useful learning?**
