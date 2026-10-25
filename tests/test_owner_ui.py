@@ -185,11 +185,13 @@ def test_v8_migration_adds_reviews_without_changing_source_history(settings):
     with connect(settings.database_path) as connection:
         original = [tuple(row) for row in connection.execute("SELECT * FROM knowledge_revisions")]
         connection.execute("DROP TABLE answer_reviews")
+        connection.execute("DROP TABLE owner_decisions")
+        connection.execute("DROP TABLE muster_imports")
         connection.execute("PRAGMA user_version=8")
     migrate(settings.database_path)
     migrate(settings.database_path)
     with connect(settings.database_path) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 9
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 10
         assert [
             tuple(row) for row in connection.execute("SELECT * FROM knowledge_revisions")
         ] == original

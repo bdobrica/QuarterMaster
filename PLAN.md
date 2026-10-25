@@ -6,7 +6,7 @@ Build a small, self-hosted workshop where an ordinary person teaches an adviser 
 
 ## Owner activities
 
-1. **Collect:** preserve material and provenance; organize reviewable examples. Assisted saved-page extraction is planned. Allow manual work without a builder provider.
+1. **Collect:** Muster is QuarterMaster's bundled collection/knowledge manager. Preserve rendered pages, images and provenance; organize checked examples and reviewed knowledge. Keep provider-assisted extraction consented and manual paths available. Its published format-1 bundles form the immutable handoff into teaching.
 2. **Teach:** record the owner's preferred number with units or category, optional reasoning and reusable policies. Source observations and AI suggestions are not approved targets. The owner's personal judgment needs no external objective benchmark.
 3. **Ask:** use the selected compatible base/adapter, approved knowledge and eligible previous decisions to predict a number/category and give a short, sourced explanation. Clarification or abstention is valid when support is missing. Label base previews and uncertainty honestly.
 4. **Review:** a standalone inbox/history with Accept, Correct, Add a note and Skip. Capture an explicit accepted/corrected target once and return it to teaching automatically. Notes/skips add no label; failed answers cannot be accepted but may be corrected.
@@ -36,6 +36,8 @@ Keep original source bytes, content hashes, stable identities and versioned mani
 
 Reuse FastAPI, Jinja2/HTMX, SQLite, local artifacts, the current knowledge/review services, local inference adapter, bounded GPU trainer and portable CPU export. Do not import trainer internals into the app. Public contracts come before UI/trainer/export coupling.
 
+Muster's source, templates, scripts and regression tests live in this repo. Mount its application under `/collect` in the same server and manage its lifecycle there; no external checkout, child service or shared private database is required. Keep its editable collection state under `QM_DATA_DIR/muster` and import complete verified publications into immutable QuarterMaster artifacts. Checked extracted facts are not personal targets. Explicit number/category judgments are append-only and require decision-time field selection; generic training/Ask alignment is still a separate unchecked delivery item. See [ADR 0006](docs/adr/0006-integrated-muster.md).
+
 | Boundary | Required transition |
 | --- | --- |
 | Historical storage | Sequential migrations; keep advice, ratings, sources, dataset/model/export hashes readable. Old Pass/Fail and free text are not automatically typed targets or training permission. |
@@ -49,7 +51,7 @@ Treat uploads and model output as untrusted data. Never execute uploaded HTML/sc
 
 ## Demonstration and scope
 
-Use the owner's prepared apartment material as the current demonstration: teach personal valuations and policies, ask for a new price with reasons, then review and reuse the feedback. Listing price is a separate comparison value, not automatically a valuation label. The owner confirmed discarding large price gaps in either direction; numeric thresholds remain owner policy. Do not build extraction tooling or feature design as part of documentation cleanup.
+Use the owner's prepared apartment material as the current demonstration: teach personal valuations and policies, ask for a new price with reasons, then review and reuse the feedback. Listing price is a separate comparison value, not automatically a valuation label. The owner confirmed discarding large price gaps in either direction; numeric thresholds remain owner policy. Keep feature design outside this integration. Owner assumptions about condition, repairs and listing honesty remain distinguishable from verified source observations.
 
 Verify both numerical and categorical contracts without restoring the retired product examples or adding domain-specific core fields. The owner chooses whether a prediction fits their judgment; that is not proof of market value, factual truth or business lift.
 

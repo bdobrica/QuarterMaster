@@ -1,0 +1,7 @@
+{% extends 'base.html' %}{% block content %}
+<h1>Turn saved links into a collection</h1><p>Add your links, then check the preview before importing.</p>
+<section><h2>Add links</h2><form action="{{ mount_path }}/imports/preview" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf }}">
+<label for="name">Collection name</label><input id="name" name="name" type="text" required maxlength="120" value="My collection">
+<label for="links">Paste links, one per line</label><textarea id="links" name="links" rows="5" placeholder="https://example.com/page"></textarea>
+<label for="spreadsheet">Or choose a spreadsheet</label><input id="spreadsheet" name="spreadsheet" type="file" accept=".csv,.xlsx"><p class="muted">CSV or XLSX with a url column. Other columns are retained as spreadsheet details. If you choose a file, it is used instead of pasted links. Up to 5 MB and 5,000 rows.</p><button>Preview links</button></form></section>
+<h2>Your collections</h2>{% for collection in collections %}<p class="card"><a href="{{ mount_path }}/collections/{{ collection.id }}">{{ collection.name }}</a> · {{ collection.total }} links · {{ collection.created_at }}</p>{% else %}<p>No collections yet. Start with about 20 links.</p>{% endfor %}{% endblock %}

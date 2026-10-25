@@ -3,6 +3,7 @@
 <p><a href="/">All projects</a></p>
 <h1>{{ project.name }}</h1>
 <p class="eyebrow">Teach · Mission and sources</p>
+<p><a class="button" href="/projects/{{ project.id }}/teach">Teach from a Muster collection</a></p>
 <p><a class="button" href="/projects/{{ project.id }}/test">Test advice and teach a lesson</a></p>
 <p><a class="button" href="/projects/{{ project.id }}/export">Export a standalone adviser</a></p>
 <details><summary>Advanced setup and model training</summary><p><a href="/projects/{{ project.id }}/interview">Guided interview</a> · <a href="/projects/{{ project.id }}/evaluations">Frozen evaluations</a> · <a href="/projects/{{ project.id }}/train">Reviewed training and candidates</a></p></details>
@@ -51,7 +52,7 @@
     <h3><a href="/projects/{{ project.id }}/sources/{{ source.id }}">{{ source.display_name }}</a></h3>
     <p>{{ source.label }} · {{ source.kind|upper }} · {{ source.size_bytes }} bytes</p>
     <small>{{ source.created_at.strftime('%Y-%m-%d %H:%M UTC') }}</small>
-  </article>{% else %}<p>No sources uploaded yet. Start with a CSV/XLSX labeled observations and a Markdown reference labeled knowledge. <a href="/examples">Download small synthetic examples</a>, then inspect their previews before confirming a mapping.</p>{% endfor %}
+  </article>{% else %}<p>No sources uploaded yet. <a href="/collect/">Collect and review material with Muster</a>, or upload your existing files above.</p>{% endfor %}
 </section>
 <section>
   <h2>Build cases from your tables</h2>

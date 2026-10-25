@@ -674,6 +674,8 @@ def test_v2_migration_preserves_existing_documents(guided):
             "evaluation_holdouts",
         ):
             connection.execute(f"DROP TABLE {table}")
+        connection.execute("DROP TABLE owner_decisions")
+        connection.execute("DROP TABLE muster_imports")
         connection.execute("PRAGMA user_version=2")
     migrate(config.database_path)
     assert client.get(f"/api/projects/{project}").json() == before

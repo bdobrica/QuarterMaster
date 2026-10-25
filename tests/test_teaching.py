@@ -499,6 +499,8 @@ def test_recovery_and_v3_migration_preserve_history(workshop):
         connection.execute("DROP TABLE test_runs")
         connection.execute("DROP TABLE feedback")
         connection.execute("DROP TABLE lesson_revisions")
+        connection.execute("DROP TABLE owner_decisions")
+        connection.execute("DROP TABLE muster_imports")
         connection.execute("PRAGMA user_version=3")
     migrate(config.database_path)
     assert client.get(base(project)).json() == before
@@ -897,6 +899,8 @@ def test_v3_upgrade_preserves_populated_teaching_metadata_and_originals(workshop
             "evaluation_holdouts",
         ):
             connection.execute(f"DROP TABLE {table}")
+        connection.execute("DROP TABLE owner_decisions")
+        connection.execute("DROP TABLE muster_imports")
         connection.execute("PRAGMA user_version=3")
     migrate(config.database_path)
     with connect(config.database_path) as connection:

@@ -398,6 +398,8 @@ def test_v6_migration_preserves_bytes(lab):
         connection.execute("DROP TABLE knowledge_proposals")
         connection.execute("DROP TABLE reliability_runs")
         connection.execute("DROP TABLE reliability_reviews")
+        connection.execute("DROP TABLE owner_decisions")
+        connection.execute("DROP TABLE muster_imports")
         connection.execute("PRAGMA user_version=6")
     migrate(settings.database_path)
     migrate(settings.database_path)

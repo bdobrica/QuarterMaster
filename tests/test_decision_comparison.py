@@ -8,7 +8,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from test_decision_training import IMAGE, pack
 
 from quartermaster.contracts.advice import DecisionOnly
 from quartermaster.contracts.decision_training import SYSTEM_SHA256, DecisionManifest
@@ -20,6 +19,7 @@ from quartermaster.decision_worker import command, run_stage
 from quartermaster.errors import DomainError
 from quartermaster.generation import PARAMETERS
 from quartermaster.spike.spec import digest
+from tests.test_decision_training import IMAGE, pack
 
 
 def fixture(tmp_path):

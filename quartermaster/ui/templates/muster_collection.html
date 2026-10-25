@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+<p><a href="/projects/{{ project.id }}/teach">All teaching collections</a></p>
+<h1>{{ item.collection_name }} · v{{ item.publication_version }}</h1>
+<p>{{ item.reviewed }} checked examples · {{ item.unreviewed }} unfinished examples · {{ decisions|length }} personal answers taught.</p>
+<p>Checking extracted details in Collect does not approve a preferred answer. Asking prices and observations stay separate from the answers you teach.</p>
+<h2>Knowledge from this collection</h2>
+{% for article in bundle.manifest.knowledge %}<article><h3>{{ article.title }}</h3><pre>{{ bundle.text(article.path) }}</pre><a href="/projects/{{ project.id }}/teach/{{ item.id }}/files/{{ article.provenance }}">Download article history and provenance</a><p>{% if knowledge and item.knowledge_sources[article.id] in knowledge.source_ids %}Used in advice{% else %}Not in active advice{% endif %}</p></article>{% else %}<p>No articles in this publication. Add policies in Collect and publish a new version, or write an article in Knowledge.</p>{% endfor %}
+{% if item.knowledge_sources %}<form method="post" action="/projects/{{ project.id }}/teach/{{ item.id }}/knowledge"><input type="hidden" name="expected_revision" value="{{ knowledge.id if knowledge else '' }}"><p>This adds these saved articles to active knowledge. It changes retrieved context, not model weights. Conflicting imported versions need a manual selection.</p><button>Use these articles in advice</button></form>{% endif %}
+<h2>Teach your answers</h2>
+{% for record in bundle.examples %}<article><a href="/projects/{{ project.id }}/teach/{{ item.id }}/examples/{{ loop.index0 }}">Example {{ loop.index }} · {{ record.source.url }}</a><p>{% if record.get('review_status', 'reviewed') == 'unreviewed' %}Details still need review in Collect{% elif record.id in decisions %}Your answer saved · revision {{ decisions[record.id].revision }}{% else %}Ready for your answer{% endif %}</p></article>{% else %}<p>No examples in this publication.</p>{% endfor %}
+{% if decisions %}<form method="post" action="/projects/{{ project.id }}/teach/{{ item.id }}/dataset"><p>Save a stable dataset of this collection's latest taught answers and current active knowledge. This prepares reviewed data; the generic model-training connection is still pending. No training starts.</p><button>Download reviewed teaching data</button></form>{% endif %}
+<details><summary>Publication details</summary><p>Manifest SHA-256 {{ item.manifest_sha256 }}. Hashes verify unchanged bytes; they do not prove a listing or article is true.</p><a href="/projects/{{ project.id }}/teach/{{ item.id }}/files/manifest.json">Download original manifest</a></details>
+{% endblock %}

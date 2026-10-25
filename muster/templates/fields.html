@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block head %}{% if not draft.accepted_at %}<script src="{{ mount_path }}/static/fields.js" defer></script>{% endif %}{% endblock %}
+{% block content %}
+<p><a href="{{ mount_path }}/collections/{{ collection.id }}">Back to collection</a></p>
+<h1>{% if draft.accepted_at %}Accepted fields{% else %}Choose what to collect{% endif %}</h1>
+<p>{{ collection.name }}</p>
+{% if message %}<p role="status" class="card">{{ message }}</p>{% endif %}
+{% if draft.accepted_at %}
+<p class="card">These fields were accepted on {{ draft.accepted_at }}. Every example in this collection will use this field list. Changing it requires rebuilding all examples into a new draft; <a href="{{ mount_path }}/collections/{{ collection.id }}/rebuild">start a new draft with Rebuild examples</a>. Missing information can always remain unknown.</p>
+<div class="table-wrap"><table><thead><tr><th>Field</th><th>Type</th><th>What to look for</th></tr></thead><tbody>{% for field in draft.fields %}<tr><td>{{ field.label }}</td><td>{{ field_types[field.type] }}</td><td>{{ field.description }}</td></tr>{% endfor %}</tbody></table></div>
+<h2>Your guidance</h2><p style="white-space:pre-wrap">{{ draft.guidance or 'No additional guidance.' }}</p>
+<details class="card"><summary>Advanced</summary><p><a href="{{ mount_path }}/collections/{{ collection.id }}/fields/accepted.json">Download accepted schema</a></p><p>Schema ID: {{ draft.schema_id }}</p>{% if draft.proposal_id %}<p><a href="{{ mount_path }}/collections/{{ collection.id }}/fields/requests/{{ draft.proposal_id }}">View the original suggestion and its sample provenance</a></p>{% endif %}</details>
+<p>Use these accepted fields to extract details, then check each suggested value against its evidence. Your original pages and details outside this field list remain available in <a href="{{ mount_path }}/collections/{{ collection.id }}">Retained captures</a>.</p>
+{% else %}
+<p>Start from suggested fields or write your own. Use about five collected pages for a useful suggestion; a smaller sample also works. Nothing is accepted until you choose <strong>Accept these fields</strong>.</p>
+{% if latest_request %}<p><a href="{{ mount_path }}/collections/{{ collection.id }}/fields/requests/{{ latest_request.id }}">Open your latest suggestion or sample preview</a></p>{% endif %}
+<form action="{{ mount_path }}/collections/{{ collection.id }}/fields/save" method="post" data-fields-editor>
+<input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ draft.revision }}">
+<label for="guidance">Your guidance</label><textarea id="guidance" name="guidance" rows="3" maxlength="4000" placeholder="For example: compare asking prices and usable floor area. Keep renovation quality as a separate, uncertain observation.">{{ draft.guidance }}</textarea>
+<p class="muted">Your guidance stays authoritative. A suggestion cannot rewrite it. It is included in a request only after you consent.</p>
+<div class="table-wrap"><table><thead><tr><th>Field name</th><th>Type</th><th>What to look for</th><th></th></tr></thead><tbody>
+{% for field in draft.fields %}{% include 'field_row.html' %}{% endfor %}
+{% if not draft.fields %}{% set field = {'key':'','label':'','type':'text','description':''} %}{% include 'field_row.html' %}{% endif %}
+</tbody></table></div>
+<button type="button" data-add-field>Add field</button> <button>Save field list</button>
+<p>All fields allow unknown. Details that do not fit remain in the original evidence. You can add up to 30 fields.</p>
+<section><h2>Get a suggestion</h2><p>This saves your current edits and prepares a preview of text from up to five collected pages. You will see exactly what is sent before deciding to send it.</p><button formaction="{{ mount_path }}/collections/{{ collection.id }}/fields/prepare">Preview sample for suggestion</button></section>
+<section><h2>Ready to use this field list?</h2><p>Accepting saves the edits above and keeps these fields unchanged for the whole collection. Read the names, types and descriptions before accepting.</p><button formaction="{{ mount_path }}/collections/{{ collection.id }}/fields/accept">Accept these fields</button></section>
+</form>
+<template id="new-field">{% set field = {'key':'','label':'','type':'text','description':''} %}{% include 'field_row.html' %}</template>
+
+{% endif %}
+{% include 'provider_settings.html' %}
+{% endblock %}

@@ -218,7 +218,8 @@ def test_blank_states_and_current_example_need_no_provider(client):
         assert 'href="/help"' in page.text and 'href="/examples"' in page.text
     page = client.get("/examples")
     assert page.status_code == 200 and "Apartment adviser example" in page.text
-    assert "are planned" in page.text
+    assert "remain planned" in page.text
+    assert "Collect with Muster" in page.text
     assert "Synthetic print-proof adviser" not in page.text
     assert client.get("/api/projects").json()[0]["id"] == project
     assert len(client.get("/api/projects").json()) == 1

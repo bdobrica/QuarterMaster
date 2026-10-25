@@ -1,0 +1,7 @@
+{% extends 'base.html' %}{% block content %}
+<p><a href="{{ mount_path }}/collections/{{ collection.id }}/fields">Back to fields</a></p><h1>Rebuild examples</h1>
+<p>Create a separate working draft of {{ collection.name }} to change its fields. All retained captures are copied locally; no websites or AI services are contacted. The original collection and published versions stay available.</p>
+<p>The draft starts with your current field list and guidance, ready to edit and accept. Saved knowledge, spreadsheet details, notes, corrections and completed lookup observations are retained. Compatible corrections are restored after extraction, with a fresh review required. Removed links and exclusions are preserved. Pending knowledge suggestions stay in the original collection.</p>
+<p>After accepting the new fields, preview and consent to extraction from the saved sources. Every collected link needs a new extraction. Uncollected links can still be collected later. This uses extra local disk space.</p>
+{% if draft.accepted_at %}<form method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><label>New draft name<input name="name" value="{{ collection.name[:100] }} · rebuilt draft" maxlength="120" required></label><button>Create draft from retained sources</button></form>{% else %}<p>Accept the original field list first.</p>{% endif %}
+{% endblock %}

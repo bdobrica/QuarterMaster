@@ -15,6 +15,7 @@ from quartermaster.api.foundation import router as foundation_router
 from quartermaster.api.interview import router as interview_router
 from quartermaster.api.knowledge import router as knowledge_router
 from quartermaster.api.limits import BodyLimitMiddleware
+from quartermaster.api.muster import router as muster_router
 from quartermaster.api.reliability import router as reliability_router
 from quartermaster.api.routes import router, validation_error
 from quartermaster.api.teaching import router as teaching_router
@@ -65,18 +66,42 @@ def create_app(
             raise RuntimeError(
                 "STORAGE_INIT: Check QM_DATA_DIR, configuration and disk permissions."
             ) from None
-        yield
+        from muster.app import create_app as create_muster
+        from muster.provider import ProviderSettings, SchemaProvider
+
+        # Read Muster's provider keys from this repo's .env without changing global
+        # process state or inheriting the separate adviser/builder credentials.
+        config = app.state.settings
+        app.state.muster_app = create_muster(
+            data_dir=app.state.settings.muster_storage,
+            schema_provider=SchemaProvider(
+                ProviderSettings(
+                    base_url=config.muster_ai_base_url.rstrip("/"),
+                    model=config.muster_ai_model,
+                    api_key=config.muster_ai_api_key.get_secret_value(),
+                    reasoning_effort=config.muster_ai_reasoning_effort,
+                )
+            ),
+        )
+        async with app.state.muster_app.router.lifespan_context(app.state.muster_app):
+            yield
 
     app = FastAPI(title="QuarterMaster", version="0.1.0.dev0", lifespan=lifespan)
     app.include_router(router)
     app.include_router(foundation_router)
     app.include_router(knowledge_router)
+    app.include_router(muster_router)
     app.include_router(interview_router)
     app.include_router(teaching_router)
     app.include_router(evaluation_router)
     app.include_router(training_router)
     app.include_router(export_router)
     app.include_router(reliability_router)
+
+    async def collect_app(scope, receive, send):
+        await app.state.muster_app(scope, receive, send)
+
+    app.mount("/collect", collect_app, name="collect")
     app.add_middleware(BodyLimitMiddleware)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "ui" / "static"), "static")
     app.add_exception_handler(RequestValidationError, validation_error)

@@ -4,13 +4,41 @@ Use the [README](../README.md) for basic startup and [TODO](../TODO.md) for unfi
 
 ## Current controls
 
-- **Sources and setup** (under Advanced): upload CSV/XLSX or UTF-8 Markdown, at most 8 MiB each. Inspect previews; explicitly map decision-time inputs separately from outcomes and targets. Joins need explicit keys; formulas and embedded instructions are never executed. Saved HTML extraction is not implemented.
+- **Collect (Muster):** included source at `muster/`, running at `/collect/` in the same application. Add links or CSV/XLSX, capture pages, choose fields, consent to extraction, check details, edit/review knowledge and publish. Collection/extraction have explicit start/stop controls; startup never visits pages or calls a provider. The managed browser has a separate profile; access barriers require permitted manual intervention.
+- **Teach:** choose a publication, inspect its examples/knowledge, explicitly use articles in advice and teach a number with units or a choice. Select only decision-time fields. Unfinished extractions cannot become teaching targets; checked asking prices are still observations. Saving your answer needs no extra approval. Changes append revisions; a newer publication is a separate snapshot. Download reviewed teaching data to freeze the latest answers for that publication and current active knowledge. This data contract is **not yet a runnable historical LoRA job**; generic training/Ask alignment remains in TODO.
+- **Sources and setup** (under Advanced): upload CSV/XLSX or UTF-8 Markdown, at most 8 MiB each. Inspect previews; explicitly map decision-time inputs separately from outcomes and targets. Joins need explicit keys; formulas and embedded instructions are never executed. Direct saved-HTML uploads are not implemented; Muster safely captures source pages.
 - **Knowledge:** upload/select Markdown, or propose an article edit. Review its diff and approve it to create immutable source bytes and an active revision. Rejection leaves behavior unchanged; stale proposals cannot overwrite newer knowledge. Historical citations remain accessible. This changes context, not weights.
 - **Adviser:** ask using the selected engine, inspect evidence, then record Pending/Pass/Fail and an optional correction. Failure cannot be marked Pass. Ratings currently do not automatically become teaching; eligible corrections still have a separate reviewed lesson path.
 - **Improvements:** view saved check questions, reviews and earlier answers. Preview reruns before executing them. Saving a check permanently excludes its situation from teaching; its corrections remain evaluation-only. Ordinary question history needs a separate future path.
 - **Advanced:** inspect training, check sets, diagnostics and exports. Historical experiments remain accessible for existing records; they are not current product examples.
 
 Knowledge replay explicitly runs four requests: original/fresh question, each with old/new knowledge. Both arms retain the same current model, mission, prompt and settings; only knowledge changes. Hosted replay requires scoped advice consent. Inspect failed outputs as well as changed answers; a valid citation does not certify usefulness.
+
+## Muster setup and existing data
+
+One QuarterMaster server owns both applications; use a single Uvicorn worker. Muster uses its own SQLite state under `QM_DATA_DIR/muster` (default `data/muster`), included in a normal full-data backup. `QM_MUSTER_DATA_DIR` optionally changes that location; back it up separately if outside `QM_DATA_DIR`. Knowledge imported into an adviser is a separate exact source snapshot. It is not a live synchronized copy of a working article. Publish/import a new version to bring later changes across; review the active source selection when titles conflict. No cross-version target matching is inferred from local collection/job IDs.
+
+For headed browser collection, run the Python application on a desktop host and install Chromium explicitly:
+
+```sh
+uv run --locked playwright install chromium
+```
+
+On Linux, missing browser system libraries need an operator-managed Playwright dependency installation. WSL requires a working display/WSLg session. The default Docker image has no browser/display: its knowledge, manual review, publication and handoff screens work; live collection requires the host setup. Missing Chromium/display errors remain visible failed jobs. See the [bundle contract](muster/bundle.md) and optional [read-only lookups](muster/connectors.md).
+
+Muster extraction settings use `MUSTER_AI_BASE_URL`, `MUSTER_AI_MODEL`, `MUSTER_AI_API_KEY` and optional `MUSTER_AI_REASONING_EFFORT` in QuarterMaster's environment/`.env`. No provider is configured by default. Each request previews its actual content and needs consent. Adviser/builder consent does not cover collection extraction. API keys are not imported from an old checkout or a bundle.
+
+To preserve an existing installation, stop both apps and copy its **data directory** into a new destination before deleting the old repository:
+
+```sh
+uv run --locked python -m quartermaster.migrate_muster /absolute/path/to/old/.muster
+```
+
+This targets `QM_MUSTER_DATA_DIR` or `QM_DATA_DIR/muster`, refuses an existing destination, backs up SQLite and verifies copied source/knowledge/publication bytes. It leaves the original untouched. Browser profiles/cookies, `.env`, connector configuration and credentials are excluded. Retain credentials separately and configure the new environment if extraction is wanted. It never starts collection or sends content. Existing publications stay unchanged, including unfinished examples and review provenance. Open Collect to inspect the migrated collections. Copying source code alone does not preserve these ignored local data files.
+
+A host copy under `data/muster` is used by the host Python application. It does not populate an existing Docker named volume automatically; copy it into that deployment's stopped/backed-up data storage before expecting the container to show those collections. Do not switch an existing installation to an empty storage path.
+
+CPU verification includes inherited Muster tests and the handoff. The integrated real-browser fixture test is opt-in: `uv run --locked pytest tests/test_muster_browser.py -m live` after installing Chromium. It makes only local requests and starts no extraction/provider/GPU work.
 
 ## Exposure and external providers
 

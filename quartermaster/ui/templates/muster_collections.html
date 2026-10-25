@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Teach · {{ project.name }}</h1>
+<p>Collect material in Muster, check its details, then publish a collection. Here, teach the answers you want your adviser to give.</p>
+<p><a class="button" href="/collect/">Collect and manage knowledge in Muster</a></p>
+<h2>Your teaching collections</h2>
+{% for item in imports %}<article><h3><a href="/projects/{{ project.id }}/teach/{{ item.id }}">{{ item.collection_name }} · v{{ item.publication_version }}</a></h3><p>{{ item.reviewed }} checked examples · {{ item.unreviewed }} unfinished examples · {{ item.knowledge_sources|length }} knowledge articles</p></article>{% else %}<p>No collection added yet. Publish one in Collect, then return here.</p>{% endfor %}
+<h2>Published collections available</h2>
+{% for item in publications %}<article><h3>{{ item.name }} · v{{ item.version }}</h3><p>{{ item.counts.examples }} examples · {{ item.counts.articles }} articles. Import preserves a separate snapshot; later publications do not replace it or your teaching.</p><form method="post" action="/projects/{{ project.id }}/teach/import"><input type="hidden" name="publication" value="{{ item.digest }}"><button>Inspect this collection</button></form></article>{% else %}<p>No publications yet. Use Publish collection in Muster when your material is ready.</p>{% endfor %}
+<p><a href="/projects/{{ project.id }}/knowledge">Edit this adviser's active knowledge</a></p>
+{% endblock %}

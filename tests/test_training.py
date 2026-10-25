@@ -558,6 +558,8 @@ def test_populated_v5_migration_preserves_all_old_tables_and_artifacts(workshop)
             r[0] for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
         ]
         before = {t: [tuple(r) for r in connection.execute(f'SELECT * FROM "{t}"')] for t in tables}
+        connection.execute("DROP TABLE owner_decisions")
+        connection.execute("DROP TABLE muster_imports")
         connection.execute("PRAGMA user_version=5")
     migrate(config.database_path)
     migrate(config.database_path)
@@ -565,7 +567,7 @@ def test_populated_v5_migration_preserves_all_old_tables_and_artifacts(workshop)
         assert before == {
             t: [tuple(r) for r in connection.execute(f'SELECT * FROM "{t}"')] for t in tables
         }
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 9
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 10
     assert artifact.read_bytes() == b"original source bytes"
     assert client.get(base(project)).status_code == 200
 

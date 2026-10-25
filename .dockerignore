@@ -5,6 +5,8 @@
 !LICENSE
 !quartermaster/
 !quartermaster/**
+!muster/
+!muster/**
 !trainer/
 !trainer/Dockerfile
 !trainer/pyproject.toml

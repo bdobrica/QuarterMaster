@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block head %}{% if suggestion.status == 'sending' %}<meta http-equiv="refresh" content="5">{% endif %}{% endblock %}
+{% block content %}
+<p><a href="{{ mount_path }}/collections/{{ collection.id }}/fields?manual=1">Skip suggestion · edit fields yourself</a></p>
+<h1>{% if suggestion.status == 'suggested' %}Suggested fields{% else %}Check the sample before sending{% endif %}</h1>
+{% if message %}<p class="error" role="alert">{{ message }}</p>{% endif %}
+{% if suggestion.error %}<p class="error" role="alert">{{ suggestion.error }}</p>{% endif %}
+{% if suggestion.status == 'suggested' %}
+<p>The suggestion has not changed your field list or your guidance. Using it replaces your unaccepted fields, then lets you edit them before accepting.</p>
+<div class="table-wrap"><table><thead><tr><th>Field</th><th>Type</th><th>What to look for</th></tr></thead><tbody>{% for field in suggestion.result.fields %}<tr><td>{{ field.label }}</td><td>{{ field_types[field.type] }}</td><td>{{ field.description }}</td></tr>{% endfor %}</tbody></table></div>
+{% if current %}<form action="{{ mount_path }}/collections/{{ collection.id }}/fields/requests/{{ suggestion.id }}/apply" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button>Use these suggested fields</button></form>{% else %}<p>Your field list changed or was accepted. This suggestion cannot replace it. Return to the field list to continue.</p>{% endif %}
+{% elif suggestion.status == 'sending' %}<p>Preparing suggested fields. This view refreshes every 5 seconds. Your saved edits and original pages are unchanged.</p>
+{% endif %}
+<section><h2>Request details</h2><p><strong>{{ suggestion.payload.samples|length }} retained pages</strong> · Up to 12,000 characters per page · Text only</p><p>Destination: <strong>{{ suggestion.provider.base_url }}</strong> · Model: {{ suggestion.provider.model }}</p><p>This includes the excerpts, page titles, original source links, spreadsheet details and your guidance shown below. No screenshots, images, browser cookies or browser-profile files are included. Your provider may charge for the request and handles content under its own policies.</p>
+<h3>Your guidance</h3><p style="white-space:pre-wrap">{{ suggestion.payload.guidance or 'No additional guidance.' }}</p>
+{% for sample in suggestion.payload.samples %}<details><summary>{{ sample.title or sample.source_url }}</summary><p>Source: {{ sample.source_url }} · <a href="{{ mount_path }}/captures/{{ sample.capture_id }}">Inspect retained capture</a></p>{% set input_rows=sample.input_rows|default([]) %}{% include 'input_rows.html' %}<pre style="white-space:pre-wrap;max-height:300px;overflow:auto">{{ sample.text }}</pre></details>{% endfor %}
+{% if suggestion.status in ['preview','failed'] and current %}<form action="{{ mount_path }}/collections/{{ collection.id }}/fields/requests/{{ suggestion.id }}/send" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><label style="font-weight:400"><input type="checkbox" name="consent" value="yes" required> I agree to send this sample and my guidance to the provider shown above for this suggestion.</label><button>Send sample & suggest fields</button></form>{% elif suggestion.status in ['preview','failed'] %}<p>This preview is out of date. Return to the field list and prepare a new preview before sending.</p>{% endif %}
+{% if suggestion.consent_at %}<p class="muted">Last consent recorded: {{ suggestion.consent_at }}</p>{% endif %}</section>
+{% endblock %}

@@ -532,12 +532,14 @@ def test_populated_v4_migration_preserves_all_old_rows_and_originals(workshop):
             "evaluation_holdouts",
         ):
             connection.execute(f"DROP TABLE {table}")
+        connection.execute("DROP TABLE owner_decisions")
+        connection.execute("DROP TABLE muster_imports")
         connection.execute("PRAGMA user_version=4")
     migrate(config.database_path)
     migrate(config.database_path)
     with connect(config.database_path) as connection:
         assert snapshot(connection) == before
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 9
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 10
     assert blob_path(config.artifact_root, source["sha256"]).read_bytes() == original
 
 

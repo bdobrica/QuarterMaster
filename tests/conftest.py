@@ -13,6 +13,12 @@ from quartermaster.config import Settings
 def offline_environment(monkeypatch):
     for name in (
         "QM_DATA_DIR",
+        "QM_MUSTER_DATA_DIR",
+        "MUSTER_DATA_DIR",
+        "MUSTER_AI_BASE_URL",
+        "MUSTER_AI_MODEL",
+        "MUSTER_AI_API_KEY",
+        "MUSTER_AI_REASONING_EFFORT",
         "QM_BUILDER_BASE_URL",
         "QM_BUILDER_MODEL",
         "QM_BUILDER_API_KEY",

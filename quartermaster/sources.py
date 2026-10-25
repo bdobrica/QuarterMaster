@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -64,10 +65,17 @@ def get_source(settings: Settings, project_id, source_id) -> Source:
 
 
 def upload_source(
-    settings: Settings, project_id, filename: str, data: bytes, label: Label, options: ParseOptions
+    settings: Settings,
+    project_id,
+    filename: str,
+    data: bytes,
+    label: Label,
+    options: ParseOptions,
+    *,
+    connection=None,
 ) -> Source:
-    with connect(settings.database_path) as connection:
-        read_spec(connection, project_id)
+    with nullcontext(connection) if connection else connect(settings.database_path) as reader:
+        read_spec(reader, project_id)
     name, kind = safe_name(filename)
     parsed = parse(data, kind, options)
     source = Source(
@@ -97,8 +105,8 @@ def upload_source(
         except FileExistsError:
             # Content-addressed deduplication must never overwrite existing bytes.
             source_bytes(settings, source)
-        with connect(settings.database_path) as connection:
-            connection.execute(
+        with nullcontext(connection) if connection else connect(settings.database_path) as writer:
+            writer.execute(
                 "INSERT INTO sources VALUES (?, ?, ?)",
                 (str(source.id), str(project_id), source.model_dump_json()),
             )

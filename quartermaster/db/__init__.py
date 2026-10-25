@@ -8,7 +8,7 @@ from uuid import UUID
 
 from quartermaster.contracts.adviser import AdviserSpec
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 
 class SchemaError(RuntimeError):
@@ -58,6 +58,8 @@ def check_schema(connection: sqlite3.Connection) -> None:
         "adviser_versions": {"id", "project_id", "document"},
         "reliability_runs": {"id", "project_id", "revision", "document"},
         "reliability_reviews": {"run_id", "arm", "revision", "document"},
+        "muster_imports": {"id", "project_id", "document"},
+        "owner_decisions": {"id", "project_id", "revision", "document"},
     }
     for table, expected in required.items():
         actual = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
@@ -190,6 +192,17 @@ def migrate(path: Path) -> None:
                 "PRIMARY KEY(answer_id, revision))"
             )
             connection.execute("PRAGMA user_version = 9")
+            version = 9
+        if version == 9:
+            connection.execute(
+                "CREATE TABLE muster_imports (id TEXT PRIMARY KEY, "
+                "project_id TEXT NOT NULL REFERENCES projects(id), document TEXT NOT NULL)"
+            )
+            connection.execute(
+                "CREATE TABLE owner_decisions (id TEXT, project_id TEXT REFERENCES projects(id), "
+                "revision INTEGER, document TEXT NOT NULL, PRIMARY KEY(id, revision))"
+            )
+            connection.execute("PRAGMA user_version = 10")
         check_schema(connection)
     with connect(path) as connection:
         connection.execute("PRAGMA journal_mode = WAL")

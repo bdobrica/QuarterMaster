@@ -10,6 +10,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="QM_", env_file=".env", extra="ignore")
 
     data_dir: Path = Path("data")
+    muster_data_dir: Path | None = None
+    muster_ai_base_url: str = Field(default="", validation_alias="MUSTER_AI_BASE_URL")
+    muster_ai_model: str = Field(default="", validation_alias="MUSTER_AI_MODEL")
+    muster_ai_api_key: SecretStr = Field(default="", validation_alias="MUSTER_AI_API_KEY")
+    muster_ai_reasoning_effort: str = Field(
+        default="", validation_alias="MUSTER_AI_REASONING_EFFORT"
+    )
     builder_base_url: HttpUrl | None = None
     builder_model: str | None = None
     builder_api_key: SecretStr | None = None
@@ -36,6 +43,7 @@ class Settings(BaseSettings):
 
     @field_validator(
         "adviser_reasoning_effort",
+        "muster_data_dir",
         "adviser_base_url",
         "adviser_model",
         "adviser_api_key",
@@ -94,6 +102,10 @@ class Settings(BaseSettings):
     @property
     def artifact_root(self) -> Path:
         return self.data_dir / "artifacts"
+
+    @property
+    def muster_storage(self) -> Path:
+        return self.muster_data_dir or self.data_dir / "muster"
 
 
 def initialize_storage(settings: Settings) -> None:

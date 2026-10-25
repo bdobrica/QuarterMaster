@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<p><a href="{{ mount_path }}/collections/{{ cid }}/publish">Working draft and published versions</a></p>
+<h1>{{ publication.manifest.collection.name }} · v{{ publication.version }} is ready</h1>
+<p>Published {{ publication.created_at }}. This version contains {{ publication.example_count }} examples ({{ publication.manifest.counts.unreviewed|default(0) }} unreviewed) and {{ publication.manifest.counts.articles }} knowledge articles; {{ publication.manifest.counts.excluded }} links were explicitly excluded.</p>
+<p>All saved files and references passed validation. Later changes to your working draft leave this version unchanged.</p>
+<a class="button" href="{{ mount_path }}/collections/{{ cid }}/publications/{{ publication.id }}/download">Download published collection</a>
+<details><summary>Advanced · Bundle files and integrity</summary><p>Local folder relative to your data directory: <code>{{ publication.path }}</code></p><p>Includes manifest.json, schema.json, examples.jsonl, knowledge articles, original sources/media and provenance. No browser profile or connection credentials are included.</p><p>Manifest SHA-256: <code>{{ publication.manifest_sha256 }}</code></p><pre style="white-space:pre-wrap">{% for path, checksum in publication.manifest.checksums.items() %}{{ path }}  {{ checksum }}
+{% endfor %}</pre></details>
+{% endblock %}

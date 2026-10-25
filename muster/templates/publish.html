@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<p><a href="{{ mount_path }}/collections/{{ collection.id }}">{{ collection.name }}</a> → Publish</p>
+<h1>Publish collection</h1>
+<p>The working draft has {{ included }} extracted examples ({{ unreviewed }} unreviewed), {{ excluded }} excluded links and {{ articles|length }} knowledge articles. Publishing saves a separate version on this computer. Later edits belong to your working draft.</p>
+{% if message %}<p class="error" role="alert">{{ message }}</p>{% endif %}
+<section><h2>Check before publishing</h2>
+{% if warnings %}<ul>{% for warning in warnings %}<li>{{ warning }}</li>{% endfor %}</ul>{% endif %}
+{% if problems %}<ul>{% for problem in problems %}<li>{{ problem }}</li>{% endfor %}</ul>{% elif not warnings %}<p>All included examples are reviewed and all knowledge suggestions are resolved.</p>{% else %}<p>You can publish now with the unfinished work listed above.</p>{% endif %}
+<p><a href="{{ mount_path }}/collections/{{ collection.id }}/review">Check examples</a> · <a href="{{ mount_path }}/collections/{{ collection.id }}/knowledge">Check knowledge</a></p>
+{% for suggestion in pending %}<p><a href="{{ mount_path }}/collections/{{ collection.id }}/knowledge/suggestions/{{ suggestion.id }}">View pending knowledge suggestion · {{ suggestion.created_at }}</a> ({{ suggestion.status }})</p>{% endfor %}
+<form method="post" action="{{ mount_path }}/collections/{{ collection.id }}/publish"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="fingerprint" value="{{ fingerprint }}">
+<label><input type="checkbox" name="confirm" value="yes" required {% if problems %}disabled{% endif %}> Publish these examples with their current review status and saved knowledge articles. Pending knowledge suggestions will stay in the draft.</label>
+<button {% if problems %}disabled{% endif %}>Publish collection</button></form></section>
+<h2>Included examples and exclusions</h2><p>You can publish before reviewing everything. Extracted examples are included with their review status; links without results and pending knowledge suggestions stay in the draft. Leaving a link out here preserves its sources and review. Include again to return it to the draft. These decisions affect future publications.</p>
+<div class="table-wrap"><table><thead><tr><th>Link</th><th>Decision</th><th>Action</th></tr></thead><tbody>
+{% for job in jobs %}<tr><td>{{ job.url }}{% if job.review %}<br><a href="{{ mount_path }}/collections/{{ collection.id }}/review/{{ job.id }}">Check this example</a>{% endif %}</td><td>{{ {'reviewed':'Reviewed · included','excluded':'Excluded','unreviewed':'Unreviewed · included','unavailable':'No extracted result · omitted'}[job.decision] }}{% if job.reason %}<p>{{ job.reason }}</p>{% endif %}</td><td>
+{% if job.decision=='excluded' %}<form method="post" action="{{ mount_path }}/collections/{{ collection.id }}/publish/exclusions/{{ job.id }}/include"><input type="hidden" name="csrf" value="{{ csrf }}"><button>Include again</button></form>{% else %}<details><summary>Leave this link out</summary><form method="post" action="{{ mount_path }}/collections/{{ collection.id }}/publish/exclusions/{{ job.id }}/exclude"><input type="hidden" name="csrf" value="{{ csrf }}"><label for="reason-{{ job.id }}">Reason</label><input id="reason-{{ job.id }}" type="text" name="reason" maxlength="1000" required><button>Exclude link</button></form></details>{% endif %}
+</td></tr>{% endfor %}</tbody></table></div>
+<h2>Published versions</h2>{% for version in versions %}<p><a href="{{ mount_path }}/collections/{{ collection.id }}/publications/{{ version.id }}">v{{ version.version }} · {{ version.example_count }} examples · {{ version.created_at }}</a></p>{% else %}<p>No published versions yet.</p>{% endfor %}
+{% endblock %}

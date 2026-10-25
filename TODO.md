@@ -4,10 +4,22 @@ Build **Collect → Teach → Ask → Review → automatic improvement**. [PLAN]
 
 Existing foundations include source provenance, local/hosted inference, reviewed knowledge edits, answer reviews, immutable model runs, bounded LoRA and local export. Historical contracts remain valid for old records; they do not complete the new loop.
 
+## Muster integration — 2026-10-25
+
+- [x] Bring Muster's source, templates/assets, portable bundle tools and regression fixtures into this repo. Run Collect in the same FastAPI server with correct mounted navigation and lifecycle cleanup; no external checkout/service dependency.
+- [x] Add publication discovery and verified, project-scoped, idempotent imports with complete immutable evidence/provenance copies. Preserve unfinished status; never infer teaching labels from checked source fields.
+- [x] Add explicit number/unit and category owner decisions, selected decision-time inputs, append-only revisions and stale-save protection. Store a personal answer without an applied lesson or duplicate approval.
+- [x] Activate published knowledge through the existing retrieval/citation path; preserve old revisions and require manual selection for conflicting imported versions.
+- [x] Freeze portable reviewed teaching data with exact active knowledge and source lineage. Exclude reserved checks at target save and freeze. Keep this dataset separate from historical runnable LoRA jobs.
+- [x] Add a non-destructive existing-data migration, retain the owner's prepared link fixture and editable starting policy article, document host browser requirements and the three pinned dependencies.
+- [ ] Connect `owner-decision/v1` and `teaching-dataset/v1` to the shared generic Prediction, bounded trainer, candidate comparison, Ask and standalone export. Do not pretend legacy `training-job/v1` accepts the new data.
+
+Verification: `make test` passed (827 passed, 7 skipped, 2 deselected); `make lint` passed (184 formatted Python files). The opt-in integrated Chromium fixture walkthrough passed, and a built wheel includes both applications/templates/assets without local data. Local Markdown links and the imported 20-link fixture checked. Existing host data copied/verified into `data/muster`: 2 collections, 50 links, 31 captures, 13 reviews, 3 knowledge articles/revisions and 2 publications; original unchanged, cookies/credentials excluded. No real-site collection, provider/model call, GPU job, Docker build or fresh-container export check ran.
+
 ## P0. Establish the generic owner-decision loop
 
 - [ ] Define versioned **Example**, **OwnerDecision**, **Prediction** and **Review** contracts (or minimal compatible extensions): numerical value + unit **or** categorical choice + estimated probabilities; source references, owner's reasoning, optional corrections and version lineage. Preserve historical advice records.
-- [ ] Add migration/compatibility tests from the current populated schema (v9): preserve source/citation identities and old advice, review, dataset, candidate and export hashes. Do not reinterpret historical Pass/Fail ratings or free-text corrections as approved typed targets. Keep KB and reviewed decisions usable when retaining the base or changing a compatible model/adapter selection; reject incompatible adapters without deleting teaching assets.
+- [ ] Add migration/compatibility tests from the current populated schema (v10, including the v9 upgrade): preserve source/citation identities and old advice, review, dataset, candidate and export hashes. Do not reinterpret historical Pass/Fail ratings or free-text corrections as approved typed targets. Keep KB and reviewed decisions usable when retaining the base or changing a compatible model/adapter selection; reject incompatible adapters without deleting teaching assets.
 - [ ] Make **Collect / Teach / Ask / Review** the only primary navigation. An optional Review is a distinct inbox/history. Put raw IDs, model controls, metrics, dataset mappings, training recipes and export under **Advanced**.
 - [ ] Audit everyday screens for technical vocabulary. Replace labels with familiar language, introduce one obvious next action and useful blank states; keep keyboard/mobile accessibility.
 - [ ] Make the owner goal explicit per adviser: **“Help me decide…”** and **“What kind of answer should it give—number or choice?”**. No domain-specific core schema.
@@ -16,16 +28,15 @@ Existing foundations include source provenance, local/hosted inference, reviewed
 
 ## P0. Collect — saved material becomes reviewable examples
 
-- [ ] Accept **saved HTML pages** as well as existing Markdown/CSV/XLSX. Preserve original bytes, source URL/name and date when supplied. Sanitize HTML; never execute scripts or instructions from source content.
-- [ ] Use an optional consented builder LLM to extract a concise reusable example and relevant details. Show source-linked text and a simple **Keep / Fix / Ignore** review; allow manual extraction when no provider is configured.
-- [ ] Store organized examples with stable provenance, deduplication and an explicit **unconfirmed** state for uncertain extractions. Don't silently turn an ad's asking price or a historical outcome into an owner's preferred target.
-- [ ] Test malformed/hostile pages, empty extraction, repeated listings and provider errors. No general scraper, mandatory geospatial service or external data purchase for MVP.
+- [x] Reuse bundled Muster for links/spreadsheets → retained rendered HTML/images → accepted schema → consented extraction → review → publication. Keep original bytes, source URLs/time, unknown values, source-linked evidence and human corrections. No scripts from source content execute in the app.
+- [x] Keep organized published examples typed, attributable and explicitly checked/unfinished. Keep asking prices, observed outcomes and personal teaching targets separate. Preserve manual review/recovery and knowledge editing without a provider.
+- [ ] Rehearse real capture/extraction in the integrated host installation with owner-authorized provider/browser access. Imported CPU regressions and local fixture browser checks do not verify access to real sites or model quality.
 
-**Gate:** Save a property advertisement page, inspect an organized example, fix one extracted detail, and reuse it in Teach without editing JSON.
+**Gate:** Collect a permitted page in Muster, check one extracted detail, publish it, and reuse it in Teach without editing JSON. The local fixture path is implemented; the new installation's real-page/provider rehearsal remains open.
 
 ## P0. Teach — capture the owner's mental model and train LoRA
 
-- [ ] Present examples one at a time. Ask **“What would you choose/offer?”** and optionally **“Why?”**; allow editing a number/category and adding general personal policies.
+- [x] Present checked published examples one at a time; capture an explicit preferred number/unit or choice and optional reasoning. Add/edit general policies through Muster's knowledge manager or the adviser's Knowledge screen.
 - [ ] Distinguish source knowledge, owner-authored policies and reviewed decisions in storage and explanation, without requiring an objective verdict on the owner's preferences.
 - [ ] Convert reviewed decisions into generic supervised examples: situation + relevant source/KB context → owner's target and explanation. Remove the **applied-lesson prerequisite** for explicit owner targets and eligible reviews; no general rule or second target approval is required. Keep AI suggestions pending until reviewed; keep reserved check examples out of training.
 - [ ] Reuse the existing bounded GPU trainer and adapter/export boundary for this generic target. Show **Improve my adviser** with understandable resource/time warnings and an explicit start action. Do not ask for epochs, LoRA ranks, dataset JSONL or a manually frozen evaluation suite.
@@ -62,7 +73,7 @@ Existing foundations include source provenance, local/hosted inference, reviewed
 
 ## P0. Live, domain-generic demonstration
 
-- [ ] Use the owner's already prepared **apartment** material for the demo: reviewed personal prices/reasons, owner policies, a new apartment and optional correction. Extraction tooling and feature design are separate future work. Do not silently label examples from listing prices or assume a numeric discard/negotiation threshold.
+- [ ] Use the owner's already prepared **apartment** material for the demo: reviewed personal prices/reasons, owner policies, a new apartment and optional correction. Reuse Muster for collection; keep feature design outside the integration. Do not silently label examples from listing prices or assume a numeric discard/negotiation threshold.
 - [ ] Run one real LoRA training/candidate/selection path and demonstrate that **Review becomes Teach automatically**. If the candidate isn't an improvement according to the owner, keep the prior one and show the honest result.
 - [ ] Verify the other target kind with a small generic contract fixture, using the same code and no property-specific logic; no additional product demo is required.
 - [ ] Ask one genuinely nontechnical tester to complete the four actions without coaching. Fix their first blockers; a real browser walkthrough is required in addition to CPU tests.
@@ -77,6 +88,8 @@ Existing foundations include source provenance, local/hosted inference, reviewed
 - [ ] Consider automatic low-risk improvement publication and scheduled LoRA training only after staged changes, costs and rollback are understandable.
 
 **Parked:** autonomous external actions, managed cloud training, multi-user accounts, custom LightGBM/SHAP pipelines, geospatial/POI orchestration, model marketplaces, generic web scraping, excessive metrics and further retired-domain prompt experiments.
+
+Direct saved-HTML upload into Collect can follow the working managed-browser/manual-review path if needed; do not build a second extraction/knowledge manager beside Muster.
 
 ## Documentation cleanup — 2026-10-25
 

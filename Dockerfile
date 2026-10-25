@@ -11,6 +11,7 @@ WORKDIR /app
 RUN python -m pip install --no-cache-dir uv==0.12.19
 COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY quartermaster ./quartermaster
+COPY muster ./muster
 RUN uv sync --locked --no-dev --no-editable --no-cache \
     && groupadd --gid 10001 quartermaster \
     && useradd --uid 10001 --gid 10001 --no-create-home quartermaster \

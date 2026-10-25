@@ -2,9 +2,9 @@
 
 A self-hosted workshop for teaching a personal AI adviser: **Collect → Teach → Ask → optional Review**. The intended loop turns accepted answers and corrections into reusable teaching evidence automatically. Approved knowledge changes affect context immediately; model behavior changes through separately authorized LoRA training.
 
-**Status:** development prototype. Uploads, local/consented hosted advice, reviewed knowledge edits, answer reviews, bounded local training and standalone export exist. The complete four-activity UI, generic numerical/category targets, saved-page extraction and automatic feedback routing remain unfinished. Historical technical success does not establish personalized advice quality.
+**Status:** development prototype. Muster is included in this repository and runs inside QuarterMaster as **Collect**: capture pages, check extracted details, manage knowledge and publish collections. **Teach** imports those publications, activates saved knowledge and records personal number/category targets. Immutable reviewed datasets are available; connecting these generic targets to training/Ask and automatic feedback routing remains unfinished. Historical local training/export success does not establish personalized advice quality.
 
-The current example is a personal apartment valuation adviser using material the owner has already prepared. Extraction and feature design are future work. Core contracts remain generic; the previous product demos have been retired.
+The current example is personal apartment valuation. Its [starting policies](examples/apartments/owner-policies.md) distinguish owner preferences and unverified assumptions. Core schemas stay generic.
 
 ## Start the current application
 
@@ -28,6 +28,8 @@ uv run --locked uvicorn quartermaster.app:app --host 127.0.0.1 --port 8000 --no-
 ```
 
 CPU tests use deterministic fixtures, not real model calls. Model downloads, provider calls, GPU jobs and fresh-container export checks are separate opt-in operations. See the [operator guide](docs/operator-guide.md) and [.env.example](.env.example).
+
+Open **Collect** at `/collect/`, then choose a project → **Teach** to use a publication. Live collection needs a desktop and Chromium installed with `uv run --locked playwright install chromium` on the host; the default container supports the management/handoff screens without a desktop browser. The old Muster checkout is not a runtime dependency. See the operator guide to copy existing Muster data before deleting it.
 
 ## Design and limits
 
