@@ -47,7 +47,7 @@ Tests and existing code are evidence of behavior, not grounds to silently weaken
 - Do not silently join arbitrary spreadsheets, infer ground-truth ideal advice from historical outcomes, or generate labels without review.
 - Do not silently treat asking prices, historical actions or AI guesses as owner-preferred decisions. Maintain separate source observations, owner policies and reviewed teaching targets.
 - Route each review to an append-only record and the smallest useful teaching/knowledge proposal. Explicit owner feedback should not need a second approval merely to be stored; broader inferred KB/policy edits remain reviewable, reversible and conflict-aware.
-- Before any external builder-LLM transmission of business content, honor consent and data-minimization rules. Do not log raw sensitive cases or credentials.
+- Provider API calls needed for development and testing with non-sensitive development data are authorized, including ordinary API usage charges; do not request separate consent for each call. Use configured providers and credentials. Preserve the application's consent and data-minimization safeguards for users' business content; this development authorization does not remove them. Do not log raw sensitive cases or credentials.
 - All long-running training jobs must have finite resource/time bounds and durable failure states. No implicit retries that create billable GPU work.
 - Use pinned model revisions and container versions after verifying actual compatibility. Do not claim an export path works until a fresh-container smoke test passes.
 - Show human-actionable errors in the UI; preserve sanitized diagnostic codes for developers.
@@ -72,7 +72,7 @@ Tests and existing code are evidence of behavior, not grounds to silently weaken
 4. Test reviews as state transitions: accepted, corrected and skipped; accepted/corrected cases become reusable teaching evidence, skipped cases do not. Test draft → review → applied/rejected changes; rejection must leave active behavior unchanged.
 5. Test leakage protection: evaluation cases excluded from SFT data and outcomes withheld from decision-time inputs.
 6. Test training and export failure paths with mocks on ordinary CI.
-7. Run relevant local GPU tests, local model checks and bounded local training as needed to verify the task; no separate task authorization is required. Keep GPU tests separate from the default CPU suite (`make test-gpu`). Cloud-costing jobs still require task authorization and a reviewed command; external provider calls must honor the existing consent and data-minimization rules.
+7. Run relevant local GPU tests, local model checks, bounded local training and bounded provider API checks with non-sensitive development data as needed to verify the task; no separate task authorization is required. Keep GPU tests separate from the default CPU suite (`make test-gpu`). Provisioning cloud GPU/compute jobs still requires task authorization and a reviewed command; ordinary provider API checks are covered by the development authorization above.
 8. For export changes, test a fresh extracted package in isolation (`make test-export` when available); prove no builder API dependency.
 9. State plainly which verification commands were executed and which real model/GPU checks were not.
 10. For generic decision changes, test both numerical and categorical targets, source attribution and owner-facing explanation. For improvement changes, replay a small group of prior reviewed cases and verify training/knowledge version separation.
