@@ -79,7 +79,7 @@ Generic connection verification: `make test` passed (859 passed, 7 skipped, 2 de
 - [ ] Run one real LoRA training/candidate/selection path and demonstrate that **Review becomes Teach automatically**. If the candidate isn't an improvement according to the owner, keep the prior one and show the honest result.
 - [ ] Verify the other target kind with a small generic contract fixture, using the same code and no property-specific logic; no additional product demo is required.
 - [ ] Ask one genuinely nontechnical tester to complete the four actions without coaching. Fix their first blockers; a real browser walkthrough is required in addition to CPU tests.
-- [ ] Run focused tests, `make lint`, `make test`, and the relevant real-model/training checks **only with explicit hardware/provider authorization**. Record exactly what was and wasn't verified.
+- [ ] Run focused tests, `make lint`, `make test`, and relevant local real-model/GPU/training checks without separate task authorization. Cloud-costing jobs require task authorization and a reviewed command; external provider calls must honor consent and data-minimization rules. Record exactly what was and wasn't verified.
 
 **MVP done:** someone saves material, teaches personal judgments, asks for a new prediction, optionally reviews it, and sees that review correctly enter the KB and/or reviewed LoRA learning cycle—without knowing the word LoRA.
 

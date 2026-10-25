@@ -72,7 +72,7 @@ Tests and existing code are evidence of behavior, not grounds to silently weaken
 4. Test reviews as state transitions: accepted, corrected and skipped; accepted/corrected cases become reusable teaching evidence, skipped cases do not. Test draft → review → applied/rejected changes; rejection must leave active behavior unchanged.
 5. Test leakage protection: evaluation cases excluded from SFT data and outcomes withheld from decision-time inputs.
 6. Test training and export failure paths with mocks on ordinary CI.
-7. Do not run cloud-costing jobs or live GPU tests without task authorization and a reviewed command. Real GPU tests are opt-in (`make test-gpu`).
+7. Run relevant local GPU tests, local model checks and bounded local training as needed to verify the task; no separate task authorization is required. Keep GPU tests separate from the default CPU suite (`make test-gpu`). Cloud-costing jobs still require task authorization and a reviewed command; external provider calls must honor the existing consent and data-minimization rules.
 8. For export changes, test a fresh extracted package in isolation (`make test-export` when available); prove no builder API dependency.
 9. State plainly which verification commands were executed and which real model/GPU checks were not.
 10. For generic decision changes, test both numerical and categorical targets, source attribution and owner-facing explanation. For improvement changes, replay a small group of prior reviewed cases and verify training/knowledge version separation.
