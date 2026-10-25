@@ -201,6 +201,8 @@ quiesced copy of its configured shared directory, including ownership and all ar
 
 Report sanitized codes and record IDs, not private cases or credentials. `BUILDER_*`/`ADVISER_*` errors require checking provider configuration/consent; use manual or local paths where available. `LOCAL_*` errors require checking model fingerprints, service health and CPU/RAM. `LOCAL_TOKEN_LIMIT` means a finite budget was exhausted; retry explicitly or create a new check profile without editing historical records.
 
+`LOCAL_TIMEOUT` also covers the outer typed-prediction deadline. Wait for concurrent local training/conversion to finish or shorten the question before an explicit retry. A timeout does not establish that the model returned invalid JSON. The original request and failure remain reviewable; no target is created by a failed request alone.
+
 For `TRAINING_*`/`EXAMPLE_*`, inspect reviewed targets, check exclusions, hardware bounds and saved failure state. For `EXPORT_*`, preserve the archive/report and inspect exact image/model/context bytes and isolated cleanup. For `STORAGE_*`, check permissions, disk and complete backups; never delete SQLite to suppress an error. See [third-party notices](third-party-licenses.md) before redistributing models or knowledge.
 
 

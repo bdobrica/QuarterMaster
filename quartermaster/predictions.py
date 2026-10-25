@@ -178,6 +178,9 @@ async def generate(adapter, item):
             error=(
                 exc.message
                 if isinstance(exc, DomainError)
+                else "LOCAL_TIMEOUT: Your adviser took too long. Wait for other local work "
+                "to finish or shorten the question, then try again explicitly."
+                if isinstance(exc, TimeoutError)
                 else "PREDICTION_FAILED: No valid answer was returned. Try again explicitly."
             ),
         )

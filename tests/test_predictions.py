@@ -828,3 +828,33 @@ def test_longer_improvement_form_and_invalid_time_choice(client, settings, colle
     assert response.status_code == 200
     job = training.read_job(settings, training.runs(settings, project)[0])
     assert job.recipe.preset == "standard" and job.recipe.seconds == 3600
+
+
+@pytest.mark.parametrize("fmt", [NUMBER, CATEGORY])
+def test_prediction_deadline_is_actionable_and_preserves_reviewable_input(
+    client, settings, collection, fmt
+):
+    project, _, _ = setup(settings, collection, fmt)
+
+    class TimedOut:
+        async def predict(self, **kwargs):
+            # The outer request deadline can win before LocalInference wraps its timeout.
+            raise TimeoutError
+
+    client.app.state.inference = TimedOut()
+    situation = "The current case remains available after a timeout."
+    response = client.post(
+        f"/api/projects/{project}/predictions",
+        json={"situation": situation, "answer_format": fmt},
+    )
+    assert response.status_code == 200
+    run = response.json()
+    assert run["input"]["case"]["situation"] == situation
+    assert run["result"]["prediction"] is None
+    assert run["result"]["error"].startswith("LOCAL_TIMEOUT:")
+    assert "other local work" in run["result"]["error"]
+    assert "shorten the question" in run["result"]["error"]
+    assert str(predictions.history(settings, project)[0].id) == run["id"]
+    review = client.get(f"/projects/{project}/review")
+    assert "Your adviser took too long" in review.text
+    assert "PREDICTION_FAILED" not in review.text
