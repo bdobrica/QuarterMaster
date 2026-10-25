@@ -68,7 +68,8 @@ class Adapter:
 
     async def predict(self, **kwargs):
         self.calls.append(kwargs)
-        refs = json.loads(kwargs["context"])["retrieved_evidence"]
+        data = json.loads(kwargs["context"])
+        refs = data.get("source_excerpts", data.get("retrieved_evidence", []))
         if self.fail == "error":
             raise RuntimeError("sensitive raw content")
         return Prediction(
@@ -113,7 +114,7 @@ class PredictionEngine(FakeEngine):
 
 
 @pytest.mark.parametrize("fmt", [NUMBER, CATEGORY])
-@pytest.mark.parametrize("configured", [False, True])
+@pytest.mark.parametrize("configured", [False, "v5", True])
 def test_reviewed_dataset_job_ask_and_independent_export(
     client, settings, collection, tmp_path, monkeypatch, fmt, configured
 ):
@@ -130,6 +131,14 @@ def test_reviewed_dataset_job_ask_and_independent_export(
             TypeAdapter(AnswerFormat).validate_python(fmt),
             get_adviser(settings.database_path, project).revision,
         )
+        if configured == "v5":
+            from quartermaster.prediction_context import assemble
+
+            def historical(*args, **kwargs):
+                kwargs["prompt_version"] = kwargs.get("prompt_version") or "context/v5"
+                return assemble(*args, **kwargs)
+
+            monkeypatch.setattr(predictions, "assemble", historical)
     previous = get_adviser(settings.database_path, project)
     endpoint = f"/api/projects/{project}/muster/{item.id}/improve"
     response = client.post(endpoint, json=selection(settings, project, fmt).model_dump(mode="json"))
@@ -149,7 +158,9 @@ def test_reviewed_dataset_job_ask_and_independent_export(
     from quartermaster.prediction_context import system_for
 
     assert json.loads(raw)["messages"][0]["content"] == system_for(job.examples[0].input.context)
-    assert job.examples[0].input.prompt_version == ("context/v5" if configured else "context/v4")
+    assert job.examples[0].input.prompt_version == (
+        "context/v5" if configured == "v5" else "context/v6" if configured else "context/v4"
+    )
     if not configured:
         assert job.examples[0].input.system == SYSTEM
     assert json.loads(raw)["messages"][1]["content"] == job.examples[0].input.context
@@ -196,6 +207,9 @@ def test_reviewed_dataset_job_ask_and_independent_export(
     )
     assert selected.knowledge_revision == previous.knowledge_revision
     assert selected.outputs == "quartermaster.prediction/v1"
+    if configured == "v5":
+        # Today's base default must not change a previously trained adapter's profile.
+        monkeypatch.setattr(predictions, "assemble", assemble)
     # Selected candidates go through their verified runtime alias, with the generic schema.
     payloads = []
 
@@ -211,6 +225,8 @@ def test_reviewed_dataset_job_ask_and_independent_export(
         is None
     )
     assert payloads[-1][0] == f"qm-candidate-{version.model_sha256}"
+    assert payloads[-1][2] == job.examples[0].input.system
+    assert payloads[-1][3] == job.examples[0].input.response_schema
 
     settings.export_runtime_image = "sha256:" + "c" * 64
     response = client.post(
@@ -241,6 +257,50 @@ def test_reviewed_dataset_job_ask_and_independent_export(
             == 200
         )
     assert not list(root.rglob("*.sqlite3"))
+
+
+def test_compact_job_preserves_sources_and_rejects_changed_facts_or_unreviewed_context(
+    client, settings, collection
+):
+    from quartermaster.contracts.answers import NumberAnswer
+    from quartermaster.prediction_context import digest, encoded
+    from quartermaster.projects import configure_answer
+
+    project, item, _ = setup(settings, collection)
+    spec = get_adviser(settings.database_path, project)
+    configure_answer(
+        settings.database_path, project, NumberAnswer(kind="number", unit="EUR"), spec.revision
+    )
+    run = predictions.prepare(settings, project, item.id, selection(settings, project))
+    job = training.read_job(settings, run)
+    entry = job.examples[0]
+    data = json.loads(entry.input.context)
+    assert entry.input.prompt_version == "context/v6"
+    assert data["source_excerpts"] == [
+        {"citation_id": str(e.citation_id), "text": e.text} for e in entry.input.evidence
+    ]
+    assert all(e.source_sha256 and e.excerpt_sha256 for e in entry.input.evidence)
+    for key, value in (
+        ("case_facts", "Invented decision-time facts"),
+        ("owner_policy", "An invented policy"),
+        ("previous_owner_decisions", [{"target": {"kind": "number", "value": 1}}]),
+        ("source_excerpts", []),
+    ):
+        changed = dict(data, **{key: value})
+        fields = dict(
+            system=entry.input.system,
+            context=encoded(changed),
+            parameters=entry.input.parameters,
+            response_schema=entry.input.response_schema,
+        )
+        bad_input = entry.input.model_copy(update={**fields, "input_sha256": digest(fields)})
+        examples = [entry.model_copy(update={"input": bad_input})]
+        raw = serialize(examples)
+        altered = job.model_copy(
+            update={"examples": examples, "dataset_sha256": hashlib.sha256(raw).hexdigest()}
+        )
+        with pytest.raises(ValueError, match="PREDICTION_JOB"):
+            verify_job(altered, raw)
 
 
 @pytest.mark.parametrize(
@@ -463,12 +523,24 @@ def test_second_candidate_compares_selected_model_and_can_reselect_prior(
 @pytest.mark.parametrize(
     "failure", [None, "model", "length", "duplicate", "extra", "choice", "citation"]
 )
+@pytest.mark.parametrize("prompt_version", ["context/v4", "context/v5", "context/v6"])
 def test_local_prediction_wire_validation_is_shared_and_bounded(
-    client, settings, collection, failure
+    client, settings, collection, failure, prompt_version
 ):
+    from quartermaster import knowledge
+    from quartermaster.prediction_context import assemble
+
     project, item, target = setup(settings, collection, CATEGORY)
     run = predictions.prepare(settings, project, item.id, selection(settings, project, CATEGORY))
-    snapshot = training.read_job(settings, run).examples[0].input
+    job = training.read_job(settings, run)
+    case = job.examples[0].case
+    snapshot = assemble(
+        job.adviser,
+        case,
+        job.answer_format,
+        knowledge.advice_search(settings, job.adviser, case),
+        prompt_version=prompt_version,
+    )
     draft = asyncio.run(
         Adapter(target).predict(
             system=snapshot.system, context=snapshot.context, parameters=snapshot.parameters

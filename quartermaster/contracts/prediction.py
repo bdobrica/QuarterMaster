@@ -83,7 +83,7 @@ class PredictionInput(Contract):
     answer_format: AnswerFormat
     system: str
     context: str
-    prompt_version: Literal["context/v4", "context/v5"] = "context/v4"
+    prompt_version: Literal["context/v4", "context/v5", "context/v6"] = "context/v4"
     parameters: dict
     response_schema: dict
     evidence: list[EvidenceSnapshot]

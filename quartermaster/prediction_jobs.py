@@ -95,6 +95,38 @@ def verify_job(job, raw):
                 raise ValueError("PREDICTION_JOB: Collection lineage differs")
         item = entry.input
         data = json.loads(item.context)
+        expected_case = entry.case.decision_input()
+        if item.prompt_version == "context/v6":
+            keys = {
+                "prediction_profile",
+                "owner_policy",
+                "case_facts",
+                "source_excerpts",
+                "previous_owner_decisions",
+                "answer_format",
+            }
+            if job.adviser.business_goal:
+                keys.add("owner_goal")
+            if job.adviser.decision_definition:
+                keys.add("decision_definition")
+            if entry.case.choices:
+                keys.add("case_choices")
+            if set(data) != keys or data["prediction_profile"] != "owner/v3":
+                raise ValueError("PREDICTION_JOB: Changed compact decision context")
+            expected_case = {"situation": entry.case.situation, "choices": entry.case.choices}
+            # Normalize only for the shared semantic checks below. The original
+            # compact context, system, schema and bytes still participate in its hash.
+            data = {
+                "prediction_profile": data["prediction_profile"],
+                "mission": data["owner_policy"],
+                "business_goal": data.get("owner_goal"),
+                "decision_definition": data.get("decision_definition"),
+                "case": {"situation": data["case_facts"], "choices": data.get("case_choices", [])},
+                "retrieved_evidence": data["source_excerpts"],
+                "approved_lessons": data["previous_owner_decisions"],
+                "answer_format": data["answer_format"],
+                "context_omissions": None,
+            }
         fields = dict(
             system=item.system,
             context=item.context,
@@ -111,9 +143,11 @@ def verify_job(job, raw):
             "answer_format",
             "context_omissions",
         }
-        if item.prompt_version == "context/v5":
+        if item.prompt_version in ("context/v5", "context/v6"):
             context_keys.add("prediction_profile")
-            if data.get("prediction_profile") != "owner/v2":
+            if data.get("prediction_profile") != (
+                "owner/v3" if item.prompt_version == "context/v6" else "owner/v2"
+            ):
                 raise ValueError("PREDICTION_JOB: Changed prediction profile")
         if (
             set(data) != context_keys
@@ -144,7 +178,7 @@ def verify_job(job, raw):
             or item.parameters != PARAMETERS
             or item.response_schema != schema_for(item.context)
             or item.input_sha256 != digest(fields)
-            or data["case"] != entry.case.decision_input()
+            or data["case"] != expected_case
             or data["answer_format"] != job.answer_format.model_dump(mode="json")
         ):
             raise ValueError("PREDICTION_JOB: Supervision differs from the owner's decision")

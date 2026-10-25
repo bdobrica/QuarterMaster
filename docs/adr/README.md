@@ -11,8 +11,8 @@ These decisions retain the useful results of earlier work without keeping duplic
 | [0005](0005-reviewed-knowledge-and-feedback.md) | Separate immediate knowledge changes from reviewed behavior training. |
 | [0006](0006-integrated-muster.md) | Bundle Muster in QuarterMaster; keep checked source data separate from owner targets. |
 | [0007](0007-generic-prediction-boundary.md) | Share generic prediction across reviewed training, local Ask and portable export; preserve historical advice. |
-
 | [0008](0008-stabilized-owner-loop.md) | Connect typed feedback, saved-page handoff and versioned owner-response prompts without changing historical artifacts. |
+| [0009](0009-visible-prediction-contract.md) | Show the full response contract, compact decision facts and align explanation/target generation without rewriting old profiles. |
 
 Accepted ADRs describe intended design; they do not mark unfinished features complete. Supersede an accepted decision with a new ADR rather than rewriting its meaning.
 

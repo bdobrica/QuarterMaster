@@ -84,7 +84,7 @@ class ExportManifest(Contract):
     )
     model_format: Literal["GGUF-Q8_0"] = "GGUF-Q8_0"
     prompt_version: Literal[
-        "context/v1", "context/v2", "context/v3", "context/v4", "context/v5"
+        "context/v1", "context/v2", "context/v3", "context/v4", "context/v5", "context/v6"
     ] = "context/v1"
     teaching_sha256: Digest | None = Field(default=None, exclude_if=lambda value: value is None)
     files: dict[str, ArtifactFile]
@@ -123,12 +123,16 @@ class ExportManifest(Contract):
                 or self.source_test_id is not None
                 or self.source_test_sha256 is not None
                 or self.teaching_sha256 is None
-                or self.prompt_version not in ("context/v4", "context/v5")
+                or self.prompt_version not in ("context/v4", "context/v5", "context/v6")
                 or self.inference_parameters != PARAMETERS
             ):
                 raise ValueError("Generic export requires reviewed teaching and candidate lineage")
             return self
-        if self.teaching_sha256 is not None or self.prompt_version in ("context/v4", "context/v5"):
+        if self.teaching_sha256 is not None or self.prompt_version in (
+            "context/v4",
+            "context/v5",
+            "context/v6",
+        ):
             raise ValueError("Generic prediction requires a version 4 export")
         if self.schema_version == "quartermaster.export/v3":
             from quartermaster.generation import ADVICE_PARAMETERS

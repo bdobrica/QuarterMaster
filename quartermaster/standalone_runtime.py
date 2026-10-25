@@ -223,7 +223,7 @@ def create_runtime(root: Path, *, inference=None, launch_engine=True):
             case_id=action.case_id or uuid4(), situation=action.situation, choices=action.choices
         )
         _, context, evidence, _, omitted = app.state.context.assemble(case)
-        if app.state.manifest.prompt_version in ("context/v4", "context/v5"):
+        if app.state.manifest.prompt_version in ("context/v4", "context/v5", "context/v6"):
             from quartermaster.prediction_context import digest, schema_for, validate
             from quartermaster.prediction_context import system_for as prediction_system
 
