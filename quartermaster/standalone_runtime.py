@@ -20,6 +20,7 @@ from fastapi.templating import Jinja2Templates
 from quartermaster.advice_context import system_for, validate_advice
 from quartermaster.contracts.advice import Advice, Case
 from quartermaster.contracts.export import RuntimeAdvice, RuntimeInput
+from quartermaster.contracts.prediction import PredictionInput, RuntimePrediction
 from quartermaster.errors import DomainError
 from quartermaster.export_package import PackageContext, content_hash, verify_package
 from quartermaster.generation import checked_parameters
@@ -222,6 +223,40 @@ def create_runtime(root: Path, *, inference=None, launch_engine=True):
             case_id=action.case_id or uuid4(), situation=action.situation, choices=action.choices
         )
         _, context, evidence, _, omitted = app.state.context.assemble(case)
+        if app.state.manifest.prompt_version == "context/v4":
+            from quartermaster.prediction_context import SYSTEM, digest, schema_for, validate
+
+            fields = dict(
+                system=SYSTEM,
+                context=context,
+                parameters=app.state.manifest.inference_parameters,
+                response_schema=schema_for(context),
+            )
+            item = PredictionInput(
+                case=case,
+                answer_format=app.state.config.answer_format,
+                evidence=evidence,
+                input_sha256=digest(fields),
+                **fields,
+            )
+            try:
+                async with asyncio.timeout(180):
+                    prediction = await app.state.inference.predict(
+                        system=SYSTEM,
+                        context=context,
+                        parameters=app.state.manifest.inference_parameters,
+                    )
+            except TimeoutError:
+                raise DomainError(
+                    "LOCAL_TIMEOUT: Advice timed out; retry explicitly.", 503
+                ) from None
+            return RuntimePrediction(
+                prediction=validate(prediction, item),
+                evidence=evidence,
+                export_id=app.state.manifest.id,
+                candidate_id=app.state.manifest.candidate_id,
+                context_sha256=content_hash(context),
+            )
         try:
             async with asyncio.timeout(180):
                 result = await app.state.inference.advise(
@@ -252,7 +287,7 @@ def create_runtime(root: Path, *, inference=None, launch_engine=True):
             context_sha256=content_hash(context),
         )
 
-    @app.post("/v1/advise", response_model=RuntimeAdvice)
+    @app.post("/v1/advise", response_model=RuntimeAdvice | RuntimePrediction)
     async def advise_api(action: RuntimeInput, request: Request):
         same_origin(request)
         return await advise(action)

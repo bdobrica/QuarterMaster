@@ -196,6 +196,8 @@ async def advise(
         snapshot = _snapshot
     case, assembled = snapshot
     spec, context, evidence, lessons, omitted = assembled
+    if spec.outputs == "quartermaster.prediction/v1":
+        raise DomainError("PREDICTION_PATH: Use Ask for this number or choice adviser.", 409)
     hosted = spec.advice_mode == "hosted"
     provider = "local"
     if hosted:
@@ -230,6 +232,8 @@ async def advise(
         from quartermaster.training import get_run, get_version
 
         version = get_version(settings, project_id, spec.model.adapter_artifact)
+        if version.schema_version == "quartermaster.adviser-version/v2":
+            raise DomainError("PREDICTION_PATH: Use Ask for this number or choice adviser.", 409)
         run = get_run(settings, project_id, version.training_run_id)
         if run.status != "completed" or not version.smoke_passed:
             raise DomainError("CANDIDATE_STATE: Select a verified version on the Train screen.")

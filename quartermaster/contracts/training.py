@@ -139,9 +139,9 @@ class ArtifactFile(Contract):
 
 
 class TrainingManifest(Contract):
-    schema_version: Literal["quartermaster.training-artifacts/v1"] = (
-        "quartermaster.training-artifacts/v1"
-    )
+    schema_version: Literal[
+        "quartermaster.training-artifacts/v1", "quartermaster.training-artifacts/v2"
+    ] = "quartermaster.training-artifacts/v1"
     job_id: UUIDValue
     job_sha256: Digest
     dataset_sha256: Digest

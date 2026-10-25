@@ -17,7 +17,7 @@
 <p>This preserves the candidate's historical evaluated context and settings.</p>
 <form action="/projects/{{ project.id }}/export" method="post">
 <label for="candidate_id">Evaluated weights and context</label>
-<select id="candidate_id" name="candidate_id" required>{% for candidate in candidates if candidate.smoke_passed %}<option value="{{ candidate.id }}"><time datetime="{{ candidate.created_at.isoformat() }}" data-local-time>{{ candidate.created_at.strftime("%d %b %Y, %H:%M UTC") }}</time> · {{ model_labels[candidate.id] }} · {{ candidate.model_size_bytes }} model bytes · suite revision {{ candidate.suite_revision }}</option>{% endfor %}</select>
+<select id="candidate_id" name="candidate_id" required>{% for candidate in candidates if candidate.smoke_passed %}<option value="{{ candidate.id }}"><time datetime="{{ candidate.created_at.isoformat() }}" data-local-time>{{ candidate.created_at.strftime("%d %b %Y, %H:%M UTC") }}</time> · {{ model_labels[candidate.id] }} · {{ candidate.model_size_bytes }} model bytes · {% if candidate.schema_version == 'quartermaster.adviser-version/v2' %}reviewed personal answers{% else %}suite revision {{ candidate.suite_revision }}{% endif %}</option>{% endfor %}</select>
 <label class="check"><input type="checkbox" name="acknowledge_contents" required>I reviewed this candidate and understand the archive contains its selected knowledge source bytes, approved lesson text and one frozen evaluation situation with decision-time facts. Protect this business content. Training rows, raw corrections, outcomes, rubrics and builder credentials are excluded.</label>
 <button {% if not image or not candidates %}disabled{% endif %}>Create immutable package</button>
 </form>

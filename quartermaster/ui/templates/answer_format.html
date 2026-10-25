@@ -1,0 +1,4 @@
+<fieldset><legend>What kind of answer should it give?</legend>
+<label for="kind">Answer type</label><select name="kind" id="kind"><option value="number" {% if answer_format and answer_format.kind == 'number' %}selected{% endif %}>A number</option><option value="category" {% if answer_format and answer_format.kind == 'category' %}selected{% endif %}>A choice</option></select>
+<label for="unit">Unit (for a number, such as EUR or hours)</label><input id="unit" name="unit" maxlength="200" value="{{ answer_format.unit if answer_format and answer_format.kind == 'number' else '' }}">
+<label for="choices">Available answers (for a choice, one per line)</label><textarea id="choices" name="choices" rows="3">{{ answer_format.choices|join('\n') if answer_format and answer_format.kind == 'category' else '' }}</textarea></fieldset>

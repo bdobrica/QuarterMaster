@@ -11,6 +11,7 @@ from quartermaster.api.interview import form_values
 from quartermaster.api.routes import require_same_origin
 from quartermaster.contracts.evaluation import RatingInput
 from quartermaster.contracts.interview import VersionedAction
+from quartermaster.contracts.prediction import PredictionCandidate, PredictionJob
 from quartermaster.contracts.training import (
     AdviserVersion,
     ExampleReview,
@@ -36,7 +37,11 @@ def redirect(project_id):
 @router.get(WEB + "/train")
 def training_page(project_id: UUID, request: Request):
     config = settings(request)
-    candidates = training.versions(config, project_id)
+    candidates = [
+        v
+        for v in training.versions(config, project_id)
+        if v.schema_version == "quartermaster.adviser-version/v1"
+    ]
     reviews = {
         str(v.id): {str(r.case_id): r for r in training.ratings(config, project_id, v.id)}
         for v in candidates
@@ -251,7 +256,7 @@ def run(project_id: UUID, run_id: UUID, request: Request, revision: int | None =
     return training.get_run(settings(request), project_id, run_id, revision)
 
 
-@router.get(API + "/training-runs/{run_id}/job", response_model=TrainingJob)
+@router.get(API + "/training-runs/{run_id}/job", response_model=TrainingJob | PredictionJob)
 def job(project_id: UUID, run_id: UUID, request: Request):
     config = settings(request)
     return training.read_job(config, training.get_run(config, project_id, run_id))
@@ -261,6 +266,10 @@ def job(project_id: UUID, run_id: UUID, request: Request):
 def dataset(project_id: UUID, run_id: UUID, request: Request):
     config = settings(request)
     record = training.read_job(config, training.get_run(config, project_id, run_id))
+    if record.schema_version == "quartermaster.training-job/v2":
+        from quartermaster.prediction_context import serialize
+
+        return PlainTextResponse(serialize(record.examples), media_type="application/x-ndjson")
     return PlainTextResponse(training.serialize(record.examples), media_type="application/x-ndjson")
 
 
@@ -283,12 +292,14 @@ async def cancel_form(project_id: UUID, run_id: UUID, request: Request):
     return redirect(project_id)
 
 
-@router.get(API + "/adviser-versions", response_model=list[AdviserVersion])
+@router.get(API + "/adviser-versions", response_model=list[AdviserVersion | PredictionCandidate])
 def versions(project_id: UUID, request: Request):
     return training.versions(settings(request), project_id)
 
 
-@router.get(API + "/adviser-versions/{version_id}", response_model=AdviserVersion)
+@router.get(
+    API + "/adviser-versions/{version_id}", response_model=AdviserVersion | PredictionCandidate
+)
 def version(project_id: UUID, version_id: UUID, request: Request):
     return training.get_version(settings(request), project_id, version_id)
 

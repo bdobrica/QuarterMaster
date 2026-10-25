@@ -16,7 +16,7 @@
     {% if project is defined %}<nav aria-label="Adviser workflow" class="project-tabs">
       <a href="/collect/">Collect</a>
       <a href="/projects/{{ project.id }}/teach">Teach</a>
-      <a href="/projects/{{ project.id }}/test">Adviser</a>
+      <a href="/projects/{{ project.id }}/ask">Ask</a>
       <a href="/projects/{{ project.id }}/knowledge">Knowledge</a>
       <a href="/projects/{{ project.id }}/improvements">Improvements</a>
       <details><summary>Advanced</summary><a href="/projects/{{ project.id }}">Sources and setup</a> · <a href="/projects/{{ project.id }}/train">Train from approved examples</a> · <a href="/projects/{{ project.id }}/evaluations">Check sets</a> · <a href="/projects/{{ project.id }}/reliability">Technical diagnostics</a> · <a href="/projects/{{ project.id }}/export">Export</a></details>

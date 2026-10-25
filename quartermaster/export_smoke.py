@@ -8,6 +8,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from quartermaster.contracts.export import RuntimeAdvice
+from quartermaster.contracts.prediction import RuntimePrediction
 from quartermaster.errors import DomainError
 from quartermaster.export_package import extract_verified, sha256
 from quartermaster.exporting import compose_text
@@ -45,9 +46,15 @@ def verify_image(image, contract="quartermaster.export/v1"):
                     "quartermaster.export/v1",
                     "quartermaster.export/v2",
                     "quartermaster.export/v3",
+                    "quartermaster.export/v4",
                 },
-                "quartermaster.export/v2": {"quartermaster.export/v2", "quartermaster.export/v3"},
-                "quartermaster.export/v3": {"quartermaster.export/v3"},
+                "quartermaster.export/v2": {
+                    "quartermaster.export/v2",
+                    "quartermaster.export/v3",
+                    "quartermaster.export/v4",
+                },
+                "quartermaster.export/v3": {"quartermaster.export/v3", "quartermaster.export/v4"},
+                "quartermaster.export/v4": {"quartermaster.export/v4"},
             }.get(contract, set())
         ):
             raise ValueError
@@ -143,8 +150,17 @@ def smoke(archive, report_path=None):
                     raise DomainError(
                         "EXPORT_RESPONSE: Standalone reply exceeded the response bound.", 409
                     )
-                response = RuntimeAdvice.model_validate_json(raw)
-                response.advice.check_evidence({str(e.citation_id) for e in response.evidence})
+                if manifest.schema_version == "quartermaster.export/v4":
+                    response = RuntimePrediction.model_validate_json(raw)
+                    if not set(response.prediction.evidence_refs) <= {
+                        e.citation_id for e in response.evidence
+                    }:
+                        raise ValueError("Inaccessible prediction citations")
+                    clarification = bool(response.prediction.question)
+                else:
+                    response = RuntimeAdvice.model_validate_json(raw)
+                    response.advice.check_evidence({str(e.citation_id) for e in response.evidence})
+                    clarification = bool(response.advice.clarification_question)
                 if (
                     response.export_id != manifest.id
                     or response.candidate_id != manifest.candidate_id
@@ -167,7 +183,7 @@ def smoke(archive, report_path=None):
                     database_absent=True,
                     builder_provider_absent=True,
                     evidence_count=len(response.evidence),
-                    asks_clarification=bool(response.advice.clarification_question),
+                    asks_clarification=clarification,
                 )
             finally:
                 try:

@@ -7,6 +7,7 @@ from pydantic import AwareDatetime, Field, field_validator, model_serializer, mo
 from quartermaster.contracts.advice import Advice, Text
 from quartermaster.contracts.adviser import AdviserSpec
 from quartermaster.contracts.evaluation import Digest
+from quartermaster.contracts.prediction import AnswerFormat
 from quartermaster.contracts.sources import Chunk, Contract, UUIDValue
 from quartermaster.contracts.teaching import AppliedLesson, EvidenceSnapshot
 from quartermaster.contracts.training import ArtifactFile
@@ -55,7 +56,10 @@ class ExportKnowledge(Contract):
 
 class ExportManifest(Contract):
     schema_version: Literal[
-        "quartermaster.export/v1", "quartermaster.export/v2", "quartermaster.export/v3"
+        "quartermaster.export/v1",
+        "quartermaster.export/v2",
+        "quartermaster.export/v3",
+        "quartermaster.export/v4",
     ] = "quartermaster.export/v1"
     id: UUIDValue
     project_id: UUIDValue
@@ -79,7 +83,8 @@ class ExportManifest(Contract):
         "1a24df163920a4744a95373d178d790b72a9bb2f"
     )
     model_format: Literal["GGUF-Q8_0"] = "GGUF-Q8_0"
-    prompt_version: Literal["context/v1", "context/v2", "context/v3"] = "context/v1"
+    prompt_version: Literal["context/v1", "context/v2", "context/v3", "context/v4"] = "context/v1"
+    teaching_sha256: Digest | None = Field(default=None, exclude_if=lambda value: value is None)
     files: dict[str, ArtifactFile]
     inference_parameters: dict = Field(
         default_factory=lambda: checked_parameters(LEGACY_PARAMETERS)
@@ -109,6 +114,20 @@ class ExportManifest(Contract):
             self.suite_revision,
             self.suite_sha256,
         )
+        if self.schema_version == "quartermaster.export/v4":
+            if (
+                any(v is None for v in lineage[:5])
+                or any(v is not None for v in lineage[5:])
+                or self.source_test_id is not None
+                or self.source_test_sha256 is not None
+                or self.teaching_sha256 is None
+                or self.prompt_version != "context/v4"
+                or self.inference_parameters != PARAMETERS
+            ):
+                raise ValueError("Generic export requires reviewed teaching and candidate lineage")
+            return self
+        if self.teaching_sha256 is not None or self.prompt_version == "context/v4":
+            raise ValueError("Generic prediction requires a version 4 export")
         if self.schema_version == "quartermaster.export/v3":
             from quartermaster.generation import ADVICE_PARAMETERS
 
@@ -162,6 +181,7 @@ class RuntimeAdvice(Contract):
 class RuntimeConfiguration(Contract):
     adviser: AdviserSpec
     lessons: list[ExportLesson] = Field(max_length=10_000)
+    answer_format: AnswerFormat | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class ExportReference(Contract):

@@ -164,7 +164,9 @@ def test_candidate_docker_adapter_replays_same_profile_without_retry(profile):
 
     def command(args, timeout, body):
         requests.append(json.loads(body))
-        return json.dumps(test_teaching.envelope(test_teaching.draft().model_dump_json()))
+        return json.dumps(
+            {**test_teaching.envelope(test_teaching.draft().model_dump_json()), "model": "alias"}
+        )
 
     engine = SimpleNamespace(command=command, settings=object())
     adapter = training_worker.DockerInference(engine, object(), "bounded-container", "alias")

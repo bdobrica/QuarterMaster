@@ -166,6 +166,14 @@ def operator_readme(manifest, size):
         else f"Candidate {manifest.candidate_id}; evaluated suite {manifest.suite_id} "
         f"revision {manifest.suite_revision}."
     )
+    if manifest.schema_version == "quartermaster.export/v4":
+        lineage = (
+            f"Candidate {manifest.candidate_id}; reviewed teaching {manifest.teaching_sha256}. "
+            "Taught replay measures preference consistency, not unseen accuracy."
+        )
+    response_field = (
+        "prediction" if manifest.schema_version == "quartermaster.export/v4" else "advice"
+    )
     return f"""# Standalone adviser
 
 Export {manifest.id}; adviser revision {manifest.evaluated_adviser_revision}.
@@ -191,7 +199,7 @@ docker compose down
 
 Open http://127.0.0.1:8081. Advice API: `POST /v1/advise` with JSON
 `{{"situation":"Describe the decision-time facts", "choices":[]}}`.
-The response contains validated `advice`, accessible evidence excerpts and snapshot
+The response contains validated `{response_field}`, accessible evidence excerpts and snapshot
 identifiers. `GET /healthz` succeeds only after package/model verification and engine startup.
 No builder container, database, credentials or frontier API is required. Core advice
 uses an internal loopback CPU engine. Logs intentionally omit advice and raw model text.
@@ -237,6 +245,8 @@ def create_export(settings, project_id, selection):
     if run.status != "completed" or run.candidate_id != version.id or not version.smoke_passed:
         raise DomainError("EXPORT_CANDIDATE: Choose a completed, evaluated candidate.", 409)
     portable = verify_candidate(settings, version)
+    if version.schema_version == "quartermaster.adviser-version/v2":
+        return create_prediction_export(settings, project_id, version, run, portable)
     suite = evaluations.get_suite(settings, project_id, version.suite_id, version.suite_revision)
     evaluations.verify_frozen(suite)
     if suite.frozen_sha256 != version.suite_sha256 or not suite.inputs:
@@ -453,6 +463,87 @@ def create_base_export(settings, project_id, selection):
         data,
         base["sha256"],
         base["license_sha256"],
+    )
+
+
+def create_prediction_export(settings, project_id, version, run, portable):
+    """Package the exact generic training/replay knowledge, with a typed offline response."""
+    from quartermaster.generation import PARAMETERS
+
+    job = training.read_job(settings, run)
+    if (
+        job.schema_version != "quartermaster.training-job/v2"
+        or version.teaching_sha256 != job.teaching_sha256
+        or version.answer_format != job.answer_format
+    ):
+        raise DomainError("EXPORT_TEACHING: Candidate teaching lineage differs.", 409)
+    spec = job.adviser.model_copy(update={"model": ModelSpec(adapter_artifact=version.id)})
+    with connect(settings.database_path) as connection:
+        sources = [
+            read_source(connection, project_id, item.source.id) for item in job.teaching.knowledge
+        ]
+        chunks = []
+        for source in sources:
+            rows = connection.execute(
+                "SELECT document FROM chunks WHERE source_id=? ORDER BY id", (str(source.id),)
+            )
+            chunks.extend(Chunk.model_validate_json(row[0]) for row in rows)
+    if {str(s.id): s.sha256 for s in sources} != job.source_hashes:
+        raise DomainError("EXPORT_KNOWLEDGE: Restore the captured knowledge sources.", 409)
+    config = RuntimeConfiguration(adviser=spec, lessons=[], answer_format=job.answer_format)
+    material = ExportKnowledge(
+        sources=[
+            ExportSource(id=s.id, display_name=s.display_name, sha256=s.sha256) for s in sources
+        ],
+        chunks=chunks,
+    )
+    context = PackageContext(config, material, prompt_version="context/v4")
+    first = job.examples[0].input
+    try:
+        _, text, evidence, _, _ = context.assemble(first.case)
+        if text != first.context or evidence != first.evidence:
+            raise DomainError("EXPORT_CONTEXT: Restore the exact replayed knowledge.", 409)
+    finally:
+        context.close()
+    reference = ExportReference(
+        case=RuntimeInput(situation=first.case.situation, case_id=first.case.case_id),
+        context_sha256=content_hash(first.context),
+        evidence_ids=[e.citation_id for e in first.evidence],
+    )
+    data = dict(
+        schema_version="quartermaster.export/v4",
+        prompt_version="context/v4",
+        inference_parameters=PARAMETERS,
+        id=uuid4(),
+        project_id=UUID(str(project_id)),
+        created_at=datetime.now(UTC),
+        candidate_id=version.id,
+        training_run_id=run.id,
+        candidate_sha256=content_hash(version.model_dump_json()),
+        job_sha256=run.job_sha256,
+        training_manifest_sha256=version.training_manifest_sha256,
+        suite_id=None,
+        suite_revision=None,
+        suite_sha256=None,
+        evaluated_adviser_revision=spec.revision,
+        knowledge_revision=spec.knowledge_revision,
+        lessons_revision=spec.lessons_revision,
+        source_hashes=job.source_hashes,
+        teaching_sha256=job.teaching_sha256,
+        runtime_image=settings.export_runtime_image,
+        files={},
+    )
+    return write_package(
+        settings,
+        project_id,
+        config,
+        material,
+        sources,
+        reference,
+        portable,
+        data,
+        version.model_sha256,
+        version.license_sha256,
     )
 
 

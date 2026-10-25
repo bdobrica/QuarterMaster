@@ -31,7 +31,8 @@ def verify(artifacts, candidate_id):
     manifest = checked_file(artifacts / "candidates" / f"{candidate_id}.json", 4_000_000)
     record = json.loads(manifest.read_bytes())
     if (
-        record["schema_version"] != "quartermaster.adviser-version/v1"
+        record["schema_version"]
+        not in {"quartermaster.adviser-version/v1", "quartermaster.adviser-version/v2"}
         or record["id"] != candidate_id
         or record["status"] != "candidate"
         or record["smoke_passed"] is not True

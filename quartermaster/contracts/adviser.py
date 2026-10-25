@@ -59,7 +59,9 @@ class AdviserSpec(BaseModel):
     business_goal: Mission | None = None
     decision_definition: DecisionDefinition | None = None
     inputs: Literal["quartermaster.case/v1"] = "quartermaster.case/v1"
-    outputs: Literal["quartermaster.advice/v1"] = "quartermaster.advice/v1"
+    outputs: Literal["quartermaster.advice/v1", "quartermaster.prediction/v1"] = (
+        "quartermaster.advice/v1"
+    )
     model: ModelSpec = Field(default_factory=ModelSpec)
     knowledge_revision: UUID | None = None
     lessons_revision: UUID | None = None

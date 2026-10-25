@@ -16,6 +16,7 @@ from quartermaster.api.interview import router as interview_router
 from quartermaster.api.knowledge import router as knowledge_router
 from quartermaster.api.limits import BodyLimitMiddleware
 from quartermaster.api.muster import router as muster_router
+from quartermaster.api.predictions import router as predictions_router
 from quartermaster.api.reliability import router as reliability_router
 from quartermaster.api.routes import router, validation_error
 from quartermaster.api.teaching import router as teaching_router
@@ -91,6 +92,7 @@ def create_app(
     app.include_router(foundation_router)
     app.include_router(knowledge_router)
     app.include_router(muster_router)
+    app.include_router(predictions_router)
     app.include_router(interview_router)
     app.include_router(teaching_router)
     app.include_router(evaluation_router)

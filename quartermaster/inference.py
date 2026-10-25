@@ -132,6 +132,16 @@ class LocalInference:
         self.alias = alias
         self.base_url = base_url
 
+    async def predict(self, *, system, context, parameters=None):
+        from quartermaster.contracts.prediction import Prediction
+        from quartermaster.prediction_context import schema_for
+
+        content, _ = await self._completion(system, context, parameters, schema_for(context))
+        try:
+            return Prediction.model_validate(unambiguous_json(content))
+        except (ValueError, TypeError, RecursionError):
+            raise DomainError("PREDICTION_JSON: The model returned an invalid answer.") from None
+
     async def advise(
         self, *, system: str, context: str, parameters: dict | None = None
     ) -> GroundedAdvice:
@@ -216,6 +226,8 @@ class LocalInference:
                             "LOCAL_MODEL: Local server is not the configured base model."
                         )
                     response = await self.read(client, "POST", base + "/chat/completions", body)
+            if schema.get("title") == "Prediction" and response.get("model") != alias:
+                raise DomainError("PREDICTION_IDENTITY: The model returned a different identity.")
             usage = response.get("usage")
             tokens = usage.get("completion_tokens") if isinstance(usage, dict) else None
             if type(tokens) is not int or tokens < 0:

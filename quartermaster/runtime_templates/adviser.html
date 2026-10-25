@@ -11,7 +11,14 @@
 <label for="choices">Available choices (optional, one per line, up to ten)</label>
 <textarea id="choices" name="choices" rows="3" maxlength="16000"></textarea>
 <button>Ask for advice</button><p>One request at a time; CPU advice can take up to three minutes.</p></form>
-{% if result %}<article><h2>Recommendation</h2><p>{{ result.advice.recommendation }}</p>
+{% if result and result.prediction is defined %}<article><h2>Your answer</h2>
+{% if result.prediction.target %}<p>{{ result.prediction.target.value }}{% if result.prediction.target.unit is defined %} {{ result.prediction.target.unit }}{% endif %}</p>{% endif %}
+<h2>Why this fits what you've taught me</h2><p>{{ result.prediction.explanation }}</p>
+{% if result.prediction.question %}<p>{{ result.prediction.question }}</p>{% endif %}
+{% for limitation in result.prediction.limitations %}<p>{{ limitation }}</p>{% endfor %}
+{% if result.prediction.estimated_probabilities %}<p>Model-estimated probabilities (not calibrated): {{ result.prediction.estimated_probabilities }}</p>{% endif %}
+{% for item in result.evidence %}<details><summary>{{ item.source_name }} · lines {{ item.line_start }}–{{ item.line_end }}</summary><blockquote>{{ item.text }}</blockquote></details>{% endfor %}</article>
+{% elif result %}<article><h2>Recommendation</h2><p>{{ result.advice.recommendation }}</p>
 <h2>Supporting explanation</h2><p>{{ result.advice.explanation }}</p>
 {% if result.advice.clarification_question %}<h2>Missing information</h2><p>{{ result.advice.clarification_question }}</p>{% endif %}
 {% for limitation in result.advice.limitations %}<p>{{ limitation }}</p>{% endfor %}

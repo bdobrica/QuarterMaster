@@ -2,6 +2,7 @@
 
 import argparse
 import importlib.metadata
+import json
 import math
 import signal
 from pathlib import Path
@@ -26,7 +27,16 @@ def load_job():
     path = Path("/input/job.json")
     if path.stat().st_size > 10_000_000:
         raise ValueError("JOB_SIZE")
-    job = TrainingJob.model_validate_json(path.read_bytes())
+    raw = path.read_bytes()
+    if json.loads(raw)["schema_version"] == "quartermaster.training-job/v2":
+        from quartermaster.contracts.prediction import PredictionJob
+        from quartermaster.prediction_jobs import verify_job
+
+        job = PredictionJob.model_validate_json(raw)
+        rows = Path("/input/train.jsonl").read_bytes()
+        verify_job(job, rows)
+        return job, [TrainingRow.model_validate_json(line) for line in rows.splitlines()]
+    job = TrainingJob.model_validate_json(raw)
     if (
         job.model.adapter_artifact is not None
         or job.recipe.steps != (12 if job.recipe.preset == "quick" else 48)
@@ -135,6 +145,11 @@ def train(base, output, job, rows):
         if not changed:
             raise ValueError("JOB_NO_UPDATE")
     manifest = TrainingManifest(
+        schema_version=(
+            "quartermaster.training-artifacts/v2"
+            if job.schema_version == "quartermaster.training-job/v2"
+            else "quartermaster.training-artifacts/v1"
+        ),
         job_id=job.id,
         job_sha256=digest(Path("/input/job.json")),
         dataset_sha256=job.dataset_sha256,

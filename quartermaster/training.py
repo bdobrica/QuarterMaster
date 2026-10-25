@@ -101,7 +101,18 @@ def versions(settings, project_id):
             "SELECT document FROM adviser_versions WHERE project_id=? ORDER BY rowid DESC",
             (str(project_id),),
         ).fetchall()
-    return [AdviserVersion.model_validate_json(row[0]) for row in rows]
+    return [version_document(row[0]) for row in rows]
+
+
+def version_document(raw):
+    from quartermaster.contracts.prediction import PredictionCandidate
+
+    model = (
+        PredictionCandidate
+        if json.loads(raw)["schema_version"] == "quartermaster.adviser-version/v2"
+        else AdviserVersion
+    )
+    return model.model_validate_json(raw)
 
 
 def get_version(settings, project_id, version_id):
@@ -112,7 +123,7 @@ def get_version(settings, project_id, version_id):
         ).fetchone()
     if row is None:
         raise DomainError("CANDIDATE_MISSING: Choose a candidate from this project.", 404)
-    return AdviserVersion.model_validate_json(row[0])
+    return version_document(row[0])
 
 
 def append_example(connection, example, **changes):
@@ -456,7 +467,21 @@ def verified_job(settings, run):
         or hash_file(folder / "train.jsonl") != run.dataset_sha256
     ):
         raise DomainError("TRAINING_INTEGRITY: Frozen job or dataset hash changed.")
-    job = TrainingJob.model_validate_json((folder / "job.json").read_bytes())
+    raw = (folder / "job.json").read_bytes()
+    if json.loads(raw)["schema_version"] == "quartermaster.training-job/v2":
+        from quartermaster.contracts.prediction import PredictionJob
+        from quartermaster.prediction_jobs import verify_job
+
+        job = PredictionJob.model_validate_json(raw)
+        verify_job(job, (folder / "train.jsonl").read_bytes())
+        if (
+            job.id != run.id
+            or job.project_id != run.project_id
+            or job.dataset_sha256 != run.dataset_sha256
+        ):
+            raise ValueError("Generic job lineage differs")
+        return job
+    job = TrainingJob.model_validate_json(raw)
     if (
         job.id != run.id
         or job.project_id != run.project_id
@@ -540,7 +565,12 @@ def promote(settings, project_id, version_id, action):
         previous = read_spec(connection, project_id)
         if previous.revision != action.expected_revision:
             raise DomainError("PROJECT_CHANGED: Reload before selecting an active version.", 409)
-        return append_spec(connection, previous, model=ModelSpec(adapter_artifact=version.id))
+        changes = {"model": ModelSpec(adapter_artifact=version.id)}
+        if version.schema_version == "quartermaster.adviser-version/v2":
+            changes["outputs"] = "quartermaster.prediction/v1"
+        else:
+            changes["outputs"] = "quartermaster.advice/v1"
+        return append_spec(connection, previous, **changes)
 
 
 def retain_base(settings, project_id, action):

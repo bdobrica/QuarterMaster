@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Ask {{ project.name }}</h1>
+<p>{{ project.mission }}</p>
+<p>{% if project.model.adapter_artifact %}Current model: a selected trained version.{% else %}Not trained yet: using the base model with your active knowledge.{% endif %} Answers use the local engine. Knowledge edits affect context immediately; model weights change only after training and selection.</p>
+<form method="post" action="/projects/{{ project.id }}/ask">
+<label for="situation">What would you like help deciding?</label><textarea id="situation" name="situation" required maxlength="4000" rows="5"></textarea>
+<p>Include only facts known before the decision. Leave later outcomes out.</p>
+{% include 'answer_format.html' %}
+<button>Ask my adviser</button></form>
+{% for run in runs %}<article><h2>{{ run.input.case.situation }}</h2>
+{% if run.result.error %}<p role="alert">{{ run.result.error }}</p>{% else %}{% set prediction = run.result.prediction %}
+{% if prediction.target %}<p><strong>{{ prediction.target.value }}{% if prediction.target.unit is defined %} {{ prediction.target.unit }}{% endif %}</strong></p>{% endif %}
+<h3>Why this fits what you've taught me</h3><p>{{ prediction.explanation }}</p>
+{% if prediction.question %}<p>{{ prediction.question }}</p>{% endif %}
+{% for limitation in prediction.limitations %}<p>{{ limitation }}</p>{% endfor %}
+{% if prediction.estimated_probabilities %}<p>Model-estimated probabilities (not calibrated): {{ prediction.estimated_probabilities }}</p>{% endif %}
+{% for evidence in run.input.evidence %}<details><summary>{{ evidence.source_name }} · lines {{ evidence.line_start }}–{{ evidence.line_end }}{% if evidence.citation_id in prediction.evidence_refs %} · cited{% endif %}</summary><blockquote>{{ evidence.text }}</blockquote></details>{% endfor %}
+{% endif %}</article>{% else %}<p>Teach a few examples, then describe a new situation here. Clarification or an explanation of missing support is a useful answer too.</p>{% endfor %}
+<details><summary>Adviser improvements and versions</summary>
+{% for run in improvements %}<p>{% if run.status == 'queued' %}Improvement prepared; waiting for the local worker.{% elif run.status == 'completed' %}New adviser version ready.{% else %}{{ run.status }}{% endif %}{% if run.error %} {{ run.error }}{% endif %}</p>{% endfor %}
+{% for candidate in candidates %}<article><h2>Version prepared {{ candidate.created_at }}</h2>
+<p>Replays of taught examples check consistency with your preferences. They do not measure unseen accuracy. The comparison uses the model selected when this improvement was prepared.</p>
+{% for pair in candidate.comparisons %}{% set taught = candidate_examples[candidate.id][loop.index0] %}<h3>{{ taught.case.situation }}</h3><p>Your taught answer: {{ taught.target.target.value }}{% if taught.target.target.unit is defined %} {{ taught.target.target.unit }}{% endif %}. {{ taught.target.explanation }}</p><div class="comparison">{% for title, output in [('Previous model', pair.baseline), ('New version', pair.candidate)] %}<article><h3>{{ title }}</h3>{% if output.error %}<p>{{ output.error }}</p>{% else %}{% if output.prediction.target %}<p>{{ output.prediction.target.value }}{% if output.prediction.target.unit is defined %} {{ output.prediction.target.unit }}{% endif %}</p>{% endif %}<p>{{ output.prediction.explanation }}</p>{% if output.prediction.question %}<p>{{ output.prediction.question }}</p>{% endif %}{% endif %}</article>{% endfor %}</div>{% endfor %}
+{% if project.model.adapter_artifact == candidate.id %}<p>Current model</p>{% else %}<form method="post" action="/projects/{{ project.id }}/ask/versions/{{ candidate.id }}"><input type="hidden" name="expected_revision" value="{{ project.revision }}"><label><input type="checkbox" name="acknowledge_regressions" value="yes" required> I reviewed the changed answers and accept possible regressions.</label><button>Use this version</button></form>{% endif %}</article>{% endfor %}
+<form method="post" action="/projects/{{ project.id }}/ask/base"><input type="hidden" name="expected_revision" value="{{ project.revision }}"><button>Use the base model</button></form>
+</details>
+<p>Typed answer review and automatic feedback routing are still being built. Existing written-advice history remains available under <a href="/projects/{{ project.id }}/test">Advanced advice history</a>.</p>
+{% endblock %}

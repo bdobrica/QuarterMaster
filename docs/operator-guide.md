@@ -5,10 +5,11 @@ Use the [README](../README.md) for basic startup and [TODO](../TODO.md) for unfi
 ## Current controls
 
 - **Collect (Muster):** included source at `muster/`, running at `/collect/` in the same application. Add links or CSV/XLSX, capture pages, choose fields, consent to extraction, check details, edit/review knowledge and publish. Collection/extraction have explicit start/stop controls; startup never visits pages or calls a provider. The managed browser has a separate profile; access barriers require permitted manual intervention.
-- **Teach:** choose a publication, inspect its examples/knowledge, explicitly use articles in advice and teach a number with units or a choice. Select only decision-time fields. Unfinished extractions cannot become teaching targets; checked asking prices are still observations. Saving your answer needs no extra approval. Changes append revisions; a newer publication is a separate snapshot. Download reviewed teaching data to freeze the latest answers for that publication and current active knowledge. This data contract is **not yet a runnable historical LoRA job**; generic training/Ask alignment remains in TODO.
+- **Teach:** choose a publication, inspect its examples/knowledge, explicitly use articles in advice and teach a number with units or a choice. Select only decision-time fields. Unfinished extractions cannot become teaching targets; checked asking prices are still observations. Saving your answer needs no extra approval. Changes append revisions; a newer publication is a separate snapshot. Download reviewed teaching data to freeze the latest answers for that publication and current active knowledge. Choose **Improve my adviser**, confirm the answer unit or available choices and acknowledge local resource limits to prepare a new generic training job. It freezes reviewed decisions and active knowledge without starting GPU work. It never converts the data into a historical version 1 job.
 - **Sources and setup** (under Advanced): upload CSV/XLSX or UTF-8 Markdown, at most 8 MiB each. Inspect previews; explicitly map decision-time inputs separately from outcomes and targets. Joins need explicit keys; formulas and embedded instructions are never executed. Direct saved-HTML uploads are not implemented; Muster safely captures source pages.
 - **Knowledge:** upload/select Markdown, or propose an article edit. Review its diff and approve it to create immutable source bytes and an active revision. Rejection leaves behavior unchanged; stale proposals cannot overwrite newer knowledge. Historical citations remain accessible. This changes context, not weights.
-- **Adviser:** ask using the selected engine, inspect evidence, then record Pending/Pass/Fail and an optional correction. Failure cannot be marked Pass. Ratings currently do not automatically become teaching; eligible corrections still have a separate reviewed lesson path.
+- **Ask:** `/projects/<project-id>/ask` returns a number with units or an available choice using the local base/selected compatible candidate and active knowledge. Choose the requested answer format; missing decisive facts may produce clarification or abstention. Excerpts are verified before inference. Inspect prepared improvements and compare new/previous answers under **Adviser improvements and versions** before selecting a version. Replays of taught cases measure preference consistency, not unseen accuracy. Typed reviews and automatic routing remain unfinished.
+- **Advanced advice history:** the earlier `/test` screen asks using the selected engine, inspect evidence, then record Pending/Pass/Fail and an optional correction. Failure cannot be marked Pass. Ratings currently do not automatically become teaching; eligible corrections still have a separate reviewed lesson path.
 - **Improvements:** view saved check questions, reviews and earlier answers. Preview reruns before executing them. Saving a check permanently excludes its situation from teaching; its corrections remain evaluation-only. Ordinary question history needs a separate future path.
 - **Advanced:** inspect training, check sets, diagnostics and exports. Historical experiments remain accessible for existing records; they are not current product examples.
 
@@ -66,11 +67,11 @@ docker compose -f compose.yaml -f compose.advice.yaml --profile advice up -d --b
 
 The override lets the web service read the base bundle for export. Host Python deployments set `QM_LOCAL_MODEL_DIR` to their verified `data/local-model` directory and need a separately configured loopback inference endpoint. No existing artifact should be replaced to suppress a hash error.
 
-The supported base is `Qwen/Qwen3.5-0.8B` revision `2fc06364715b967f1860aea9cf38778875588b17`; llama.cpp is pinned in [trainer/Dockerfile](../trainer/Dockerfile). The Q8_0 model is about 812 MB. In the tested setup serving uses four CPU threads and a 4 GiB limit; responses may take minutes. Setup/conversion needs additional memory and disk. Ordinary advice uses bounded thinking; historical training, checks and exports retain their captured profiles. See [generation settings](../quartermaster/generation.py).
+The supported base is `Qwen/Qwen3.5-0.8B` revision `2fc06364715b967f1860aea9cf38778875588b17`; llama.cpp is pinned in [trainer/Dockerfile](../trainer/Dockerfile). The Q8_0 model is about 812 MB. In the tested setup serving uses four CPU threads and a 4 GiB limit; responses may take minutes. Setup/conversion needs additional memory and disk. Historical written advice uses bounded thinking; the new typed prediction path shares `context/v4` and the bounded non-thinking 1,024-token profile with training, comparison and export. Historical training, checks and exports retain their captured profiles. See [generation settings](../quartermaster/generation.py).
 
 ## Training
 
-Training is opt-in. Current examples still require an applied lesson and separate reviewed target; removing that prerequisite is in TODO. AI-draft provenance survives review. Reserved check cases and later outcomes never enter training. Exact/lexical duplicate checks do not catch every semantic overlap; inspect entity/time separation yourself.
+Training is opt-in. Preparing **Improve my adviser** puts saved collection decisions into `training-job/v2` without an applied lesson or second target approval. One publication per job and at most 100 targets are supported; all targets must fit the selected unit or choices. Reasons must fit the shared short explanation contract (600 characters); longer saved reasons remain intact and need explicit editing before training. The historical version 1 workflow still requires an applied lesson and separate reviewed target. AI-draft provenance survives review. Reserved check cases and later outcomes never enter training. Exact/lexical duplicate checks do not catch every semantic overlap; inspect entity/time separation yourself.
 
 The worker and web must share the same SQLite/artifact directory. The override below switches from a named volume to a host directory. **Existing installations must first stop services, back up and copy the complete volume into an empty host directory, then verify hashes and ownership.** Keep the original volume. Do not apply the override to an empty path and mistake it for an upgrade.
 
@@ -87,11 +88,13 @@ The shared directory defaults to `./data/training-app`, UID/GID 1000. Configure 
 Build and inspect the local images:
 
 ```sh
-docker build -f trainer/Dockerfile --target trainer -t quartermaster-trainer:m6 .
+docker build -f trainer/Dockerfile --target prediction-trainer -t quartermaster-trainer:prediction .
 docker build -f trainer/Dockerfile --target runtime -t quartermaster-runtime:m6 .
-docker image inspect quartermaster-trainer:m6 --format '{{.Id}}'
+docker image inspect quartermaster-trainer:prediction --format '{{.Id}}'
 docker image inspect quartermaster-runtime:m6 --format '{{.Id}}'
 ```
+
+The `prediction-trainer` target advertises only `training-job/v2`. For a historical version 1 job, build the `trainer` target instead; the worker rejects an incompatible image label before training. It always trains from the pinned base and compares generic candidates against the captured current selection. Up to five taught cases are replayed with identical context/settings. A rejected/unselected candidate leaves the current model and knowledge unchanged.
 
 After reviewing a queued job, hardware and the exact command, an operator can start the worker with those complete image IDs:
 
@@ -105,13 +108,13 @@ uv run --locked python -m quartermaster.training_worker \
   --runtime-image sha256:REPLACE_WITH_RUNTIME_IMAGE_ID
 ```
 
-These are operator instructions, not commands executed by this cleanup. Queueing does not run the worker. Do not start it during ordinary documentation or CPU verification.
+These are operator instructions, not commands executed while implementing the generic connection. Queueing does not run the worker. Do not start it during ordinary documentation or CPU verification.
 
 Standard passthrough requires a working NVIDIA Container Toolkit. The explicitly tested WSL alternative adds `--gpu-mode wsl`, exposing `/dev/dxg` and read-only `/usr/lib/wsl` driver files. It needs no privileged container, host install or daemon change. The tested host had a GTX 1660 Ti with 6 GiB VRAM; other GPU families/configurations remain unverified. See the [compatibility lesson](adr/0002-local-model-and-portable-runtime.md) before changing libraries, precision or kernels.
 
-Preflight requires compute capability ≥7, 5.5 billion VRAM bytes and 12 GB free artifact disk plus image space. Training has four CPUs and a 10 GiB RAM/swap bound. Quick is 12 steps/20 minutes; standard is 48 steps/60 minutes. Only quick was live-tested in the ordinary workflow. These are hard bounds, not promised runtimes or memory guarantees. Oversized targets fail instead of truncating. There are separate bounded preflight/conversion/comparison stages, durable cancellation/failure and no cloud fallback or automatic retry. `cleanup_required` blocks further jobs until the recorded orphan is stopped/recovered.
+Preflight requires compute capability ≥7, 5.5 billion VRAM bytes and 12 GB free artifact disk plus image space. Training has four CPUs and a 10 GiB RAM/swap bound. Quick is 12 steps/20 minutes; standard is 48 steps/60 minutes. Only the historical quick workflow was live-tested; generic training has CPU fixture verification only. These are hard bounds, not promised runtimes or memory guarantees. Oversized targets fail instead of truncating. There are separate bounded preflight/conversion/comparison stages, durable cancellation/failure and no cloud fallback or automatic retry. `cleanup_required` blocks further jobs until the recorded orphan is stopped/recovered.
 
-The trainer receives only its frozen input, verified base and output mounts, not the database, credentials, original sources or held-out labels. Never bypass the global job lock or edit frozen manifests to recover a run.
+The trainer receives only its frozen input, verified base and output mounts, not the database, credentials, live source storage or held-out labels. A generic job includes its reviewed teaching/knowledge snapshot and excerpt lineage as data. Never bypass the global job lock or edit frozen manifests to recover a run.
 
 ## Standalone export
 
@@ -122,7 +125,7 @@ docker build -f trainer/Dockerfile --target standalone-runtime -t quartermaster-
 docker image inspect quartermaster-standalone-runtime:local --format '{{.Id}}'
 ```
 
-Set `QM_EXPORT_RUNTIME_IMAGE` to that full ID in `.env`, then recreate the appropriate web Compose service with the same storage/profiles. A base export binds to a successful saved answer; a candidate export binds to its frozen evaluation. Both preserve their original context and model bytes, not later active edits. Old export versions keep their original semantics.
+Set `QM_EXPORT_RUNTIME_IMAGE` to that full ID in `.env`, then recreate the appropriate web Compose service with the same storage/profiles. A base export binds to a successful saved answer; a historical candidate export binds to its frozen evaluation. A generic `export/v4` binds to its reviewed dataset and taught-case comparison, carries its fixed answer format and responds with `prediction` at `/v1/advise`. All preserve their original context and model bytes, not later active edits. Old export versions keep their original semantics.
 
 Packages include the model/license, selected original knowledge, approved lessons and one disclosed reference situation. They exclude the builder database, raw reviews, training rows, rubric labels and provider credentials. Included free text may still be sensitive or subject to redistribution restrictions. An export is not a project backup. Reserve space for model copies and the runtime image; an archive alone does not install that image.
 

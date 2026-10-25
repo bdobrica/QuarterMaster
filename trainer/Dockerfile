@@ -34,7 +34,7 @@ ENTRYPOINT ["python", "/opt/quartermaster/candidate_runtime.py"]
 
 FROM runtime AS standalone-runtime
 USER root
-LABEL io.quartermaster.export-contract="quartermaster.export/v3"
+LABEL io.quartermaster.export-contract="quartermaster.export/v4"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 UV_PYTHON_DOWNLOADS=never \
     UV_LINK_MODE=copy PATH="/opt/runtime/.venv/bin:$PATH"
 WORKDIR /opt/runtime
@@ -44,6 +44,7 @@ RUN uv sync --locked --no-dev --no-install-project --no-cache
 COPY quartermaster/__init__.py quartermaster/advice_context.py quartermaster/config.py \
      quartermaster/errors.py quartermaster/export_package.py quartermaster/inference.py \
      quartermaster/generation.py \
+     quartermaster/prediction_context.py \
      quartermaster/standalone_runtime.py ./quartermaster/
 COPY quartermaster/contracts ./quartermaster/contracts
 COPY quartermaster/spike/__init__.py quartermaster/spike/spec.py ./quartermaster/spike/
@@ -81,6 +82,14 @@ COPY quartermaster/decision_artifacts.py quartermaster/training_artifacts.py \
      quartermaster/errors.py /opt/trainer/quartermaster/
 COPY trainer/decision_worker.py /opt/trainer/decision_worker.py
 ENTRYPOINT ["python", "/opt/trainer/decision_worker.py"]
+
+# Explicit generic contract; never advertise legacy jobs as accepting owner datasets.
+FROM trainer AS prediction-trainer
+LABEL io.quartermaster.training-contract="quartermaster.training-job/v2"
+COPY quartermaster/prediction_context.py quartermaster/prediction_jobs.py \
+     quartermaster/advice_context.py quartermaster/generation.py quartermaster/errors.py \
+     /opt/trainer/quartermaster/
+ENTRYPOINT ["python", "/opt/trainer/job_worker.py"]
 
 # Offline CPU comparison: no ML training dependencies, database, GPU or builder API.
 FROM runtime AS decision-runtime

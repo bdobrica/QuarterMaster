@@ -118,85 +118,90 @@ def execute_next(settings, engine):
         with connect(settings.database_path) as connection:
             connection.execute("BEGIN IMMEDIATE")
             require_eligible(connection, job.project_id, [e.case for e in job.examples])
-        output = training.directory(settings, run.id) / "output"
-        output.mkdir(mode=0o700)
-        pins = engine.preflight(run, job)
-        run = advance(settings, run, "training", **pins)
-        engine.train(run, job)
-        run = advance(settings, run, "verifying")
-        verify_adapter(output, job, run)
-        run = advance(settings, run, "converting")
-        (output / "portable").mkdir(mode=0o700)
-        engine.convert(run, job)
-        files = portable_files(output / "portable")
-        run = advance(settings, run, "evaluating")
-        suite = evaluations.get_suite(settings, run.project_id, job.suite_id, job.suite_revision)
-        evaluations.verify_frozen(suite)
-        if suite.frozen_sha256 != job.suite_sha256:
-            raise DomainError("TRAINING_SUITE: Frozen evaluation lineage changed.")
-        comparisons = engine.evaluate(run, job, suite, files)
-        if [p.case_id for p in comparisons] != [c.id for c in suite.cases] or any(
-            p.candidate.error
-            or not p.candidate.checks.schema_valid
-            or not p.candidate.checks.citations_valid
-            or not p.candidate.checks.supporting_facts_valid
-            for p in comparisons
-        ):
-            raise DomainError(
-                "CANDIDATE_SMOKE: Candidate advice failed structural or evidence checks."
+        if job.schema_version == "quartermaster.training-job/v2":
+            run = execute_predictions(settings, engine, run, job)
+        else:
+            output = training.directory(settings, run.id) / "output"
+            output.mkdir(mode=0o700)
+            pins = engine.preflight(run, job)
+            run = advance(settings, run, "training", **pins)
+            engine.train(run, job)
+            run = advance(settings, run, "verifying")
+            verify_adapter(output, job, run)
+            run = advance(settings, run, "converting")
+            (output / "portable").mkdir(mode=0o700)
+            engine.convert(run, job)
+            files = portable_files(output / "portable")
+            run = advance(settings, run, "evaluating")
+            suite = evaluations.get_suite(
+                settings, run.project_id, job.suite_id, job.suite_revision
             )
-        for pair, frozen in zip(comparisons, suite.inputs, strict=True):
-            if pair.baseline.input_sha256 != frozen.b.input_sha256 or (
-                pair.candidate.input_sha256 != frozen.b.input_sha256
+            evaluations.verify_frozen(suite)
+            if suite.frozen_sha256 != job.suite_sha256:
+                raise DomainError("TRAINING_SUITE: Frozen evaluation lineage changed.")
+            comparisons = engine.evaluate(run, job, suite, files)
+            if [p.case_id for p in comparisons] != [c.id for c in suite.cases] or any(
+                p.candidate.error
+                or not p.candidate.checks.schema_valid
+                or not p.candidate.checks.citations_valid
+                or not p.candidate.checks.supporting_facts_valid
+                for p in comparisons
             ):
                 raise DomainError(
-                    "CANDIDATE_CONTEXT: Comparison must use identical frozen context."
+                    "CANDIDATE_SMOKE: Candidate advice failed structural or evidence checks."
                 )
-        version = AdviserVersion(
-            id=uuid4(),
-            project_id=run.project_id,
-            training_run_id=run.id,
-            created_at=training.now(),
-            job_sha256=run.job_sha256,
-            training_manifest_sha256=training.hash_file(output / "training.json"),
-            **files,
-            trainer_image_id=run.trainer_image_id,
-            runtime_image_id=run.runtime_image_id,
-            suite_id=suite.id,
-            suite_revision=suite.revision,
-            suite_sha256=suite.frozen_sha256,
-            smoke_passed=True,
-            comparisons=comparisons,
-        )
-        # Publish a runtime locator only after verification. It is an immutable
-        # manifest with UUID paths, never a command or an arbitrary local path.
-        registry = settings.artifact_root / "candidates"
-        if registry.is_symlink():
-            raise DomainError("CANDIDATE_PATH: Restore the controlled registry.")
-        registry.mkdir(exist_ok=True, mode=0o700)
-        with connect(settings.database_path) as connection:
-            connection.execute("BEGIN IMMEDIATE")
-            latest = evaluations.read_document(
-                connection, "training_runs", TrainingRun, run.project_id, run.id
+            for pair, frozen in zip(comparisons, suite.inputs, strict=True):
+                if pair.baseline.input_sha256 != frozen.b.input_sha256 or (
+                    pair.candidate.input_sha256 != frozen.b.input_sha256
+                ):
+                    raise DomainError(
+                        "CANDIDATE_CONTEXT: Comparison must use identical frozen context."
+                    )
+            version = AdviserVersion(
+                id=uuid4(),
+                project_id=run.project_id,
+                training_run_id=run.id,
+                created_at=training.now(),
+                job_sha256=run.job_sha256,
+                training_manifest_sha256=training.hash_file(output / "training.json"),
+                **files,
+                trainer_image_id=run.trainer_image_id,
+                runtime_image_id=run.runtime_image_id,
+                suite_id=suite.id,
+                suite_revision=suite.revision,
+                suite_sha256=suite.frozen_sha256,
+                smoke_passed=True,
+                comparisons=comparisons,
             )
-            if latest.cancel_requested:
-                raise JobCanceled
-            with (registry / f"{version.id}.json").open("x") as stream:
-                stream.write(version.model_dump_json())
-            connection.execute(
-                "INSERT INTO adviser_versions VALUES (?, ?, ?)",
-                (str(version.id), str(run.project_id), version.model_dump_json()),
-            )
-            run = training.update_run(
-                connection,
-                latest,
-                status="completed",
-                candidate_id=version.id,
-                log=[
-                    *latest.log[-99:],
-                    "Candidate verified and evaluated. Active adviser unchanged.",
-                ],
-            )
+            # Publish a runtime locator only after verification. It is an immutable
+            # manifest with UUID paths, never a command or an arbitrary local path.
+            registry = settings.artifact_root / "candidates"
+            if registry.is_symlink():
+                raise DomainError("CANDIDATE_PATH: Restore the controlled registry.")
+            registry.mkdir(exist_ok=True, mode=0o700)
+            with connect(settings.database_path) as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                latest = evaluations.read_document(
+                    connection, "training_runs", TrainingRun, run.project_id, run.id
+                )
+                if latest.cancel_requested:
+                    raise JobCanceled
+                with (registry / f"{version.id}.json").open("x") as stream:
+                    stream.write(version.model_dump_json())
+                connection.execute(
+                    "INSERT INTO adviser_versions VALUES (?, ?, ?)",
+                    (str(version.id), str(run.project_id), version.model_dump_json()),
+                )
+                run = training.update_run(
+                    connection,
+                    latest,
+                    status="completed",
+                    candidate_id=version.id,
+                    log=[
+                        *latest.log[-99:],
+                        "Candidate verified and evaluated. Active adviser unchanged.",
+                    ],
+                )
     except (Exception, KeyboardInterrupt) as exc:
         status = (
             "canceled"
@@ -243,11 +248,99 @@ def execute_next(settings, engine):
     return run
 
 
+def execute_predictions(settings, engine, run, job):
+    """Same bounded stages/queue, explicit v2 supervision and preference replay."""
+    from quartermaster.contracts.prediction import PredictionCandidate
+    from quartermaster.prediction_context import validate
+
+    output = training.directory(settings, run.id) / "output"
+    output.mkdir(mode=0o700)
+    pins = engine.preflight(run, job)
+    run = advance(settings, run, "training", **pins)
+    engine.train(run, job)
+    run = advance(settings, run, "verifying")
+    verify_adapter(output, job, run)
+    run = advance(settings, run, "converting")
+    (output / "portable").mkdir(mode=0o700)
+    engine.convert(run, job)
+    files = portable_files(output / "portable")
+    run = advance(settings, run, "evaluating")
+    pairs = engine.evaluate(run, job, job, files)
+    if [p.case_id for p in pairs] != [e.case.case_id for e in job.examples[:5]]:
+        raise DomainError("CANDIDATE_CONTEXT: Replay every selected case once.")
+    for pair, entry in zip(pairs, job.examples[:5], strict=True):
+        if pair.candidate.error or pair.candidate.prediction is None:
+            raise DomainError("CANDIDATE_SMOKE: The candidate did not return a valid prediction.")
+        validate(pair.candidate.prediction, entry.input)
+        if (
+            pair.baseline.input_sha256 != entry.input.input_sha256
+            or pair.candidate.input_sha256 != entry.input.input_sha256
+        ):
+            raise DomainError("CANDIDATE_CONTEXT: Compare on identical captured inputs.")
+        if pair.baseline.prediction is not None:
+            validate(pair.baseline.prediction, entry.input)
+    version = PredictionCandidate(
+        id=uuid4(),
+        project_id=run.project_id,
+        training_run_id=run.id,
+        created_at=training.now(),
+        job_sha256=run.job_sha256,
+        training_manifest_sha256=training.hash_file(output / "training.json"),
+        **files,
+        trainer_image_id=run.trainer_image_id,
+        runtime_image_id=run.runtime_image_id,
+        baseline=job.baseline,
+        answer_format=job.answer_format,
+        teaching_sha256=job.teaching_sha256,
+        smoke_passed=True,
+        comparisons=pairs,
+    )
+    registry = settings.artifact_root / "candidates"
+    if registry.is_symlink():
+        raise DomainError("CANDIDATE_PATH: Restore the controlled registry.")
+    registry.mkdir(exist_ok=True, mode=0o700)
+    with connect(settings.database_path) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        latest = evaluations.read_document(
+            connection, "training_runs", TrainingRun, run.project_id, run.id
+        )
+        if latest.cancel_requested:
+            raise JobCanceled
+        with (registry / f"{version.id}.json").open("x") as stream:
+            stream.write(version.model_dump_json())
+        connection.execute(
+            "INSERT INTO adviser_versions VALUES (?, ?, ?)",
+            (str(version.id), str(run.project_id), version.model_dump_json()),
+        )
+        return training.update_run(
+            connection,
+            latest,
+            status="completed",
+            candidate_id=version.id,
+            log=[
+                *latest.log[-99:],
+                "New adviser version ready. Review the comparison before selecting it.",
+            ],
+        )
+
+
 class DockerInference:
     def __init__(self, engine, run, name, alias):
         self.engine, self.run, self.name, self.alias = engine, run, name, alias
 
     async def advise(self, *, system, context, parameters=None):
+        raw = await self.complete(system, context, parameters, response_schema(context))
+        return GroundedAdvice.model_validate_json(raw)
+
+    async def predict(self, *, system, context, parameters=None):
+        from quartermaster.contracts.prediction import Prediction
+        from quartermaster.generation import unambiguous_json
+        from quartermaster.prediction_context import schema_for
+
+        raw = await self.complete(system, context, parameters, schema_for(context))
+        return Prediction.model_validate(unambiguous_json(raw))
+
+    async def complete(self, system, context, parameters, schema):
         parameters = checked_parameters(parameters)
         check_cancel(self.engine.settings, self.run)
         payload = {
@@ -263,7 +356,7 @@ class DockerInference:
                 "json_schema": {
                     "name": "grounded_advice",
                     "strict": True,
-                    "schema": response_schema(context),
+                    "schema": schema,
                 },
             },
         }
@@ -285,7 +378,10 @@ class DockerInference:
         )
         if len(raw) > 131072:
             raise DomainError("CANDIDATE_SIZE: Model response exceeded the size limit.")
-        return GroundedAdvice.model_validate_json(completed_choice(json.loads(raw)))
+        response = json.loads(raw)
+        if response.get("model") != self.alias:
+            raise DomainError("CANDIDATE_IDENTITY: The model returned a different identity.")
+        return completed_choice(response)
 
 
 class DockerEngine:
@@ -412,7 +508,7 @@ class DockerEngine:
             runtime["Config"].get("Labels", {}).get("org.opencontainers.image.revision")
             != LLAMA_REVISION
             or trainer["Config"].get("Labels", {}).get("io.quartermaster.training-contract")
-            != "quartermaster.training-job/v1"
+            != job.schema_version
         ):
             raise DomainError("TRAINING_IMAGE: Build the documented pinned trainer/runtime stages.")
         folder = training.directory(self.settings, run.id)
@@ -462,16 +558,35 @@ class DockerEngine:
 
     async def compare(self, run, suite, files):
         outputs = {}
+        generic = getattr(suite, "schema_version", None) == "quartermaster.training-job/v2"
+        baseline_path, baseline_sha = self.base_gguf, self.base_record["sha256"]
+        baseline_alias = model_alias(baseline_sha)
+        if generic and suite.baseline.adapter_artifact:
+            from quartermaster.training_artifacts import verify_candidate
+
+            version = training.get_version(
+                self.settings, run.project_id, suite.baseline.adapter_artifact
+            )
+            if (
+                version.schema_version != "quartermaster.adviser-version/v2"
+                or version.answer_format != suite.answer_format
+            ):
+                raise DomainError(
+                    "CANDIDATE_BASELINE: Selected adviser uses a different answer format."
+                )
+            baseline_path = verify_candidate(self.settings, version)
+            baseline_sha = version.model_sha256
+            baseline_alias = f"qm-candidate-{baseline_sha}"
         async with asyncio.timeout(evaluations.RUN_SECONDS):
             for variant, path, sha in (
-                ("baseline", self.base_gguf, self.base_record["sha256"]),
+                ("baseline", baseline_path, baseline_sha),
                 (
                     "candidate",
                     training.directory(self.settings, run.id) / "output/portable",
                     files["model_sha256"],
                 ),
             ):
-                alias = model_alias(sha) if variant == "baseline" else f"qm-candidate-{sha}"
+                alias = baseline_alias if variant == "baseline" else f"qm-candidate-{sha}"
                 name = self.name(run, variant)
                 args = self.args(run, variant, self.runtime_image, [(path, "/model", False)])
                 self.command(
@@ -518,6 +633,14 @@ class DockerEngine:
                     raise DomainError("CANDIDATE_START: CPU runtime did not become healthy.")
                 adapter = DockerInference(self, run, name, alias)
                 outputs[variant] = []
+                if generic:
+                    from quartermaster.predictions import generate
+
+                    for entry in suite.examples[:5]:
+                        check_cancel(self.settings, run)
+                        outputs[variant].append(await generate(adapter, entry.input))
+                    self.command(["docker", "rm", "-f", name])
+                    continue
                 for entry, pair in zip(suite.cases, suite.inputs, strict=True):
                     checked_parameters(pair.b.parameters)
                     if (
@@ -543,6 +666,15 @@ class DockerEngine:
                             + "\n"
                         )
                 self.command(["docker", "rm", "-f", name])
+        if generic:
+            from quartermaster.contracts.prediction import PredictionPair
+
+            return [
+                PredictionPair(case_id=e.case.case_id, baseline=a, candidate=b)
+                for e, a, b in zip(
+                    suite.examples[:5], outputs["baseline"], outputs["candidate"], strict=True
+                )
+            ]
         return [
             CandidatePair(case_id=entry.id, baseline=a, candidate=b)
             for entry, a, b in zip(

@@ -16,7 +16,13 @@ def verify_adapter(output, job, run):
         raise DomainError("TRAINING_MANIFEST: Invalid artifact manifest.")
     manifest = TrainingManifest.model_validate_json(manifest_path.read_bytes())
     if (
-        manifest.job_id != run.id
+        manifest.schema_version
+        != (
+            "quartermaster.training-artifacts/v2"
+            if job.schema_version == "quartermaster.training-job/v2"
+            else "quartermaster.training-artifacts/v1"
+        )
+        or manifest.job_id != run.id
         or manifest.job_sha256 != run.job_sha256
         or manifest.dataset_sha256 != run.dataset_sha256
         or manifest.model != job.model
@@ -121,6 +127,16 @@ def verified_candidate(settings, version):
 
     run = get_run(settings, version.project_id, version.training_run_id)
     job = read_job(settings, run)
+    generic = job.schema_version == "quartermaster.training-job/v2"
+    if generic != (version.schema_version == "quartermaster.adviser-version/v2") or (
+        generic
+        and (
+            version.answer_format != job.answer_format
+            or version.teaching_sha256 != job.teaching_sha256
+            or version.baseline != job.baseline
+        )
+    ):
+        raise DomainError("CANDIDATE_LINEAGE: Candidate and training contract differ.", 409)
     output = directory(settings, run.id) / "output"
     verify_adapter(output, job, run)
     files = portable_files(output / "portable")

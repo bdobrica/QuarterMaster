@@ -10,6 +10,7 @@ These decisions retain the useful results of earlier work without keeping duplic
 | [0004](0004-reliability-lessons.md) | Require useful decisions; stop treating prompt experiments or low loss as success. |
 | [0005](0005-reviewed-knowledge-and-feedback.md) | Separate immediate knowledge changes from reviewed behavior training. |
 | [0006](0006-integrated-muster.md) | Bundle Muster in QuarterMaster; keep checked source data separate from owner targets. |
+| [0007](0007-generic-prediction-boundary.md) | Share generic prediction across reviewed training, local Ask and portable export; preserve historical advice. |
 
 Accepted ADRs describe intended design; they do not mark unfinished features complete. Supersede an accepted decision with a new ADR rather than rewriting its meaning.
 
