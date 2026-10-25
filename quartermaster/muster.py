@@ -19,7 +19,7 @@ from quartermaster.errors import DomainError
 from quartermaster.holdouts import require_eligible
 from quartermaster.knowledge import current_knowledge, revise_knowledge
 from quartermaster.muster_bundle import Bundle, controlled, load_bundle, read_json, sha_file
-from quartermaster.projects import read_spec
+from quartermaster.projects import read_spec, require_target
 from quartermaster.sources import read_source, source_bytes, upload_source
 
 
@@ -292,6 +292,7 @@ def save_decision(settings, project_id, import_id, example_id, action):
     did = decision_id(item, example_id)
     with connect(settings.database_path) as connection:
         connection.execute("BEGIN IMMEDIATE")
+        require_target(read_spec(connection, project_id), action.target)
         row = connection.execute(
             "SELECT document FROM owner_decisions WHERE project_id=? AND id=? "
             "ORDER BY revision DESC LIMIT 1",
@@ -328,9 +329,13 @@ def save_decision(settings, project_id, import_id, example_id, action):
 
 def freeze_teaching(settings, project_id, import_id):
     """Portable reviewed data; not a runnable historical LoRA job or a model change."""
-    get_import(settings, project_id, import_id)
+    if import_id is not None:
+        get_import(settings, project_id, import_id)
     records = decisions(settings, project_id, import_id)
-    if not records:
+    from quartermaster.prediction_reviews import teaching
+
+    reviewed = teaching(settings, project_id)
+    if not records and not reviewed:
         raise DomainError("MUSTER_NO_TARGETS: Teach at least one reviewed example first.")
     bundles, items = {}, {}
     for decision in records:
@@ -342,7 +347,7 @@ def freeze_teaching(settings, project_id, import_id):
         spec = read_spec(connection, project_id)
         # Freeze one consistent latest-decision snapshot, including concurrent saves.
         latest = decisions(settings, project_id, import_id)
-        if latest != records:
+        if latest != records or teaching(settings, project_id) != reviewed:
             raise DomainError("MUSTER_DECISION_CHANGED: Teaching changed; prepare again.", 409)
         examples = []
         for decision in records:
@@ -363,6 +368,9 @@ def freeze_teaching(settings, project_id, import_id):
                     },
                 }
             )
+        examples.extend(
+            r.model_dump(mode="json", exclude={"input": {"observed_outcome"}}) for r in reviewed
+        )
         knowledge = []
         if spec.knowledge_revision:
             from quartermaster.knowledge import read_revision
@@ -377,7 +385,9 @@ def freeze_teaching(settings, project_id, import_id):
                     }
                 )
         payload = {
-            "schema_version": "quartermaster.teaching-dataset/v1",
+            "schema_version": "quartermaster.teaching-dataset/v2"
+            if reviewed
+            else "quartermaster.teaching-dataset/v1",
             "project_id": str(project_id),
             "knowledge_revision": str(spec.knowledge_revision) if spec.knowledge_revision else None,
             "examples": examples,
@@ -399,3 +409,82 @@ def freeze_teaching(settings, project_id, import_id):
                     "MUSTER_DATASET_INTEGRITY: Restore the frozen dataset.", 503
                 ) from None
     return digest, path
+
+
+def bind_collection(settings, collection_id, project_id):
+    if not project_id:
+        return
+    from uuid import UUID
+
+    try:
+        project_id = UUID(project_id)
+    except ValueError:
+        return
+    with connect(settings.database_path) as connection:
+        read_spec(connection, project_id)
+        connection.execute(
+            "INSERT OR IGNORE INTO collection_projects VALUES (?, ?, NULL, NULL)",
+            (collection_id, str(project_id)),
+        )
+
+
+def collection_owner(settings, collection_id):
+    with connect(settings.database_path) as connection:
+        row = connection.execute(
+            "SELECT project_id FROM collection_projects WHERE collection_id=?", (collection_id,)
+        ).fetchone()
+    return row[0] if row else None
+
+
+def teach_collection(settings, collection_id):
+    # The bundled collector owns its mutable data and public publication API.
+    # QuarterMaster consumes the verified immutable bundle, never extraction tables.
+    from muster.publication import get_publication, overview, publish
+    from quartermaster.contracts.muster import UseKnowledge
+
+    project_id = collection_owner(settings, collection_id)
+    if project_id is None:
+        raise DomainError(
+            "COLLECTION_ADVISER: Open Collect from an adviser before adding material."
+        )
+    state = overview(settings.muster_storage, collection_id)
+    if (
+        state["problems"]
+        or any(j["decision"] in {"unavailable", "unreviewed"} for j in state["jobs"])
+        or state["pending"]
+    ):
+        raise DomainError(
+            "COLLECTION_UNFINISHED: Check every example and finish knowledge reviews. "
+            "You can exclude unfinished pages in Advanced before teaching.",
+            409,
+        )
+    with connect(settings.database_path) as connection:
+        row = connection.execute(
+            "SELECT * FROM collection_projects WHERE collection_id=?", (collection_id,)
+        ).fetchone()
+        # overview's public fingerprint changes on publication; store the post-publication
+        # fingerprint. A repeated handoff imports the same immutable version.
+        publication_id = row["publication"] if row["fingerprint"] == state["fingerprint"] else None
+    if publication_id is None:
+        publication_id = publish(settings.muster_storage, collection_id, state["fingerprint"])
+        fingerprint = overview(settings.muster_storage, collection_id)["fingerprint"]
+        with connect(settings.database_path) as connection:
+            connection.execute(
+                "UPDATE collection_projects SET fingerprint=?, publication=? WHERE collection_id=?",
+                (fingerprint, publication_id, collection_id),
+            )
+    published = get_publication(settings.muster_storage, collection_id, publication_id)
+    item = import_collection(settings, project_id, published["manifest_sha256"])
+    previous = current_knowledge(settings, project_id)
+    try:
+        use_knowledge(
+            settings,
+            project_id,
+            item.id,
+            UseKnowledge(expected_revision=previous.id if previous else None),
+        )
+    except DomainError as exc:
+        if not exc.message.startswith("MUSTER_KNOWLEDGE_CONFLICT:"):
+            raise
+        return f"/projects/{project_id}/teach/{item.id}?knowledge_conflict=yes"
+    return f"/projects/{project_id}/teach/{item.id}"

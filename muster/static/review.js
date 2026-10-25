@@ -169,6 +169,7 @@ if (form) {
   const caption = document.querySelector('#gallery-caption');
   let photoIndex = 0;
   function showPhoto(src, alt) {
+    if (!main || !full || !caption) return;
     main.src = full.href = src;
     main.alt = alt || 'Retained source image';
     photoIndex = photos.findIndex(photo => new URL(photo.dataset.src, location.href).href === new URL(src, location.href).href);
@@ -176,6 +177,7 @@ if (form) {
     for (let index = 0; index < photos.length; index++) photos[index].classList.toggle('active', index === photoIndex);
   }
   function stepPhoto(step) {
+    if (!photos.length) return;
     const index = photoIndex < 0 ? (step > 0 ? 0 : photos.length - 1) : (photoIndex + step + photos.length) % photos.length;
     showPhoto(photos[index].dataset.src, photos[index].dataset.alt);
   }
@@ -189,7 +191,7 @@ if (form) {
     const details = document.querySelector('#spreadsheet-details details');
     if (details) { details.open = true; details.scrollIntoView({block: 'nearest'}); }
   });
-  showPhoto(photos[0].dataset.src, photos[0].dataset.alt);
+  if (photos.length) showPhoto(photos[0].dataset.src, photos[0].dataset.alt);
   document.addEventListener('keydown', event => {
     if ((event.ctrlKey || event.metaKey) && ['s', 'Enter'].includes(event.key)) {
       event.preventDefault();

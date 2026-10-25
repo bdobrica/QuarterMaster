@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>What kind of answer should {{ project.name }} give?</h1>
+<p>{{ project.mission }}</p>
+{% if project.answer_format %}<p>Your answer settings are saved and reused for teaching, advice and improvements.</p><p><a class="button" href="/projects/{{ project.id }}/teach">Start teaching</a></p>
+{% else %}<p>Choose once for this adviser. Create another adviser if you need a different kind of answer.</p>
+<form method="post"><input type="hidden" name="expected_revision" value="{{ project.revision }}">
+{% set answer_format = none %}{% include 'answer_format.html' %}<button>Save answer settings</button></form>{% endif %}
+{% endblock %}

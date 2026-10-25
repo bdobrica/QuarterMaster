@@ -223,16 +223,18 @@ def create_runtime(root: Path, *, inference=None, launch_engine=True):
             case_id=action.case_id or uuid4(), situation=action.situation, choices=action.choices
         )
         _, context, evidence, _, omitted = app.state.context.assemble(case)
-        if app.state.manifest.prompt_version == "context/v4":
-            from quartermaster.prediction_context import SYSTEM, digest, schema_for, validate
+        if app.state.manifest.prompt_version in ("context/v4", "context/v5"):
+            from quartermaster.prediction_context import digest, schema_for, validate
+            from quartermaster.prediction_context import system_for as prediction_system
 
             fields = dict(
-                system=SYSTEM,
+                system=prediction_system(context),
                 context=context,
                 parameters=app.state.manifest.inference_parameters,
                 response_schema=schema_for(context),
             )
             item = PredictionInput(
+                prompt_version=app.state.manifest.prompt_version,
                 case=case,
                 answer_format=app.state.config.answer_format,
                 evidence=evidence,
@@ -242,7 +244,7 @@ def create_runtime(root: Path, *, inference=None, launch_engine=True):
             try:
                 async with asyncio.timeout(180):
                     prediction = await app.state.inference.predict(
-                        system=SYSTEM,
+                        system=prediction_system(context),
                         context=context,
                         parameters=app.state.manifest.inference_parameters,
                     )

@@ -224,9 +224,12 @@ def build(root, destination, data, version, created_at):
         prefix = f"sources/{row['job_id']}/{cid}"
         if cid not in retained:
             metadata = json.loads(row["metadata"])
-            names = ["page.html", "screenshot.png"] + [
-                image["file"] for image in metadata.get("images", [])
-            ]
+            screenshot = metadata.get("screenshot", "screenshot.png")
+            names = (
+                ["page.html"]
+                + ([screenshot] if screenshot else [])
+                + [image["file"] for image in metadata.get("images", [])]
+            )
             if any(
                 not isinstance(n, str) or not re.fullmatch(r"[A-Za-z0-9_-]+\.[A-Za-z0-9]+", n)
                 for n in names

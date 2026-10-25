@@ -1,34 +1,18 @@
 """Generic owner supervision and prediction; historical advice contracts stay unchanged."""
 
-from typing import Annotated, Literal
+from typing import Literal
 
 from pydantic import AwareDatetime, Field, model_validator
 
 from quartermaster.contracts.advice import Case, Text
 from quartermaster.contracts.adviser import AdviserSpec, ModelSpec
+from quartermaster.contracts.answers import AnswerFormat
+from quartermaster.contracts.answers import CategoryAnswer as CategoryAnswer
+from quartermaster.contracts.answers import NumberAnswer as NumberAnswer
 from quartermaster.contracts.muster import Digest, MusterImport, OwnerDecision, Short, Target
 from quartermaster.contracts.sources import Contract, Source, UUIDValue
 from quartermaster.contracts.teaching import EvidenceSnapshot
 from quartermaster.contracts.training import Recipe
-
-
-class NumberAnswer(Contract):
-    kind: Literal["number"]
-    unit: Short
-
-
-class CategoryAnswer(Contract):
-    kind: Literal["category"]
-    choices: list[Short] = Field(min_length=1, max_length=30)
-
-    @model_validator(mode="after")
-    def unique(self):
-        if len(set(self.choices)) != len(self.choices):
-            raise ValueError("Choose each answer once")
-        return self
-
-
-AnswerFormat = Annotated[NumberAnswer | CategoryAnswer, Field(discriminator="kind")]
 
 
 class Prediction(Contract):
@@ -99,7 +83,7 @@ class PredictionInput(Contract):
     answer_format: AnswerFormat
     system: str
     context: str
-    prompt_version: Literal["context/v4"] = "context/v4"
+    prompt_version: Literal["context/v4", "context/v5"] = "context/v4"
     parameters: dict
     response_schema: dict
     evidence: list[EvidenceSnapshot]
@@ -125,7 +109,7 @@ class PredictionJob(Contract):
     adviser: AdviserSpec
     baseline: ModelSpec
     answer_format: AnswerFormat
-    teaching: TeachingDataset
+    teaching: "TeachingDataset | ReviewTeachingDataset"
     teaching_sha256: Digest
     examples: list[SupervisedPrediction] = Field(min_length=1, max_length=100)
     dataset_sha256: Digest
@@ -202,3 +186,62 @@ class RuntimePrediction(Contract):
     export_id: UUIDValue
     candidate_id: UUIDValue | None
     context_sha256: Digest
+
+
+class PredictionReviewInput(Contract):
+    expected_revision: int = Field(ge=0)
+    action: Literal["accept", "correct", "note", "skip"]
+    target: Target | None = None
+    reasoning: str = Field(default="", max_length=600)
+
+    @model_validator(mode="after")
+    def explicit_target(self):
+        if (self.action == "correct") != (self.target is not None):
+            raise ValueError("Only a correction supplies a target")
+        if self.action == "note" and not self.reasoning.strip():
+            raise ValueError("Write a note")
+        return self
+
+
+class PredictionReview(Contract):
+    schema_version: Literal["quartermaster.prediction-review/v1"] = (
+        "quartermaster.prediction-review/v1"
+    )
+    project_id: UUIDValue
+    prediction_id: UUIDValue
+    revision: int = Field(ge=1)
+    created_at: AwareDatetime
+    submission: PredictionReviewInput
+    target: Target | None
+    reasoning: str
+    teaching_eligible: bool
+
+
+class ReviewedDecision(Contract):
+    id: UUIDValue
+    project_id: UUIDValue
+    revision: int = Field(ge=1)
+    created_at: AwareDatetime
+    prediction_id: UUIDValue
+    target: Target
+    reasoning: str
+    origin: Literal["PREDICTION_REVIEWED"] = "PREDICTION_REVIEWED"
+
+
+class ReviewedExample(Contract):
+    input: Case
+    owner_decision: ReviewedDecision
+    # Immutable original input/result, model and knowledge lineage plus explicit review.
+    run: PredictionRun
+    review: PredictionReview
+
+
+class ReviewTeachingDataset(TeachingDataset):
+    schema_version: Literal["quartermaster.teaching-dataset/v2"] = (
+        "quartermaster.teaching-dataset/v2"
+    )
+    examples: list[TaughtExample | ReviewedExample] = Field(min_length=1, max_length=100)
+    imports: list[MusterImport] = Field(max_length=100)
+
+
+PredictionJob.model_rebuild()

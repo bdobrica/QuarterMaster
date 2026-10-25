@@ -102,3 +102,35 @@ def edit_advice_engine(settings, project_id, action):
         if action.expected_revision != spec.revision:
             raise DomainError("PROJECT_CHANGED: Reload before changing the advice engine.", 409)
         return append_spec(connection, spec, advice_mode=action.mode, advice_consent=consent)
+
+
+def configure_answer(database, project_id, answer_format, expected_revision):
+    with connect(database) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        previous = read_spec(connection, project_id)
+        if expected_revision != previous.revision:
+            raise DomainError("PROJECT_CHANGED: Reload before saving your answer settings.", 409)
+        if previous.answer_format == answer_format:
+            return previous
+        if previous.answer_format is not None or previous.model.adapter_artifact:
+            raise DomainError(
+                "ANSWER_CONFIGURED: This adviser already has an answer format. "
+                "Create another adviser for a different kind of decision.",
+                409,
+            )
+        return append_spec(connection, previous, answer_format=answer_format)
+
+
+def require_answer_format(spec, answer_format):
+    if spec.answer_format is not None and spec.answer_format != answer_format:
+        raise DomainError("ANSWER_FORMAT: Use this adviser's saved unit or choices.", 409)
+
+
+def require_target(spec, target):
+    fmt = spec.answer_format
+    if fmt is not None and (
+        target.kind != fmt.kind
+        or (target.kind == "number" and target.unit != fmt.unit)
+        or (target.kind == "category" and target.value not in fmt.choices)
+    ):
+        raise DomainError("ANSWER_FORMAT: Use this adviser's saved unit or choices.", 409)

@@ -1,11 +1,15 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1>Teach · {{ project.name }}</h1>
-<p>Collect material in Muster, check its details, then publish a collection. Here, teach the answers you want your adviser to give.</p>
-<p><a class="button" href="/collect/">Collect and manage knowledge in Muster</a></p>
-<h2>Your teaching collections</h2>
-{% for item in imports %}<article><h3><a href="/projects/{{ project.id }}/teach/{{ item.id }}">{{ item.collection_name }} · v{{ item.publication_version }}</a></h3><p>{{ item.reviewed }} checked examples · {{ item.unreviewed }} unfinished examples · {{ item.knowledge_sources|length }} knowledge articles</p></article>{% else %}<p>No collection added yet. Publish one in Collect, then return here.</p>{% endfor %}
-<h2>Published collections available</h2>
+<p>Collect material and check its details. Here, teach the answers you want your adviser to give.</p>
+<p><a class="button" href="/projects/{{ project.id }}/collect">Collect material and knowledge</a></p>
+{% if not project.answer_format %}<p><a class="button" href="/projects/{{ project.id }}/answer-format">Set your adviser's answer type</a></p>{% endif %}<p><a href="/projects/{{ project.id }}/knowledge">Knowledge and policies</a></p><h2>Your teaching collections</h2>
+{% for item in imports %}<article><h3><a href="/projects/{{ project.id }}/teach/{{ item.id }}">{{ item.collection_name }}</a></h3><p>{{ item.reviewed }} checked examples · {{ item.unreviewed }} unfinished examples · {{ item.knowledge_sources|length }} knowledge articles</p></article>{% else %}<p>No teaching material yet. Add pages in Collect, check the details, then choose Start teaching.</p>{% endfor %}
+<details><summary>Advanced · published collections</summary><h2>Published collections available</h2>
 {% for item in publications %}<article><h3>{{ item.name }} · v{{ item.version }}</h3><p>{{ item.counts.examples }} examples · {{ item.counts.articles }} articles. Import preserves a separate snapshot; later publications do not replace it or your teaching.</p><form method="post" action="/projects/{{ project.id }}/teach/import"><input type="hidden" name="publication" value="{{ item.digest }}"><button>Inspect this collection</button></form></article>{% else %}<p>No publications yet. Use Publish collection in Muster when your material is ready.</p>{% endfor %}
-<p><a href="/projects/{{ project.id }}/knowledge">Edit this adviser's active knowledge</a></p>
+</details>
+<h2>Judgments from Review</h2>
+{% for example in reviewed %}<article><p>{{ example.input.situation }}</p><p><strong>{{ example.owner_decision.target.value }}{% if example.owner_decision.target.unit is defined %} {{ example.owner_decision.target.unit }}{% endif %}</strong> · {{ example.owner_decision.reasoning }}</p><a href="/projects/{{ project.id }}/review#answer-{{ example.run.id }}">See original answer and review</a></article>{% else %}<p>Accepted answers and corrections will appear here automatically. Notes and skipped answers do not add teaching targets.</p>{% endfor %}
+{% if (reviewed or taught_count) and project.answer_format %}<h2>Improve my adviser</h2><p>Use all your reviewed judgments in a bounded local training run. This may overfit and may not improve new answers. You choose whether to use the resulting version.</p><p>A local GPU worker is required. The training stage stops within 20 minutes; conversion and comparison take additional bounded time. Requires at least 6 GB video memory, up to 10 GiB RAM and 12 GB free disk plus image space.</p>
+<form method="post" action="/projects/{{ project.id }}/improve"><input type="hidden" name="expected_revision" value="{{ project.revision }}"><label><input type="checkbox" name="acknowledge_resources" value="yes" required> I authorize this bounded local improvement.</label><button>Improve my adviser</button></form><p>If the local worker is off, the request waits. No training or new version is claimed until it completes.</p>{% endif %}
 {% endblock %}

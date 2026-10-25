@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Review · {{ project.name }}</h1>
+<p>Accept an answer you would give, correct it, leave a note, or skip. Your choices teach your judgment; no external verdict is needed.</p>
+{% set notice = request.query_params.get('saved') %}
+{% if notice == 'correct' %}<p role="status">Saved your correction. I'll use it when you next improve your adviser.</p>{% elif notice == 'accept' %}<p role="status">Saved your judgment as teaching evidence.</p>{% elif notice == 'reserved' %}<p role="status">Saved your review. This situation is reserved for checks and will stay out of teaching.</p>{% elif notice == 'note' %}<p role="status">Saved your note. No teaching answer was added.</p>{% elif notice == 'skip' %}<p role="status">Skipped. No teaching answer was added.</p>{% endif %}
+{% for run in runs %}{% set entries = histories.get(run.id, []) %}{% set latest = entries[-1] if entries else none %}
+<article id="answer-{{ run.id }}"><h2>{{ run.input.case.situation }}</h2>
+{% include 'prediction_result.html' %}
+{% if latest %}<p>Last review: {{ {'accept':'Accepted', 'correct':'Corrected', 'note':'Note added', 'skip':'Skipped'}[latest.submission.action] }}. {{ latest.reasoning }}</p>{% endif %}
+<form method="post" action="/projects/{{ project.id }}/review/{{ run.id }}">
+<input type="hidden" name="expected_revision" value="{{ latest.revision if latest else 0 }}">
+<label>Your answer, if correcting{% if run.input.answer_format.kind == 'number' %} ({{ run.input.answer_format.unit }}) <input name="value" type="number" step="any">{% else %}<select name="value"><option value="">Choose…</option>{% for choice in run.input.answer_format.choices %}<option>{{ choice }}</option>{% endfor %}</select>{% endif %}</label>
+<label>Your reason or note (optional)<textarea name="reasoning" maxlength="600" rows="3"></textarea></label>
+<button name="action" value="accept" {% if run.result.error or not run.result.prediction or not run.result.prediction.target %}disabled{% endif %}>Accept</button>
+<button name="action" value="correct">Correct</button><button name="action" value="note">Add a note</button><button name="action" value="skip">Skip</button>
+</form>
+{% if conflicts.get(run.id) %}<p role="status">You made a different choice in a similar situation—should this rule apply only here?</p>{% for previous in conflicts[run.id] %}<p>Earlier personal choice: {{ previous.target.value }}. {{ previous.reasoning }}</p>{% endfor %}<p>Earlier judgments remain saved. Review the scope before proposing a policy.</p>{% endif %}
+{% if latest and latest.target %}<p><a href="/projects/{{ project.id }}/knowledge?review={{ run.id }}">Propose a reusable policy from this judgment</a>. Check its scope before applying it.</p>{% endif %}
+{% if entries %}<details><summary>Review history</summary>{% for entry in entries %}<p>{{ entry.created_at }} · {{ entry.submission.action }}{% if entry.target %}: {{ entry.target.value }}{% if entry.target.unit is defined %} {{ entry.target.unit }}{% endif %}{% endif %}. {{ entry.reasoning }}</p>{% endfor %}</details>{% endif %}
+</article>{% else %}<p>No answers to review yet. <a class="button" href="/projects/{{ project.id }}/ask">Ask your adviser</a> about a new situation.</p>{% endfor %}
+{% endblock %}

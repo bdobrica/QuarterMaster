@@ -168,7 +168,19 @@ def save_case(settings, project_id, suite_id, action, *, connection=None):
                 "SELECT document FROM training_examples WHERE project_id=?", (str(project_id),)
             )
         ]
+        from quartermaster import muster
+        from quartermaster.prediction_reviews import teaching as reviewed_teaching
+
         prior_cases = [TestRun.model_validate_json(row[0]).case for row in taught]
+        prior_cases.extend(e.input for e in reviewed_teaching(settings, project_id))
+        for decision in muster.decisions(settings, project_id):
+            item = muster.get_import(settings, project_id, decision.import_id)
+            bundle = muster.imported_bundle(settings, item)
+            prior_cases.append(
+                muster.decision_case(
+                    item, muster.example(bundle, decision.example_id), decision.input_fields
+                )
+            )
         if any(near_duplicate(run.case, case) for case in [*prior_cases, *training_cases]):
             raise DomainError(
                 "EVALUATION_TAUGHT: This situation already has teaching feedback. "

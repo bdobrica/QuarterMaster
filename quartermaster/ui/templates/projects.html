@@ -1,8 +1,8 @@
 <section id="projects" aria-live="polite" aria-label="Saved projects">
-  <h2>Your projects</h2>
+  <h2>Your advisers</h2>
   {% for project in projects %}
   <article>
-    <h3><a href="/projects/{{ project.id }}">{{ project.name }}</a></h3>
+    <h3><a href="/projects/{{ project.id }}/teach">{{ project.name }}</a></h3>
     <p class="mission">{{ project.mission }}</p>
     <small>Created {{ project.created_at.strftime('%Y-%m-%d %H:%M UTC') }}</small>
   </article>

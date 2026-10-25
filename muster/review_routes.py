@@ -64,7 +64,7 @@ def register_review_routes(app, root, render):
                 "unknown": raw.get("unknown:" + key) == "yes" if raw is not None else value is None,
             }
         images = review["metadata"].get("images", [])
-        if not images:
+        if not images and review["metadata"].get("screenshot", "screenshot.png"):
             images = [{"file": "screenshot.png", "alt": "Full-page screenshot"}]
         return render(
             request,

@@ -1,0 +1,9 @@
+{% if run.result.error %}<p role="alert">{{ run.result.error.split(': ', 1)[-1] }}</p>{% else %}{% set prediction = run.result.prediction %}
+{% if prediction.target %}<p><strong>{{ prediction.target.value }}{% if prediction.target.unit is defined %} {{ prediction.target.unit }}{% endif %}</strong></p>{% endif %}
+<h3>Why this fits what you've taught me</h3><p>{{ prediction.explanation }}</p>
+{% if prediction.question %}<p>{{ prediction.question }}</p>{% endif %}
+{% for limitation in prediction.limitations %}<p>{{ limitation }}</p>{% endfor %}
+{% if prediction.estimated_probabilities %}<details><summary>Advanced · model estimates</summary><p>Model-estimated probabilities (not calibrated): {{ prediction.estimated_probabilities }}</p></details>{% endif %}
+{% for evidence in run.input.evidence %}<details><summary>Knowledge: {{ evidence.source_name }}{% if evidence.citation_id in prediction.evidence_refs %} · cited{% endif %}</summary><blockquote>{{ evidence.text }}</blockquote></details>{% endfor %}
+{% set context = run.input.context|fromjson %}{% if context.get('reviewed_owner_preferences') %}<details><summary>Earlier personal judgments used</summary>{% for example in context.reviewed_owner_preferences %}<p>{{ example.situation }} — {{ example.target.value }}{% if example.target.unit is defined %} {{ example.target.unit }}{% endif %}. {{ example.reasoning }}</p>{% endfor %}<p>These are your preferences, not independently verified facts.</p></details>{% endif %}
+{% endif %}

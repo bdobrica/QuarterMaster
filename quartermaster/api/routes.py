@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
@@ -14,6 +15,7 @@ from quartermaster.projects import create_project, list_projects
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).parents[1] / "ui" / "templates")
 templates.env.globals["provider_estimate"] = preview_estimate
+templates.env.filters["fromjson"] = json.loads
 
 
 def require_same_origin(request: Request, *, form: bool = False) -> None:
@@ -80,14 +82,14 @@ async def project_form(request: Request):
                 context={},
                 status_code=422,
             )
-    create_project(request.app.state.settings.database_path, draft)
+    project = create_project(request.app.state.settings.database_path, draft)
     if request.headers.get("hx-request") == "true":
         return templates.TemplateResponse(
             request=request,
             name="projects.html",
             context={"projects": list_projects(request.app.state.settings.database_path)},
         )
-    return RedirectResponse("/", status_code=303)
+    return RedirectResponse(f"/projects/{project.id}/answer-format", status_code=303)
 
 
 async def validation_error(request: Request, exc: RequestValidationError):

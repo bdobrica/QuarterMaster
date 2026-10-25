@@ -28,6 +28,8 @@ def link(project_id, import_id=None):
 
 @router.get("/projects/{project_id}/teach")
 def teaching_page(project_id: UUID, request: Request):
+    from quartermaster.prediction_reviews import teaching
+
     config = settings(request)
     return page(
         request,
@@ -35,6 +37,8 @@ def teaching_page(project_id: UUID, request: Request):
         project=get_adviser(config.database_path, project_id),
         publications=muster.publications(config),
         imports=muster.imports(config, project_id),
+        reviewed=teaching(config, project_id),
+        taught_count=len(muster.decisions(config, project_id)),
     )
 
 
@@ -84,6 +88,11 @@ def example_page(project_id: UUID, import_id: UUID, index: int, request: Request
         index=index,
         count=len(bundle.examples),
         decision=decision,
+        input_defaults=decision.input_fields
+        if decision
+        else next(
+            (d.input_fields for d in reversed(muster.decisions(config, project_id, import_id))), []
+        ),
     )
 
 
@@ -141,9 +150,13 @@ async def decision_form(project_id: UUID, import_id: UUID, index: int, request: 
     require_same_origin(request, form=True)
     async with request.form(max_files=0, max_fields=40, max_part_size=16384) as form:
         try:
-            target = {"kind": form.get("kind"), "value": form.get("value")}
+            spec = get_adviser(settings(request).database_path, project_id)
+            fmt = spec.answer_format
+            target = {"kind": fmt.kind if fmt else form.get("kind"), "value": form.get("value")}
             if target["kind"] == "number":
-                target.update(value=float(target["value"]), unit=form.get("unit"))
+                target.update(
+                    value=float(target["value"]), unit=fmt.unit if fmt else form.get("unit")
+                )
             action = validate_form(
                 DecisionInput,
                 {
@@ -194,3 +207,13 @@ def evidence_file(project_id: UUID, import_id: UUID, name: str, request: Request
             "X-Content-Type-Options": "nosniff",
         },
     )
+
+
+@router.get("/projects/{project_id}/collect")
+def collect_page(project_id: UUID, request: Request):
+    get_adviser(settings(request).database_path, project_id)
+    response = RedirectResponse("/collect/", 303)
+    response.set_cookie(
+        "qm_adviser", str(project_id), httponly=True, samesite="strict", path="/collect"
+    )
+    return response

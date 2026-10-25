@@ -84,7 +84,7 @@ def test_form_works_without_javascript(client, project_fixture):
         follow_redirects=False,
     )
     assert response.status_code == 303
-    assert response.headers["location"] == "/"
+    assert response.headers["location"].endswith("/answer-format")
     assert project_fixture["name"] in client.get("/").text
 
 

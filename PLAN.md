@@ -6,7 +6,7 @@ Build a small, self-hosted workshop where an ordinary person teaches an adviser 
 
 ## Owner activities
 
-1. **Collect:** Muster is QuarterMaster's bundled collection/knowledge manager. Preserve rendered pages, images and provenance; organize checked examples and reviewed knowledge. Keep provider-assisted extraction consented and manual paths available. Its published format-1 bundles form the immutable handoff into teaching.
+1. **Collect:** Muster is QuarterMaster's bundled collection/knowledge manager. Preserve rendered pages, images and provenance; organize checked examples and reviewed knowledge. Keep provider-assisted extraction consented and manual paths available. Its format-1 bundles remain the immutable handoff into teaching. Adviser-bound Start teaching creates/imports that handoff automatically after details are checked; conflicting knowledge needs review. Saved HTML enters the same pipeline as text-only captures with exact original bytes.
 2. **Teach:** record the owner's preferred number with units or category, optional reasoning and reusable policies. Source observations and AI suggestions are not approved targets. The owner's personal judgment needs no external objective benchmark.
 3. **Ask:** use the selected compatible base/adapter, approved knowledge and eligible previous decisions to predict a number/category and give a short, sourced explanation. Clarification or abstention is valid when support is missing. Label base previews and uncertainty honestly.
 4. **Review:** a standalone inbox/history with Accept, Correct, Add a note and Skip. Capture an explicit accepted/corrected target once and return it to teaching automatically. Notes/skips add no label; failed answers cannot be accepted but may be corrected.
@@ -19,7 +19,7 @@ Store the exact input, prediction, sources, knowledge/model versions, owner's ju
 
 After review, retrieve related earlier decisions and propose the smallest useful source/extraction correction, knowledge/policy edit, behavior example or retrieval adjustment. Consult older history, surface conflicting preferences and keep broader inferred rules reviewable and reversible. Explicit feedback needs no second approval merely to be stored or reused as an eligible target.
 
-Approved knowledge changes affect the next retrieved context. Reviewed behavior examples enter a versioned dataset; weights change only after explicit, bounded LoRA training. Preparing a job is not running it. No hidden GPU work, paid retry or automatic promotion.
+Approved knowledge changes affect the next retrieved context. Reviewed behavior examples enter a versioned dataset; weights change only after explicit, bounded LoRA training. Preparing a job is not running it. No hidden GPU work, paid retry or automatic promotion. Note/Skip record history without adding a target; they retain earlier explicit judgments. A later accepted/corrected target supersedes that answer's previous target only in future teaching selections.
 
 Compare the proposed candidate against the currently selected adviser using identical captured context/settings. Show changed answers and allow rejection or retaining/reselecting the earlier version. Separate knowledge-only replay from weight comparisons. Replay of taught cases checks consistency with preferences, not unseen accuracy.
 
@@ -36,7 +36,7 @@ Keep original source bytes, content hashes, stable identities and versioned mani
 
 Reuse FastAPI, Jinja2/HTMX, SQLite, local artifacts, the current knowledge/review services, local inference adapter, bounded GPU trainer and portable CPU export. Do not import trainer internals into the app. Public contracts come before UI/trainer/export coupling.
 
-Muster's source, templates, scripts and regression tests live in this repo. Mount its application under `/collect` in the same server and manage its lifecycle there; no external checkout, child service or shared private database is required. Keep its editable collection state under `QM_DATA_DIR/muster` and import complete verified publications into immutable QuarterMaster artifacts. Checked extracted facts are not personal targets. Explicit number/category judgments are append-only and require decision-time field selection; generic training, local Ask and candidate export share the versioned prediction boundary in [ADR 0007](docs/adr/0007-generic-prediction-boundary.md). Real-model verification and automatic typed review routing remain open. See [ADR 0006](docs/adr/0006-integrated-muster.md).
+Muster's source, templates, scripts and regression tests live in this repo. Mount its application under `/collect` in the same server and manage its lifecycle there; no external checkout, child service or shared private database is required. Keep its editable collection state under `QM_DATA_DIR/muster` and import complete verified publications into immutable QuarterMaster artifacts. Checked extracted facts are not personal targets. Explicit number/category judgments are append-only and require decision-time field selection; generic training, local Ask and candidate export share the versioned prediction boundary in [ADR 0007](docs/adr/0007-generic-prediction-boundary.md). Typed reviews now feed teaching automatically. Real generic GPU execution and the browser flow have been exercised, but the local model failed numeric usefulness; see the stabilization gate in TODO. See [ADR 0006](docs/adr/0006-integrated-muster.md).
 
 | Boundary | Required transition |
 | --- | --- |
@@ -58,3 +58,8 @@ Verify both numerical and categorical contracts without restoring the retired pr
 **MVP success:** a newcomer can collect material, teach judgments, get an understandable prediction, optionally review it and see that review reused automatically. The app distinguishes updated knowledge from trained/selected model changes. A real training run may fail to improve; retaining the previous adviser is a valid outcome.
 
 Existing subsystem and export checks are reusable evidence, not completion of this product. No separate vector database, multi-agent runtime, model marketplace, custom tabular/SHAP pipeline, geospatial service, general crawler, multi-tenancy or cloud orchestration is needed. Keep autonomous external actions out of scope.
+
+
+## Stabilization gate
+
+Pause ordinary backlog work until the four activities are useful in a real demonstration. The connected workflow now has CPU, real-provider/browser and real generic GPU execution evidence. The 0.8B local base and its bounded candidate produced unusable numerical answers; do not call this personalized advice quality or promote that candidate. Keep the non-thinking profile after the controlled bounded-thinking comparison found no dependable quality advantage. New configured advisers use the versioned visible response/state contract in [ADR 0008](docs/adr/0008-stabilized-owner-loop.md); historical profiles remain readable. A nontechnical trial and useful unseen cases remain acceptance gates. Do not broaden scope to later subsystems while those gates remain open.

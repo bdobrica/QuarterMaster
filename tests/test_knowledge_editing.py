@@ -409,6 +409,6 @@ def test_v7_migration_preserves_historical_documents_and_original_bytes(settings
         assert [
             tuple(row) for row in connection.execute("SELECT * FROM knowledge_revisions")
         ] == before
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 11
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 12
     assert current_knowledge(settings, project.id) == old
     assert search(settings, project.id, "portal", old.id)

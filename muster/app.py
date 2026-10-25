@@ -23,7 +23,14 @@ from muster.schema_routes import register_schema_routes
 from muster.storage import connect, initialize
 
 
-def create_app(data_dir=None, schema_provider=None):
+def create_app(
+    data_dir=None,
+    schema_provider=None,
+    *,
+    bind_collection=None,
+    collection_owner=None,
+    teach_collection=None,
+):
     root = Path(data_dir or os.environ.get("MUSTER_DATA_DIR", ".muster")).resolve()
 
     @asynccontextmanager
@@ -69,7 +76,12 @@ def create_app(data_dir=None, schema_provider=None):
         # same mount as the forms and assets when embedded in QuarterMaster.
         location = response.headers.get("location", "")
         prefix = request.scope.get("root_path", "")
-        if prefix and location.startswith("/") and not location.startswith("//"):
+        if (
+            prefix
+            and location.startswith("/")
+            and not location.startswith("//")
+            and not (teach_collection and location.startswith("/projects/"))
+        ):
             response.headers["location"] = prefix + location
         response.headers.setdefault(
             "Content-Security-Policy",
@@ -86,6 +98,9 @@ def create_app(data_dir=None, schema_provider=None):
             context={
                 "csrf": csrf_token,
                 "mount_path": request.scope.get("root_path", ""),
+                "adviser_id": collection_owner(context["collection"]["id"])
+                if collection_owner and context.get("collection")
+                else request.cookies.get("qm_adviser"),
                 **context,
             },
         )
@@ -147,7 +162,7 @@ def create_app(data_dir=None, schema_provider=None):
         )
 
     @app.post("/imports/{token}/confirm")
-    def confirm(token: str):
+    def confirm(token: str, request: Request):
         with connect(root) as db:
             # Serialize confirmations so a double-click cannot import the same preview twice.
             db.execute("BEGIN IMMEDIATE")
@@ -177,7 +192,45 @@ def create_app(data_dir=None, schema_provider=None):
                 ],
             )
             db.execute("DELETE FROM import_previews WHERE token=?", (token,))
+        if bind_collection:
+            bind_collection(collection_id, request.cookies.get("qm_adviser"))
         return RedirectResponse(f"/collections/{collection_id}", status_code=303)
+
+    @app.post("/saved-pages")
+    async def saved_page(
+        request: Request,
+        page: Annotated[UploadFile, File()],
+        name: str = Form("My collection"),
+        source_url: str = Form(""),
+        collection_id: int | None = Form(None),
+    ):
+        from starlette.concurrency import run_in_threadpool
+
+        from muster.saved_pages import MAX_PAGE, save_page
+
+        try:
+            cid = await run_in_threadpool(
+                save_page,
+                root,
+                name,
+                page.filename,
+                await page.read(MAX_PAGE + 1),
+                source_url,
+                collection_id,
+            )
+        except ValueError as exc:
+            return render(request, "error.html", message=str(exc), status_code=422)
+        if bind_collection and collection_id is None:
+            bind_collection(cid, request.cookies.get("qm_adviser"))
+        return RedirectResponse(f"/collections/{cid}", 303)
+
+    if teach_collection:
+
+        @app.post("/collections/{collection_id}/teach")
+        async def teach_saved_collection(collection_id: int):
+            from starlette.concurrency import run_in_threadpool
+
+            return RedirectResponse(await run_in_threadpool(teach_collection, collection_id), 303)
 
     @app.get("/collections/{collection_id}")
     def collection(request: Request, collection_id: int):
@@ -207,6 +260,11 @@ def create_app(data_dir=None, schema_provider=None):
                 ORDER BY e.job_id""",
                 (collection_id,),
             ).fetchall()
+            reviewed_count = db.execute(
+                "SELECT count(*) FROM reviews r JOIN jobs j ON r.job_id=j.id "
+                "WHERE j.collection_id=? AND j.removed=0 AND r.status='reviewed'",
+                (collection_id,),
+            ).fetchone()[0]
             schema = db.execute(
                 "SELECT accepted_at,fields FROM collection_schemas WHERE collection_id=?",
                 (collection_id,),
@@ -221,6 +279,7 @@ def create_app(data_dir=None, schema_provider=None):
             examples=examples,
             batches=batches,
             schema=schema,
+            reviewed_count=reviewed_count,
             removed_jobs=removed_jobs,
             active=collector.active and collector.collection_id == collection_id,
             waiting=collector.waiting,

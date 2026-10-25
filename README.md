@@ -2,7 +2,7 @@
 
 A self-hosted workshop for teaching a personal AI adviser: **Collect → Teach → Ask → optional Review**. The intended loop turns accepted answers and corrections into reusable teaching evidence automatically. Approved knowledge changes affect context immediately; model behavior changes through separately authorized LoRA training.
 
-**Status:** development prototype. Muster is included in this repository and runs inside QuarterMaster as **Collect**: capture pages, check extracted details, manage knowledge and publish collections. **Teach** imports those publications, activates saved knowledge and records personal number/category targets. Reviewed targets now prepare bounded training jobs, compare a candidate with the selected model and feed typed local **Ask** and standalone packages. This connection has CPU fixture coverage; real generic model/GPU and fresh-container export verification remain open, as does automatic feedback routing. Historical local training/export success does not establish personalized advice quality.
+**Status:** the four-activity workflow has been exercised in Chromium with saved apartment pages, real consented extraction, three scripted personal judgments, local Ask, a correction, automatic teaching reuse and a bounded improvement request. A real 12-step GPU LoRA run completed verification, portable conversion and candidate comparison. **The current small local model is not ready for useful numeric advice:** both base and candidate returned an absurd price, including on taught cases. The candidate was not promoted. This verifies the software/training connection, not successful personalization. A nontechnical user trial and useful unseen numerical/category results remain open. See the [stabilization record](TODO.md#mvp-stabilization--2026-10-25).
 
 The current example is personal apartment valuation. Its [starting policies](examples/apartments/owner-policies.md) distinguish owner preferences and unverified assumptions. Core schemas stay generic.
 
@@ -29,7 +29,9 @@ uv run --locked uvicorn quartermaster.app:app --host 127.0.0.1 --port 8000 --no-
 
 CPU tests use deterministic fixtures, not real model calls. Model downloads, provider calls, GPU jobs and fresh-container export checks are separate opt-in operations. See the [operator guide](docs/operator-guide.md) and [.env.example](.env.example).
 
-Open **Collect** at `/collect/`, then choose a project → **Teach** to use a publication. Live collection needs a desktop and Chromium installed with `uv run --locked playwright install chromium` on the host; the default container supports the management/handoff screens without a desktop browser. The old Muster checkout is not a runtime dependency. See the operator guide to copy existing Muster data before deleting it.
+Create an adviser, save its answer type and unit/choices once, then open **Collect** from that adviser. Add saved HTML pages or links, review the extracted details, and choose **Start teaching**. Verified publication/import and unambiguous knowledge activation happen automatically; conflicts need review. Accept and Correct in **Review** automatically become teaching evidence; notes and skipped reviews do not add targets. **Improve my adviser** prepares a bounded job; GPU execution and candidate selection remain explicit. Technical controls are under **Advanced**.
+
+Saved-HTML upload needs no desktop browser and never executes page scripts. Live collection needs a desktop and Chromium installed with `uv run --locked playwright install chromium` on the host; the default container supports the management/handoff screens without a desktop browser. The old Muster checkout is not a runtime dependency. See the operator guide to copy existing Muster data before deleting it.
 
 ## Design and limits
 

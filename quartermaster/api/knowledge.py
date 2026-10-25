@@ -32,7 +32,13 @@ def redirect(project_id):
 
 
 @router.get("/projects/{project_id}/knowledge")
-def knowledge_page(project_id: UUID, request: Request, q: str = "", article: UUID | None = None):
+def knowledge_page(
+    project_id: UUID,
+    request: Request,
+    q: str = "",
+    article: UUID | None = None,
+    review: UUID | None = None,
+):
     config = settings(request)
     revision = current_knowledge(config, project_id)
     articles = []
@@ -42,6 +48,19 @@ def knowledge_page(project_id: UUID, request: Request, q: str = "", article: UUI
             {"source": source, "text": source_bytes(config, source).decode("utf-8-sig")}
         )
     selected = next((item for item in articles if item["source"].id == article), None)
+    suggestion = None
+    if review:
+        from quartermaster.prediction_reviews import teaching
+
+        example = next((e for e in teaching(config, project_id) if e.run.id == review), None)
+        if example:
+            suggestion = (
+                "# Personal policy to review\n\n"
+                "Scope: describe when this preference should apply before approving.\n\n"
+                f"In this situation: {example.input.situation}\n\n"
+                f"I preferred {example.owner_decision.target.value}. "
+                f"{example.owner_decision.reasoning}"
+            )
     pending = editing.proposals(config, project_id)
     diffs = {
         item.id: "\n".join(
@@ -70,6 +89,7 @@ def knowledge_page(project_id: UUID, request: Request, q: str = "", article: UUI
             p.applied_revision: p.content.title for p in pending if p.applied_revision and p.content
         },
         query=q,
+        policy_suggestion=suggestion,
         results=search(config, project_id, q),
         runs=list_tests(config, project_id),
     )

@@ -191,7 +191,7 @@ def test_v8_migration_adds_reviews_without_changing_source_history(settings):
     migrate(settings.database_path)
     migrate(settings.database_path)
     with connect(settings.database_path) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 11
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 12
         assert [
             tuple(row) for row in connection.execute("SELECT * FROM knowledge_revisions")
         ] == original

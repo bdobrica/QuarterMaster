@@ -92,10 +92,12 @@ def verify_package(root):
         if reference.case.case_id is None:
             raise ValueError("The frozen reference needs its original case ID")
         spec = config.adviser
-        if (manifest.prompt_version == "context/v4") != (config.answer_format is not None):
+        if (manifest.prompt_version in ("context/v4", "context/v5")) != (
+            config.answer_format is not None
+        ):
             raise ValueError("Prediction format and package contract differ")
         if (
-            manifest.prompt_version == "context/v4"
+            manifest.prompt_version in ("context/v4", "context/v5")
             and spec.outputs != "quartermaster.prediction/v1"
         ):
             raise ValueError("Generic packages require a prediction output contract")
@@ -169,7 +171,7 @@ class PackageContext:
     def assemble(self, case):
         terms = re.findall(r"\w+", case.situation[:200], re.UNICODE)[:16]
         evidence = []
-        if self.prompt_version in (ADVICE_PROMPT_VERSION, "context/v4"):
+        if self.prompt_version in (ADVICE_PROMPT_VERSION, "context/v4", "context/v5"):
             evidence = [
                 {"chunk": chunk, "source": self.sources[chunk.source_id]}
                 for chunk in knowledge_order(self.chunks.values(), case, self.config.adviser)
@@ -185,10 +187,16 @@ class PackageContext:
                 {"chunk": self.chunks[cid], "source": self.sources[self.chunks[cid].source_id]}
                 for (cid,) in ids
             ]
-        if self.prompt_version == "context/v4":
+        if self.prompt_version in ("context/v4", "context/v5"):
             from quartermaster.prediction_context import assemble
 
-            item = assemble(self.config.adviser, case, self.config.answer_format, evidence)
+            item = assemble(
+                self.config.adviser,
+                case,
+                self.config.answer_format,
+                evidence,
+                prompt_version=self.prompt_version,
+            )
             return (
                 self.config.adviser,
                 item.context,

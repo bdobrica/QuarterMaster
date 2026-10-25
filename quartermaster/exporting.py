@@ -497,8 +497,8 @@ def create_prediction_export(settings, project_id, version, run, portable):
         ],
         chunks=chunks,
     )
-    context = PackageContext(config, material, prompt_version="context/v4")
     first = job.examples[0].input
+    context = PackageContext(config, material, prompt_version=first.prompt_version)
     try:
         _, text, evidence, _, _ = context.assemble(first.case)
         if text != first.context or evidence != first.evidence:
@@ -512,7 +512,7 @@ def create_prediction_export(settings, project_id, version, run, portable):
     )
     data = dict(
         schema_version="quartermaster.export/v4",
-        prompt_version="context/v4",
+        prompt_version=first.prompt_version,
         inference_parameters=PARAMETERS,
         id=uuid4(),
         project_id=UUID(str(project_id)),

@@ -73,7 +73,12 @@ def create_app(
         # Read Muster's provider keys from this repo's .env without changing global
         # process state or inheriting the separate adviser/builder credentials.
         config = app.state.settings
+        from quartermaster import muster
+
         app.state.muster_app = create_muster(
+            bind_collection=lambda cid, pid: muster.bind_collection(config, cid, pid),
+            collection_owner=lambda cid: muster.collection_owner(config, cid),
+            teach_collection=lambda cid: muster.teach_collection(config, cid),
             data_dir=app.state.settings.muster_storage,
             schema_provider=SchemaProvider(
                 ProviderSettings(
@@ -84,6 +89,7 @@ def create_app(
                 )
             ),
         )
+        app.state.muster_app.add_exception_handler(DomainError, domain_error)
         async with app.state.muster_app.router.lifespan_context(app.state.muster_app):
             yield
 

@@ -13,6 +13,7 @@ from quartermaster.contracts.prediction import (
     PredictionJob,
     PredictionResult,
     PredictionRun,
+    ReviewTeachingDataset,
     SupervisedPrediction,
     TeachingDataset,
 )
@@ -27,13 +28,21 @@ from quartermaster.prediction_context import (
     validate,
 )
 from quartermaster.prediction_jobs import verify_job
-from quartermaster.projects import read_spec
+from quartermaster.projects import read_spec, require_answer_format
 
 
 def prepare(settings, project_id, import_id, action):
     teaching_sha, path = muster.freeze_teaching(settings, project_id, import_id)
     try:
-        dataset = TeachingDataset.model_validate_json(path.read_bytes())
+        raw_dataset = path.read_bytes()
+        import json
+
+        contract = (
+            ReviewTeachingDataset
+            if json.loads(raw_dataset)["schema_version"] == "quartermaster.teaching-dataset/v2"
+            else TeachingDataset
+        )
+        dataset = contract.model_validate_json(raw_dataset)
     except ValidationError:
         raise DomainError(
             "TEACHING_DATASET: Use a collection with at most 100 reviewed answers. "
@@ -43,6 +52,7 @@ def prepare(settings, project_id, import_id, action):
     with connect(settings.database_path) as connection:
         connection.execute("BEGIN IMMEDIATE")
         spec = read_spec(connection, project_id)
+        require_answer_format(spec, action.answer_format)
         if (
             spec.revision != action.expected_revision
             or spec.knowledge_revision != dataset.knowledge_revision
@@ -56,7 +66,12 @@ def prepare(settings, project_id, import_id, action):
                 409,
             )
         latest = muster.decisions(settings, project_id, import_id)
-        if latest != [e.owner_decision for e in dataset.examples]:
+        from quartermaster.prediction_reviews import teaching
+
+        reviewed = teaching(settings, project_id)
+        if [*latest, *[e.owner_decision for e in reviewed]] != [
+            e.owner_decision for e in dataset.examples
+        ]:
             raise DomainError("MUSTER_DECISION_CHANGED: Teaching changed; prepare again.", 409)
         if spec.model.adapter_artifact:
             baseline = training.get_version(settings, project_id, spec.model.adapter_artifact)
@@ -170,7 +185,9 @@ async def generate(adapter, item):
 async def ask(settings, adapter, project_id, action):
     with connect(settings.database_path) as connection:
         spec = read_spec(connection, project_id)
+        require_answer_format(spec, action.answer_format)
     spec = spec.model_copy(update={"outputs": "quartermaster.prediction/v1"})
+    prompt_version = None
     # This path uses the local engine only. Hosted advice consent is a separate contract.
     if spec.model.adapter_artifact:
         version = training.get_version(settings, project_id, spec.model.adapter_artifact)
@@ -185,6 +202,7 @@ async def ask(settings, adapter, project_id, action):
 
         verify_candidate(settings, version)
         run = training.get_run(settings, project_id, version.training_run_id)
+        prompt_version = training.read_job(settings, run).examples[0].input.prompt_version
         if run.status != "completed" or run.candidate_id != version.id or not version.smoke_passed:
             raise DomainError("CANDIDATE_STATE: Select a completed adviser version.", 409)
         if settings.candidate_base_url is None:
@@ -195,7 +213,14 @@ async def ask(settings, adapter, project_id, action):
             base_url=str(settings.candidate_base_url).rstrip("/") + f"/{version.id}/v1",
         )
     case = Case(case_id=uuid4(), situation=action.situation)
-    item = assemble(spec, case, action.answer_format, knowledge.advice_search(settings, spec, case))
+    item = assemble(
+        spec,
+        case,
+        action.answer_format,
+        knowledge.advice_search(settings, spec, case),
+        reviewed_preferences=related(settings, project_id, case, action.answer_format),
+        prompt_version=prompt_version,
+    )
     verify_evidence(settings, spec, item)
     result = await generate(adapter, item)
     run = PredictionRun(
@@ -214,12 +239,12 @@ async def ask(settings, adapter, project_id, action):
     return run
 
 
-def history(settings, project_id):
+def history(settings, project_id, limit=50):
     with connect(settings.database_path) as connection:
         read_spec(connection, project_id)
         rows = connection.execute(
-            "SELECT document FROM prediction_runs WHERE project_id=? ORDER BY rowid DESC LIMIT 50",
-            (str(project_id),),
+            "SELECT document FROM prediction_runs WHERE project_id=? ORDER BY rowid DESC LIMIT ?",
+            (str(project_id), -1 if limit is None else limit),
         )
         return [PredictionRun.model_validate_json(row[0]) for row in rows]
 
@@ -235,3 +260,53 @@ def verify_evidence(settings, spec, item):
             or current["chunk"].text != evidence.text
         ):
             raise DomainError("PREDICTION_SOURCE: Restore the cited source and excerpt.", 409)
+
+
+def related(settings, project_id, case, answer_format):
+    """Small lexical selection from all latest reviewed decisions, excluding reserved cases."""
+    import re
+
+    from quartermaster.prediction_reviews import eligible, teaching
+
+    candidates = []
+    for decision in muster.decisions(settings, project_id):
+        item = muster.get_import(settings, project_id, decision.import_id)
+        bundle = muster.imported_bundle(settings, item)
+        record = muster.example(bundle, decision.example_id)
+        muster.verify_record_evidence(bundle, record)
+        candidates.append((muster.decision_case(item, record, decision.input_fields), decision))
+    candidates.extend((e.input, e.owner_decision) for e in teaching(settings, project_id))
+
+    def words(text):
+        return set(re.findall(r"\w+", text.casefold()))
+
+    query = words(case.situation)
+    ranked = []
+    with connect(settings.database_path) as connection:
+        # Never supply a reserved query to related-teaching routing either.
+        if not eligible(connection, project_id, case):
+            return []
+        for situation, decision in candidates:
+            target = decision.target
+            if (
+                target.kind != answer_format.kind
+                or (target.kind == "number" and target.unit != answer_format.unit)
+                or (target.kind == "category" and target.value not in answer_format.choices)
+                or not eligible(connection, project_id, situation)
+            ):
+                continue
+            score = len(query & words(situation.situation))
+            if score:
+                ranked.append((score, str(decision.created_at), situation, decision))
+    ranked.sort(key=lambda row: (row[0], row[1]), reverse=True)
+    return [
+        dict(
+            situation=s.situation[:1200],
+            target=d.target.model_dump(mode="json"),
+            reasoning=d.reasoning[:600],
+            decision_id=str(d.id),
+            revision=d.revision,
+            meaning="Owner preference, not a verified source fact or observed outcome",
+        )
+        for _, _, s, d in ranked[:3]
+    ]

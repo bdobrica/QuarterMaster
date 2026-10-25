@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>This action could not be completed</h1>
-<p role="alert">{{ message }}</p>
-<p>Use your browser’s back button to review the form, or <a href="/">open your projects</a>.</p>
+<p role="alert">{{ message.split(': ', 1)[-1] }}</p>
+{% if ': ' in message %}<details><summary>Advanced · diagnostic code</summary><p>{{ message.split(': ', 1)[0] }}</p></details>{% endif %}<p>Use your browser’s back button to review the form, or <a href="/">open your projects</a>.</p>
 {% endblock %}

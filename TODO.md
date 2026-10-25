@@ -4,6 +4,23 @@ Build **Collect → Teach → Ask → Review → automatic improvement**. [PLAN]
 
 Existing foundations include source provenance, local/hosted inference, reviewed knowledge edits, answer reviews, immutable model runs, bounded LoRA and local export. Historical contracts remain valid for old records; they do not complete the new loop.
 
+## MVP stabilization — 2026-10-25
+
+Normal TODO implementation is paused for this pass. Existing main-branch baseline: **859 passed, 7 skipped, 2 deselected; lint passed**. The first sandbox run failed on uv's read-only cache, an environment failure; the authorized host run passed.
+
+- [x] Make Collect / Teach / Ask / Review the primary navigation, retain technical/recovery controls under Advanced, and configure one answer type/unit/choice set per adviser. Reuse selected decision-time fields across examples.
+- [x] Add saved HTML to Muster's existing capture/extraction/review pipeline without execution or a second manager. Preserve exact bytes, declared provenance and format-1 publications. Start teaching automatically publishes/imports checked adviser-bound collections and activates unambiguous knowledge; unfinished work and conflicting titles require review.
+- [x] Add append-only typed Accept / Correct / Add a note / Skip reviews. Reuse accepted/corrected targets automatically in Teach, related Ask context and bounded training. Preserve exact original answers/configuration/evidence, revisions, idempotent retries, stale-save protection and restart recovery. Notes/skips create no labels; reserved cases stay excluded. Preserve historical advice/dataset/export profiles through schema-v12 migration.
+- [x] Offer scoped, owner-reviewed reusable policies through the existing knowledge editor; approved knowledge affects retrieval immediately. Show differing judgments in near-duplicate situations and block ambiguous duplicate training inputs. No automatic external router calls, GPU execution or promotion.
+- [x] Exercise the browser flow with **three synthetic saved apartment pages**, real configured-provider field suggestion/extraction with application consent, a corrected detail, three scripted judgments, local Ask, a corrected answer, automatic Teach evidence and a bounded improvement request. This is a scripted Chromium rehearsal, not a nontechnical usability trial or the owner's actual prepared business material.
+- [x] Execute a real bounded generic GPU run on the browser-created teaching snapshot: four eligible judgments including the correction, 12 completed steps, verified nonzero adapter weights, portable conversion and four identical-context base/candidate replays. Keep the candidate unselected. Structural completion is not a quality improvement.
+- [x] Compare non-thinking with 512-token bounded thinking on the same local model. Both showed invalid/unsupported/wrong answers in development probes; bounded thinking took longer without a dependable benefit. Preserve non-thinking training/inference compatibility and historical profiles; record the new response-state prompt separately in ADR 0008.
+- [ ] Clear the **demonstration blocker: useful personal numeric/category behavior**. The live base returned **1,200,000,000,000,000 EUR**; the trained candidate repeated that number on all four taught cases. Do not call the adviser useful or claim personalized quality from this run. Inspect local-generation/grammar behavior and compatible model capability before further UX scope or training retries. Owner preferences remain authoritative targets; no market benchmark is required.
+- [ ] Rehearse with the owner's actual prepared material and an uncoached nontechnical tester. Verify useful genuinely new cases, meaningful missing-data behavior and the owner's explicit candidate acceptance/retention decision.
+- [ ] Run a fresh-container standalone export smoke for the new generic prompt. Extracted-package CPU tests establish the dependency boundary, not fresh-container success.
+
+Verification: focused slice checks passed (54 tests); the final `make test` gate passed (**881 passed, 7 skipped, 2 deselected**), and `make lint` passed (198 Python files). Real Chromium, configured-provider extraction and the bounded local GPU worker ran successfully as software checks. Useful numeric advice, an uncoached nontechnical trial and a fresh-container generic export did not pass/run. Local evidence is retained under ignored `data/stabilization-demo-20261025/`: database/source bytes, adapter and portable model, `browser-report.json`, `profile-comparison.json`, real screenshots and GPU log. Training run `14bd9619-6d69-4a1a-aaa8-98e604104bb8` produced unselected candidate `639d7848-2d20-4f4f-aad4-b8e5e8a0e181`. No model/source bytes or credentials belong in Git. No push is authorized.
+
 ## Muster integration — 2026-10-25
 
 - [x] Bring Muster's source, templates/assets, portable bundle tools and regression fixtures into this repo. Run Collect in the same FastAPI server with correct mounted navigation and lifecycle cleanup; no external checkout/service dependency.
@@ -20,11 +37,11 @@ Generic connection verification: `make test` passed (859 passed, 7 skipped, 2 de
 
 ## P0. Establish the generic owner-decision loop
 
-- [ ] Define versioned **Example**, **OwnerDecision**, **Prediction** and **Review** contracts (or minimal compatible extensions): numerical value + unit **or** categorical choice + estimated probabilities; source references, owner's reasoning, optional corrections and version lineage. Preserve historical advice records.
+- [x] Define versioned **Example**, **OwnerDecision**, **Prediction** and **Review** contracts (or minimal compatible extensions): numerical value + unit **or** categorical choice + estimated probabilities; source references, owner's reasoning, optional corrections and version lineage. Preserve historical advice records.
 - [ ] Add migration/compatibility tests from the current populated schema (v10, including the v9 upgrade): preserve source/citation identities and old advice, review, dataset, candidate and export hashes. Do not reinterpret historical Pass/Fail ratings or free-text corrections as approved typed targets. Keep KB and reviewed decisions usable when retaining the base or changing a compatible model/adapter selection; reject incompatible adapters without deleting teaching assets.
-- [ ] Make **Collect / Teach / Ask / Review** the only primary navigation. An optional Review is a distinct inbox/history. Put raw IDs, model controls, metrics, dataset mappings, training recipes and export under **Advanced**.
+- [x] Make **Collect / Teach / Ask / Review** the only primary navigation. An optional Review is a distinct inbox/history. Put raw IDs, model controls, metrics, dataset mappings, training recipes and export under **Advanced**.
 - [ ] Audit everyday screens for technical vocabulary. Replace labels with familiar language, introduce one obvious next action and useful blank states; keep keyboard/mobile accessibility.
-- [ ] Make the owner goal explicit per adviser: **“Help me decide…”** and **“What kind of answer should it give—number or choice?”**. No domain-specific core schema.
+- [x] Make the owner goal explicit per adviser: **“Help me decide…”** and **“What kind of answer should it give—number or choice?”**. No domain-specific core schema.
 
 **Gate:** Someone unfamiliar with AI can say what each of the four sections does without reading a glossary.
 
@@ -40,8 +57,8 @@ Generic connection verification: `make test` passed (859 passed, 7 skipped, 2 de
 
 - [x] Present checked published examples one at a time; capture an explicit preferred number/unit or choice and optional reasoning. Add/edit general policies through Muster's knowledge manager or the adviser's Knowledge screen.
 - [ ] Distinguish source knowledge, owner-authored policies and reviewed decisions in storage and explanation, without requiring an objective verdict on the owner's preferences.
-- [ ] Convert reviewed decisions into generic supervised examples: situation + relevant source/KB context → owner's target and explanation. Remove the **applied-lesson prerequisite** for explicit owner targets and eligible reviews; no general rule or second target approval is required. Keep AI suggestions pending until reviewed; keep reserved check examples out of training.
-- [ ] Reuse the existing bounded GPU trainer and adapter/export boundary for this generic target. Show **Improve my adviser** with understandable resource/time warnings and an explicit start action. Do not ask for epochs, LoRA ranks, dataset JSONL or a manually frozen evaluation suite.
+- [x] Convert reviewed decisions into generic supervised examples: situation + relevant source/KB context → owner's target and explanation. Remove the **applied-lesson prerequisite** for explicit owner targets and eligible reviews; no general rule or second target approval is required. Keep AI suggestions pending until reviewed; keep reserved check examples out of training.
+- [x] Reuse the existing bounded GPU trainer and adapter/export boundary for this generic target. Show **Improve my adviser** with understandable resource/time warnings and an explicit start action. Do not ask for epochs, LoRA ranks, dataset JSONL or a manually frozen evaluation suite.
 - [x] Align the new supervised response, prompt/context, validation and bounded generation profile across training, candidate evaluation and ordinary Ask. Exercise the public candidate/runtime and export-manifest boundary with CPU fixtures for both target kinds; preserve historical `context/v2` jobs and `context/v3` base exports. Full fresh-container generic export verification remains after the demo.
 - [ ] Compare a new candidate with the **currently selected model**, including a previously promoted adapter, on identical captured context/settings. Keep a base comparison optional; test rejected candidates and retaining/reselecting the earlier version without changing active knowledge. Label replay of taught examples as preference consistency, not unseen accuracy.
 - [ ] Verify a real end-to-end LoRA candidate on reviewed generic examples (with owner-authorized hardware); show exact before/after predictions and errors without inventing a quality improvement.
@@ -60,10 +77,10 @@ Generic connection verification: `make test` passed (859 passed, 7 skipped, 2 de
 
 ## P0. Review → Improve → Teach, automatically
 
-- [ ] Build an independent **Review** list with **Accept / Correct / Add a note / Skip** for successful and failed Ask results. Capture the exact original answer and context. Skipping never implies approval.
-- [ ] Feed accepted and corrected decisions into Teach **without a second manual copy/import/approval step**. A correction is a supervised target; accepted predictions can become positive examples when the owner explicitly accepts them.
+- [x] Build an independent **Review** list with **Accept / Correct / Add a note / Skip** for successful and failed Ask results. Capture the exact original answer and context. Skipping never implies approval.
+- [x] Feed accepted and corrected decisions into Teach **without a second manual copy/import/approval step**. A correction is a supervised target; accepted predictions can become positive examples when the owner explicitly accepts them.
 - [ ] Separate ordinary saved/replayed questions from **explicitly reserved evaluation checks**. Preserve existing check exclusions; store their reviews without teaching from them. Filter reserved cases and their corrections from training, synthetic prompts and related-example routing. Test ordinary review → teaching, reserved review → evaluation-only, copied cases and prevention of reserving an already taught case as unseen.
-- [ ] Persist review → teaching/routing transitions with duplicate prevention and restart recovery. Test repeated submissions, stale/concurrent saves, revised targets, note-only/skip actions and corrections of failed answers. Supersede earlier targets for future selection while preserving frozen datasets and historical decisions; a note alone must not silently approve a prediction.
+- [x] Persist review → teaching/routing transitions with duplicate prevention and restart recovery. Test repeated submissions, stale/concurrent saves, revised targets, note-only/skip actions and corrections of failed answers. Supersede earlier targets for future selection while preserving frozen datasets and historical decisions; a note alone must not silently approve a prediction.
 - [ ] Implement a small improvement router using the current builder/knowledge/lesson facilities. Consult related previous examples, including older decisions beyond the current 50-record lists, and propose: extraction fix, KB/policy edit, LoRA behavior example, retrieval/context improvement, or combined changes. Prefer a reusable lesson over memorizing one instance.
 - [ ] Keep local feedback capture and manual teaching usable without a builder provider. Before any router request, disclose and obtain consent for its minimized correction/related-example payload; hosted-advice consent does not authorize builder transmission. Test absent/refused/stale consent, provider errors and interrupted sends without automatic retries or lost feedback.
 - [ ] Apply explicitly approved/reversible knowledge edits immediately and reindex. Automatically collect reviewed LoRA examples; prepare a candidate job when useful, but keep GPU execution and model promotion explicit for MVP.
@@ -91,7 +108,7 @@ Generic connection verification: `make test` passed (859 passed, 7 skipped, 2 de
 
 **Parked:** autonomous external actions, managed cloud training, multi-user accounts, custom LightGBM/SHAP pipelines, geospatial/POI orchestration, model marketplaces, generic web scraping, excessive metrics and further retired-domain prompt experiments.
 
-Direct saved-HTML upload into Collect can follow the working managed-browser/manual-review path if needed; do not build a second extraction/knowledge manager beside Muster.
+Saved-HTML upload now reuses the existing extraction/knowledge manager. It is a text-only capture; original files remain downloadable as data.
 
 ## Documentation cleanup — 2026-10-25
 

@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
+from quartermaster.contracts.answers import AnswerFormat
 from quartermaster.contracts.project import Mission, Name
 from quartermaster.contracts.sources import UUIDValue
 
@@ -57,6 +58,7 @@ class AdviserSpec(BaseModel):
     name: Name
     mission: Mission
     business_goal: Mission | None = None
+    answer_format: AnswerFormat | None = Field(default=None, exclude_if=lambda value: value is None)
     decision_definition: DecisionDefinition | None = None
     inputs: Literal["quartermaster.case/v1"] = "quartermaster.case/v1"
     outputs: Literal["quartermaster.advice/v1", "quartermaster.prediction/v1"] = (

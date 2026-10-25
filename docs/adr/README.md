@@ -12,6 +12,8 @@ These decisions retain the useful results of earlier work without keeping duplic
 | [0006](0006-integrated-muster.md) | Bundle Muster in QuarterMaster; keep checked source data separate from owner targets. |
 | [0007](0007-generic-prediction-boundary.md) | Share generic prediction across reviewed training, local Ask and portable export; preserve historical advice. |
 
+| [0008](0008-stabilized-owner-loop.md) | Connect typed feedback, saved-page handoff and versioned owner-response prompts without changing historical artifacts. |
+
 Accepted ADRs describe intended design; they do not mark unfinished features complete. Supersede an accepted decision with a new ADR rather than rewriting its meaning.
 
 Removed documents remain in Git. For example, `git show 32590b0:docs/milestone-6.md` retrieves the complete original training record. Each ADR identifies its historical sources. Some raw model outputs and artifacts were only stored under ignored local `data/`; Git contains their recorded summaries, not those raw bytes. Existing regression fixtures remain test data, not current product examples.

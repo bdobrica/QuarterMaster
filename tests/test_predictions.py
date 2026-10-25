@@ -113,10 +113,23 @@ class PredictionEngine(FakeEngine):
 
 
 @pytest.mark.parametrize("fmt", [NUMBER, CATEGORY])
+@pytest.mark.parametrize("configured", [False, True])
 def test_reviewed_dataset_job_ask_and_independent_export(
-    client, settings, collection, tmp_path, monkeypatch, fmt
+    client, settings, collection, tmp_path, monkeypatch, fmt, configured
 ):
     project, item, target = setup(settings, collection, fmt)
+    if configured:
+        from pydantic import TypeAdapter
+
+        from quartermaster.contracts.answers import AnswerFormat
+        from quartermaster.projects import configure_answer
+
+        configure_answer(
+            settings.database_path,
+            project,
+            TypeAdapter(AnswerFormat).validate_python(fmt),
+            get_adviser(settings.database_path, project).revision,
+        )
     previous = get_adviser(settings.database_path, project)
     endpoint = f"/api/projects/{project}/muster/{item.id}/improve"
     response = client.post(endpoint, json=selection(settings, project, fmt).model_dump(mode="json"))
@@ -133,7 +146,12 @@ def test_reviewed_dataset_job_ask_and_independent_export(
         TrainingJob.model_validate_json(job.model_dump_json())
     raw = (training.directory(settings, run.id) / "input/train.jsonl").read_bytes()
     assert verify_job(job, raw) == job
-    assert json.loads(raw)["messages"][0]["content"] == SYSTEM
+    from quartermaster.prediction_context import system_for
+
+    assert json.loads(raw)["messages"][0]["content"] == system_for(job.examples[0].input.context)
+    assert job.examples[0].input.prompt_version == ("context/v5" if configured else "context/v4")
+    if not configured:
+        assert job.examples[0].input.system == SYSTEM
     assert json.loads(raw)["messages"][1]["content"] == job.examples[0].input.context
     assert "OWNER_REVIEWED" not in raw.decode()
     assert get_adviser(settings.database_path, project) == previous
