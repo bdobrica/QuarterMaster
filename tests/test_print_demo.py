@@ -1,4 +1,4 @@
-"""P0 seed, inference consent, bounded provider failures and honest baseline evidence."""
+"""Retired workflow fixtures protect consent, provider failures and immutable evidence."""
 
 import asyncio
 import json
@@ -18,8 +18,8 @@ from quartermaster.errors import DomainError
 from quartermaster.generation import ADVICE_PARAMETERS
 from quartermaster.holdouts import require_eligible
 from quartermaster.inference import HOSTED_PARAMETERS, HostedInference, hosted_schema
-from quartermaster.print_demo import CASES, baseline, seed
 from quartermaster.projects import edit_advice_engine, get_adviser
+from tests.legacy_print import CASES, baseline, seed
 from tests.test_teaching import draft
 
 
@@ -82,13 +82,10 @@ def test_fresh_demo_needs_no_engine_and_cases_are_held_out(demo):
     assert evaluations.get_suite(settings, project.id, suite.id) == suite
 
 
-def test_demo_ui_creates_without_provider(client):
-    assert "Create fresh print demo" in client.get("/").text
-    assert client.post("/print-demo", follow_redirects=False).status_code == 403
-    response = client.post("/print-demo", headers={"origin": "http://testserver"})
-    assert response.status_code == 200
-    assert "owner review" in response.text.lower() or "print-proof" in response.text
-    assert "local_only" in response.text
+def test_retired_demo_cannot_create_projects(client):
+    assert "Create fresh print demo" not in client.get("/").text
+    assert client.post("/print-demo", headers={"origin": "http://testserver"}).status_code == 404
+    assert client.get("/api/projects").json() == []
 
 
 def test_consent_is_project_scoped_revocable_and_provider_bound(demo, monkeypatch):

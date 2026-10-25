@@ -1,72 +1,110 @@
 # Local operator guide
 
-QuarterMaster is a trusted single-user application. Start with the [README](../README.md).
-The [synthetic walkthrough](../quartermaster/ui/static/examples/) contains no real business data;
-its scenarios are also available at `/examples` in the running application. Help is at `/help`.
+Use the [README](../README.md) for basic startup and [TODO](../TODO.md) for unfinished product behavior. This guide describes the current implementation, whose navigation still differs from the intended Collect / Teach / Ask / Review loop. Historical results and failed approaches are in [ADRs](adr/README.md), not additional walkthroughs.
 
-Test also links to the opt-in [inference reliability development comparison](inference-reliability.md).
-It compares current and compact responses with reviewed field definitions using unchanged base
-weights. These experiments and separate quality reviews do not alter active advice or create SFT
-examples. Back up before upgrading: database schema 7 adds append-only experiment/review tables;
-older application versions require their pre-upgrade database backup.
+## Current controls
 
-## Installation and exposure
+- **Sources and setup** (under Advanced): upload CSV/XLSX or UTF-8 Markdown, at most 8 MiB each. Inspect previews; explicitly map decision-time inputs separately from outcomes and targets. Joins need explicit keys; formulas and embedded instructions are never executed. Saved HTML extraction is not implemented.
+- **Knowledge:** upload/select Markdown, or propose an article edit. Review its diff and approve it to create immutable source bytes and an active revision. Rejection leaves behavior unchanged; stale proposals cannot overwrite newer knowledge. Historical citations remain accessible. This changes context, not weights.
+- **Adviser:** ask using the selected engine, inspect evidence, then record Pending/Pass/Fail and an optional correction. Failure cannot be marked Pass. Ratings currently do not automatically become teaching; eligible corrections still have a separate reviewed lesson path.
+- **Improvements:** view saved check questions, reviews and earlier answers. Preview reruns before executing them. Saving a check permanently excludes its situation from teaching; its corrections remain evaluation-only. Ordinary question history needs a separate future path.
+- **Advanced:** inspect training, check sets, diagnostics and exports. Historical experiments remain accessible for existing records; they are not current product examples.
 
-The ordinary application requires Docker Engine with Compose v2, initial internet access for
-image/package downloads, and persistent disk. Use a current Compose supporting `!override` and
-`!reset` for optional training/export configurations (the tested version is 2.40.3).
-The base web service starts without a GPU, model or provider credential. It binds
-`127.0.0.1:8000`; optional inference/candidate services publish no host ports. Standalone advisers
-bind `127.0.0.1:8081`. Do not change these to `0.0.0.0` for ordinary use.
+Knowledge replay explicitly runs four requests: original/fresh question, each with old/new knowledge. Both arms retain the same current model, mission, prompt and settings; only knowledge changes. Hosted replay requires scoped advice consent. Inspect failed outputs as well as changed answers; a valid citation does not certify usefulness.
 
-There is no authentication, tenancy or TLS. A reverse proxy alone does not add an authorization
-boundary. Before remote access, the operator must provide authentication, HTTPS, upload/request
-limits, access control and a correct trusted origin. The application rejects cross-origin form
-submissions and does not trust forwarded headers by default; proxy arrangements need their own
-review. Do not enable HTTP access/body/debug logs or place case text/API keys in URLs.
+## Exposure and external providers
 
-## Sources, cases and review
+Keep ports on localhost: web `127.0.0.1:8000`, standalone `127.0.0.1:8081`. Optional inference/candidate services have no published host ports. There is no authentication, tenancy or TLS. Remote access requires an operator-supplied security boundary; a reverse proxy alone is insufficient. Do not enable request-body/debug logging or put credentials in case text or URLs.
 
-Upload `.csv`, `.xlsx` or UTF-8 `.md`, at most 8 MiB each. CSV accepts explicit separators and
-UTF-8/Windows-1252. XLSX is read-only; formulas are displayed, never evaluated, and are not accepted
-as decision inputs. Inspect sheets, types, missing values and source positions. Labels describe
-intended use; labeling a file “examples” does not approve any supervision.
+Configure optional hosted advice and builder providers separately in [.env.example](../.env.example). Remote endpoints need HTTPS and no credentials/query/fragment in the URL. Credentials stay in the environment or mounted secret files, outside SQLite and exports. A project must consent to its exact hosted endpoint/model; `QM_ADVISER_LOCAL_ONLY=true` disables hosted advice. There is no silent external fallback.
 
-Confirm what one case represents, its decision time, input fields and separate later outcomes.
-Possible target-advice columns remain unreviewed. Combining tables requires explicit join keys;
-ambiguous joins fail. See [supported mappings and parser limits](milestone-2.md).
+Builder requests disclose instructions, actual context, schema, endpoint/model and byte count before consent. Interview, lesson and knowledge drafting have distinct payloads; inspect free text for sensitive content. Manual paths need no provider. The default input bound is 49,152 serialized UTF-8 bytes (configurable 4,096–65,536); the default timeout is 20 seconds (1–30 allowed). Output requests are at most 2,048 tokens and responses at most 64 KiB. Displayed token estimates are approximate, not prices or provider-window guarantees. Provider errors require an explicit fresh attempt, not an automatic paid retry.
 
-Select Markdown on Teach and save the knowledge selection. Uploading does not automatically make
-a source retrievable. Replacement means uploading new original bytes and saving a new selection;
-previous source bytes and knowledge revisions remain available. Citations resolve to the actual
-selected source excerpts; existence and verbatim-quote checks do not prove factual entailment.
+## Local model
 
-Give feedback on Test. Raw corrections are preserved; a pending manual or AI-drafted lesson has
-no effect until reviewed and approved. Applied lessons change context, not weights. For LoRA,
-create a separate training example, inspect its complete prompt/target and approve it explicitly.
-AI_DRAFT provenance survives approval. Exact/lexical duplicates and evaluation holdouts are blocked;
-semantic similarity and representative coverage still need human review. Freeze unseen evaluation
-cases before teaching/training and keep entity/time overlaps out of the split yourself.
+Run `make model-setup` explicitly to build/download/verify the supported base bundle; ordinary startup does not do this. It uses CPU conversion, not training. Copy the printed model fingerprint into `.env`:
 
-## External provider boundaries
+```dotenv
+QM_LOCAL_BASE_URL=http://inference:8080/v1
+QM_LOCAL_MODEL_SHA256=<printed SHA-256>
+QM_LOCAL_TIMEOUT_SECONDS=180
+```
 
-The manual interview and lesson paths need no provider. Configure one OpenAI-compatible provider
-using `.env` or a mounted secret file; never store keys in missions or uploaded documents. Remote
-provider URLs require HTTPS and cannot include credentials, query strings or fragments.
+Start the advice profile with the read-only base-bundle override:
 
-Before any business-content send, inspect the exact endpoint/model, instructions, context and
-response schema. Interview summaries show original source sizes; only bounded summaries and
-explicitly selected excerpts are attached. Corrections/advice can themselves quote sensitive text.
-A separate consent action authorizes that exact preview. No automatic paid retry occurs.
+```sh
+docker compose -f compose.yaml -f compose.advice.yaml --profile advice up -d --build --wait
+```
 
-`QM_BUILDER_TIMEOUT_SECONDS` defaults to 20 (allowed 1–30 seconds).
-`QM_BUILDER_MAX_INPUT_BYTES` defaults to 49152 (allowed 4096–65536), including the serialized request,
-instructions and schema. Set lower bounds for your chosen provider. Both preview and transport
-reject oversized inputs. The displayed token count is serialized UTF-8 bytes divided by four,
-rounded up: approximate, not a tokenizer count, price or provider context-window guarantee.
-Maximum requested output is 2048 tokens; responses are bounded to 64 KiB. Failures preserve saved
-answers and have sanitized codes; shorten, inspect and explicitly retry. Provider retention and
-charges are outside QuarterMaster's control.
+The override lets the web service read the base bundle for export. Host Python deployments set `QM_LOCAL_MODEL_DIR` to their verified `data/local-model` directory and need a separately configured loopback inference endpoint. No existing artifact should be replaced to suppress a hash error.
+
+The supported base is `Qwen/Qwen3.5-0.8B` revision `2fc06364715b967f1860aea9cf38778875588b17`; llama.cpp is pinned in [trainer/Dockerfile](../trainer/Dockerfile). The Q8_0 model is about 812 MB. In the tested setup serving uses four CPU threads and a 4 GiB limit; responses may take minutes. Setup/conversion needs additional memory and disk. Ordinary advice uses bounded thinking; historical training, checks and exports retain their captured profiles. See [generation settings](../quartermaster/generation.py).
+
+## Training
+
+Training is opt-in. Current examples still require an applied lesson and separate reviewed target; removing that prerequisite is in TODO. AI-draft provenance survives review. Reserved check cases and later outcomes never enter training. Exact/lexical duplicate checks do not catch every semantic overlap; inspect entity/time separation yourself.
+
+The worker and web must share the same SQLite/artifact directory. The override below switches from a named volume to a host directory. **Existing installations must first stop services, back up and copy the complete volume into an empty host directory, then verify hashes and ownership.** Keep the original volume. Do not apply the override to an empty path and mistake it for an upgrade.
+
+For a new host-worker installation:
+
+```sh
+mkdir -p data/training-app
+uv sync --locked
+docker compose -f compose.yaml -f compose.training.yaml --profile advice --profile training up --build -d --wait
+```
+
+The shared directory defaults to `./data/training-app`, UID/GID 1000. Configure `QM_TRAINING_DATA_DIR`, `QM_LOCAL_UID`, `QM_LOCAL_GID` as needed. Compose must support the override tags (`!override`, `!reset`); the historically tested version was 2.40.3.
+
+Build and inspect the local images:
+
+```sh
+docker build -f trainer/Dockerfile --target trainer -t quartermaster-trainer:m6 .
+docker build -f trainer/Dockerfile --target runtime -t quartermaster-runtime:m6 .
+docker image inspect quartermaster-trainer:m6 --format '{{.Id}}'
+docker image inspect quartermaster-runtime:m6 --format '{{.Id}}'
+```
+
+After reviewing a queued job, hardware and the exact command, an operator can start the worker with those complete image IDs:
+
+```sh
+uv run --locked python -m quartermaster.training_worker \
+  --run-gpu \
+  --data-dir ./data/training-app \
+  --base ./data/spike/base-2fc06364715b967f1860aea9cf38778875588b17 \
+  --base-gguf ./data/local-model \
+  --trainer-image sha256:REPLACE_WITH_TRAINER_IMAGE_ID \
+  --runtime-image sha256:REPLACE_WITH_RUNTIME_IMAGE_ID
+```
+
+These are operator instructions, not commands executed by this cleanup. Queueing does not run the worker. Do not start it during ordinary documentation or CPU verification.
+
+Standard passthrough requires a working NVIDIA Container Toolkit. The explicitly tested WSL alternative adds `--gpu-mode wsl`, exposing `/dev/dxg` and read-only `/usr/lib/wsl` driver files. It needs no privileged container, host install or daemon change. The tested host had a GTX 1660 Ti with 6 GiB VRAM; other GPU families/configurations remain unverified. See the [compatibility lesson](adr/0002-local-model-and-portable-runtime.md) before changing libraries, precision or kernels.
+
+Preflight requires compute capability ≥7, 5.5 billion VRAM bytes and 12 GB free artifact disk plus image space. Training has four CPUs and a 10 GiB RAM/swap bound. Quick is 12 steps/20 minutes; standard is 48 steps/60 minutes. Only quick was live-tested in the ordinary workflow. These are hard bounds, not promised runtimes or memory guarantees. Oversized targets fail instead of truncating. There are separate bounded preflight/conversion/comparison stages, durable cancellation/failure and no cloud fallback or automatic retry. `cleanup_required` blocks further jobs until the recorded orphan is stopped/recovered.
+
+The trainer receives only its frozen input, verified base and output mounts, not the database, credentials, original sources or held-out labels. Never bypass the global job lock or edit frozen manifests to recover a run.
+
+## Standalone export
+
+Build the current standard runtime and inspect its exact local image ID:
+
+```sh
+docker build -f trainer/Dockerfile --target standalone-runtime -t quartermaster-standalone-runtime:local .
+docker image inspect quartermaster-standalone-runtime:local --format '{{.Id}}'
+```
+
+Set `QM_EXPORT_RUNTIME_IMAGE` to that full ID in `.env`, then recreate the appropriate web Compose service with the same storage/profiles. A base export binds to a successful saved answer; a candidate export binds to its frozen evaluation. Both preserve their original context and model bytes, not later active edits. Old export versions keep their original semantics.
+
+Packages include the model/license, selected original knowledge, approved lessons and one disclosed reference situation. They exclude the builder database, raw reviews, training rows, rubric labels and provider credentials. Included free text may still be sensitive or subject to redistribution restrictions. An export is not a project backup. Reserve space for model copies and the runtime image; an archive alone does not install that image.
+
+Run the independent check before claiming runtime success:
+
+```sh
+make test-export EXPORT=/absolute/path/adviser.tar
+```
+
+The checker extracts a fresh package and serves it in isolated CPU Compose with no external network, builder, database, GPU or frontier key. It validates reference-context identity, schema and citations. Keep its sanitized report. Packaging alone, mocked tests and historical checks do not prove that a new package starts or gives useful advice. A second-machine check and bundled offline images are not provided.
 
 ## Backup and restore
 
@@ -111,70 +149,11 @@ with the original web stopped so port 8000 is free. Open it, inspect project/sou
 verify required artifact hashes and model operation before using it. Do not merge two directories
 or overwrite a working volume. A schema upgrade may be one-way: retain the pre-upgrade backup.
 A project-name change may affect relative bind mounts; do not use this default-volume recipe to
-silently switch the [optional host-worker installation](milestone-6.md). That deployment needs a
+silently switch the [optional host-worker installation](#training). That deployment needs a
 quiesced copy of its configured shared directory, including ownership and all artifacts.
 
-## Models and local GPU
+## Failure recovery
 
-The supported model is Qwen/Qwen3.5-0.8B revision
-`2fc06364715b967f1860aea9cf38778875588b17`. `make model-setup` explicitly downloads/verifies the base
-and builds the optional local CPU runtime. Configure the printed hash and local URL, then start
-the advice profile as described in [M4](milestone-4.md). The Q8_0 GGUF is **811843232 bytes** (about
-812 MB); each candidate/export adds another model copy. Serving is limited to 4 GiB RAM/four CPU
-threads in the tested setup; responses may take minutes. Reserve image/download/conversion space
-in addition to model size. CPU setup/conversion can require substantially more RAM than serving.
+Report sanitized codes and record IDs, not private cases or credentials. `BUILDER_*`/`ADVISER_*` errors require checking provider configuration/consent; use manual or local paths where available. `LOCAL_*` errors require checking model fingerprints, service health and CPU/RAM. `LOCAL_TOKEN_LIMIT` means a finite budget was exhausted; retry explicitly or create a new check profile without editing historical records.
 
-Training is opt-in and separate from web startup. The tested host is WSL2 Debian with an Intel
-i5-9300H, 16 GiB RAM and NVIDIA GTX 1660 Ti with approximately 6 GiB VRAM. Standard NVIDIA Docker
-passthrough requires a compatible driver and NVIDIA Container Toolkit. The explicit WSL alternative
-passes `/dev/dxg` and installed `/usr/lib/wsl` driver files read-only. Follow the exact
-[host GPU setup](milestone-1.md#host-gpu-setup) and [worker setup](milestone-6.md); do not install host
-packages or restart Docker as a side effect of opening Train.
-
-Preflight requires compute capability at least 7, 5.5 billion VRAM bytes, 12 GB free artifact disk
-plus image space and verified base bytes. The trainer has a 10 GiB RAM/swap bound and finite stage
-limits. Quick is 12 steps/20 minutes; standard is 48 steps/60 minutes; those are hard bounds, not
-promised durations. Only quick was live tested here. Other NVIDIA GPUs/configurations, AMD,
-Apple GPU, CPU-only training, remote/cloud GPUs and other model families are unverified or unsupported.
-There is no implicit precision change, cloud fallback or job retry. OOM/cancellation/interruption
-fails durably; inspect the code and create an explicit new run when appropriate.
-
-## Standalone export and distribution
-
-Build the standard runtime and set its exact image ID using [M7 setup](milestone-7.md). Package a
-completed evaluated candidate. The archived mission/knowledge/lessons match that candidate's frozen
-evaluation, even after later project edits. Missing/inconsistent historical bytes fail packaging.
-Downloaded archives contain selected original Markdown, approved lesson text and one decision-time
-reference situation. Inspect sensitive content and your right to distribute it before sharing.
-No automatic secret detection can make arbitrary uploaded text safe to publish.
-
-Run `make test-export EXPORT=/absolute/adviser.tar`. It extracts to a fresh directory, checks the
-fixed Compose recipe, serves the real model with network disabled, no builder/database/GPU, and
-checks schema, citation IDs and reference-context fingerprint. Retain the sanitized report with
-the archive. Packaging/download alone does not prove runtime startup or useful advice. The package
-needs its exact preobtained image; an offline image bundle and a second-machine check are not provided.
-
-LoRA training, merge and quantization retain upstream model provenance and license obligations.
-The repository code and selected Qwen revision use Apache-2.0; model, runtime and uploaded content
-keep their separate notices/terms. Exports copy the model license and project license; runtime
-images retain llama.cpp/Python/Debian/dependency notices. CUDA/host-driver bytes are not part of
-the CPU export. Do not treat model/lesson approval as permission to redistribute others' documents.
-See [third-party notices](third-party-licenses.md) and review applicable terms before distribution.
-
-## Troubleshooting
-
-| Code or symptom | Next step |
-| --- | --- |
-| Web unhealthy / `STORAGE_INIT` / `STORAGE_UNAVAILABLE` | Check configured directory, ownership, free disk and backup integrity. Never delete SQLite to suppress an error. |
-| `BUILDER_CONFIG` / `BUILDER_AUTH` / `BUILDER_HTTP` | Check environment/secret reference, endpoint/model and JSON-schema support; use the manual path. |
-| `BUILDER_INPUT` / `BUILDER_TIMEOUT` / `BUILDER_RATE_LIMIT` | Shorten context, review provider bounds, wait when rate-limited and explicitly prepare/retry. |
-| `LOCAL_MODEL` / `LOCAL_CONNECTION` / `LOCAL_TIMEOUT` | Check pinned model hash/license, advice profile health and CPU/RAM; inspect failed saved tests. |
-| `LOCAL_TOKEN_LIMIT` | The answer exhausted its finite output budget. Request a concise answer or shorten the situation and retry explicitly. A frozen evaluation retains its captured budget; create a new suite to assess a changed profile. |
-| `TRAINING_*` / `EXAMPLE_*` | Inspect reviewed targets, frozen suite, preflight/diagnostic code and hardware bounds. Queueing does not start a worker. |
-| `cleanup_required` | Stop/recover the recorded orphan training container before starting another job; never bypass the global job lock. |
-| `EXPORT_IMAGE` / `EXPORT_CONTEXT` / `EXPORT_ARTIFACT` | Verify exact local image ID and historical model/context bytes. Do not edit manifests; evaluate/train a new candidate for changed context. |
-| `EXPORT_*` smoke failure | Retain the original archive and failure report; check image/model compatibility and isolated Compose cleanup. No automatic retry/training. |
-
-Report diagnostic codes and record IDs rather than raw cases, keys or whole data directories.
-Open `/help` in the running UI for owner actions. Verification
-and remaining release checks are in [M8](milestone-8.md).
+For `TRAINING_*`/`EXAMPLE_*`, inspect reviewed targets, check exclusions, hardware bounds and saved failure state. For `EXPORT_*`, preserve the archive/report and inspect exact image/model/context bytes and isolated cleanup. For `STORAGE_*`, check permissions, disk and complete backups; never delete SQLite to suppress an error. See [third-party notices](third-party-licenses.md) before redistributing models or knowledge.

@@ -12,7 +12,7 @@
 {% else %}<p><a href="/projects/{{ project.id }}/test">Test the base adviser</a> to enable export. Check its advice and evidence first.</p>{% endif %}
 <p>The standard CPU runtime provides its own browser interface and advice API. It needs Docker, 4 GiB RAM and four CPU threads. Allow space for the archive, its extracted model and the runtime image. CPU advice can take minutes.</p>
 <p>Fresh runtime verification is a separate operator check after packaging.</p>
-{% if image %}<p>Runtime pinned to <code>{{ image }}</code>.</p>{% else %}<p role="alert">EXPORT_IMAGE: Your operator must build the standalone-runtime target in trainer/Dockerfile and configure QM_EXPORT_RUNTIME_IMAGE with its exact sha256 image ID. See docs/milestone-7.md.</p>{% endif %}
+{% if image %}<p>Runtime pinned to <code>{{ image }}</code>.</p>{% else %}<p role="alert">EXPORT_IMAGE: Your operator must build the standalone-runtime target in trainer/Dockerfile and configure QM_EXPORT_RUNTIME_IMAGE with its exact sha256 image ID. See docs/operator-guide.md.</p>{% endif %}
 <details><summary>Advanced: export an existing evaluated training candidate</summary>
 <p>This preserves the candidate's historical evaluated context and settings.</p>
 <form action="/projects/{{ project.id }}/export" method="post">

@@ -24,9 +24,9 @@ from quartermaster.contracts.teaching import TestInput as AdviceInput
 from quartermaster.db import connect
 from quartermaster.errors import DomainError
 from quartermaster.knowledge import citation, current_knowledge, knowledge_history, search
-from quartermaster.print_demo import seed
 from quartermaster.projects import get_adviser
 from quartermaster.sources import source_bytes
+from tests.legacy_print import seed
 from tests.test_teaching import draft as advice_draft
 
 

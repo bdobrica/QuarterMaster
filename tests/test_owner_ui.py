@@ -7,8 +7,8 @@ from quartermaster import answer_reviews
 from quartermaster.app import create_app
 from quartermaster.contracts.reviews import AnswerReviewInput
 from quartermaster.db import connect
-from quartermaster.print_demo import seed
 from tests import test_teaching
+from tests.legacy_print import seed
 
 
 def test_review_reserved_failure_without_teaching(settings):

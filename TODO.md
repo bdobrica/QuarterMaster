@@ -1,10 +1,8 @@
-# QuarterMaster — four-step MVP TODO
+# QuarterMaster — MVP TODO
 
-**The build order is Collect → Teach → Ask → Review → automatic improvement → repeat.** See [PLAN.md](PLAN.md). Check a box only after implementation and verification. Keep the current app usable after every small change.
+Build **Collect → Teach → Ask → Review → automatic improvement**. [PLAN](PLAN.md) defines behavior; [ADRs](docs/adr/README.md) preserve earlier results. Keep each change runnable; check items only after verification.
 
-**Existing, reusable foundations (not completion of this new MVP):** source upload and provenance, hosted/local inference, reviewed KB edits, saved-answer review, immutable model runs, bounded LoRA training, and local export. The print-shop and bank experiments remain historical evidence.
-
-The replacement [AGENTS.md](AGENTS.md) already describes the four activities and automatic feedback capture; the former instruction to reconcile its Teach/Test/Correct wording is obsolete. The [repository audit below](#repository-audit--2026-10-25) records additional implementation dependencies. Historical versioned contracts remain valid for old records; implement the new behavior through compatible extensions or new versions.
+Existing foundations include source provenance, local/hosted inference, reviewed knowledge edits, answer reviews, immutable model runs, bounded LoRA and local export. Historical contracts remain valid for old records; they do not complete the new loop.
 
 ## P0. Establish the generic owner-decision loop
 
@@ -64,9 +62,9 @@ The replacement [AGENTS.md](AGENTS.md) already describes the four activities and
 
 ## P0. Live, domain-generic demonstration
 
-- [ ] Assemble a small **real-estate** demonstration from legitimately saved pages (no bespoke crawler): extracted examples, several owner-labeled fair prices and reasons, a few owner-authored policies, an unseen property and an optional correction.
+- [ ] Use the owner's already prepared **apartment** material for the demo: reviewed personal prices/reasons, owner policies, a new apartment and optional correction. Extraction tooling and feature design are separate future work. Do not silently label examples from listing prices or assume a numeric discard/negotiation threshold.
 - [ ] Run one real LoRA training/candidate/selection path and demonstrate that **Review becomes Teach automatically**. If the candidate isn't an improvement according to the owner, keep the prior one and show the honest result.
-- [ ] Exercise a second unrelated **category or number** adviser using the same code/contracts, with no property-specific logic.
+- [ ] Verify the other target kind with a small generic contract fixture, using the same code and no property-specific logic; no additional product demo is required.
 - [ ] Ask one genuinely nontechnical tester to complete the four actions without coaching. Fix their first blockers; a real browser walkthrough is required in addition to CPU tests.
 - [ ] Run focused tests, `make lint`, `make test`, and the relevant real-model/training checks **only with explicit hardware/provider authorization**. Record exactly what was and wasn't verified.
 
@@ -75,26 +73,15 @@ The replacement [AGENTS.md](AGENTS.md) already describes the four activities and
 ## After the demo, not before
 
 - [ ] Reduce README and Help friction in light of the real tester's feedback; keep technical/operator instructions linked under Advanced.
-- [ ] Archive the old print-shop/bank research and root [PLAN_OLD.md](PLAN_OLD.md)/[TODO_OLD.md](TODO_OLD.md) under a clear historical index, without erasing negative outcomes, current API evidence or protected datasets. Repair old milestone/owner-workflow links to replaced TODO headings; distinguish historical verification from current acceptance.
-- [ ] Reconcile remaining old demo/help wording with the accepted four-step direction without erasing security or historical evidence.
 - [ ] Revalidate fresh-container standalone export for the new generic prediction contract; distinguish hosted preview from offline-local packages.
 - [ ] Consider automatic low-risk improvement publication and scheduled LoRA training only after staged changes, costs and rollback are understandable.
 
-**Parked:** autonomous external actions, managed cloud training, multi-user accounts, custom LightGBM/SHAP pipelines, geospatial/POI orchestration, model marketplaces, generic web scraping, excessive metrics and further bank/print prompt experiments.
+**Parked:** autonomous external actions, managed cloud training, multi-user accounts, custom LightGBM/SHAP pipelines, geospatial/POI orchestration, model marketplaces, generic web scraping, excessive metrics and further retired-domain prompt experiments.
 
-## Repository audit — 2026-10-25
+## Documentation cleanup — 2026-10-25
 
-Starting state: branch `main` at `03be122`, with only the owner's four replacement direction documents modified. No accepted ADR files were found. The existing UI, HTML ingestion, typed-target and automatic-improvement gaps were already in this checklist; the additions above cover dependencies found in code and tests:
+- [x] Remove obsolete roadmaps, milestone/research diaries and previous app demos; preserve durable lessons in ADRs, current operations in one guide, and regression fixtures under tests. Check links, retirement behavior and CPU gates; commit the coherent cleanup.
 
-| Current implementation evidence | Consequence for the new loop |
-| --- | --- |
-| [Review contracts](quartermaster/contracts/reviews.py), [review storage](quartermaster/answer_reviews.py) and [schema migrations](quartermaster/db/__init__.py) preserve Pass/Fail/Pending and free text, separately from teaching. | Preserve historical semantics; add explicit targets and durable review-to-teaching transitions rather than relabeling old ratings. |
-| [Saved questions](quartermaster/saved_questions.py), [evaluation reservation](quartermaster/evaluations.py) and [exclusion checks](quartermaster/holdouts.py) make every saved check a holdout. [Existing tests](tests/test_owner_ui.py) require reserved reviews to create no teaching. | Ordinary history/replay needs its own path; retain the protected-check exception when routing reviews. |
-| [Training examples](quartermaster/contracts/training.py) require a lesson; [example creation](quartermaster/training.py) starts from an applied lesson and separately reviewed response. | Explicit owner judgments need a direct supervision path. |
-| [Evaluation snapshots](quartermaster/evaluations.py), [generation profiles](quartermaster/generation.py), [Ask](quartermaster/teaching.py) and [export contracts](quartermaster/contracts/export.py) use different historical product profiles. | A new schema alone cannot establish train/serve/export compatibility; exercise each boundary without rewriting old artifacts. |
-| [Worker comparisons](quartermaster/training_worker.py) always compare the unmodified base with the candidate. | A second training cycle needs the selected previous model as its comparison, with knowledge and settings held fixed. |
-| [Lesson drafting](quartermaster/teaching.py) currently uses one correction; [builder consent](quartermaster/builder.py) is separate from hosted advice. | Related-history routing needs bounded selection, durable recovery and consent for the expanded content. |
+The earlier repository audit is reflected in the unchecked tasks above: migration compatibility, ordinary-history/check separation, direct owner supervision, train/serve/export alignment, current-model comparison, durable routing and scoped consent. Its original evidence table remains in Git at `32590b0:TODO.md`.
 
-Verification: `make test` **711 passed**; `make lint` passed (140 Python files formatted). These deterministic checks establish the current implementation baseline, including old behavior that must migrate; they do not complete any new MVP checkbox. No application code changed during this audit. No live provider calls, model inference, GPU jobs, browser walkthrough or fresh-container export checks were run.
-
-> If work doesn't help a busy owner **collect, teach, ask, review or benefit from their feedback**, it is not MVP work.
+Verification: 39 focused retirement/review tests and all 711 CPU tests passed; `make lint` passed. Local documentation links and unchanged legacy fixture/review bytes checked. No provider calls, real model/GPU jobs, browser walkthrough or fresh-container export check ran.

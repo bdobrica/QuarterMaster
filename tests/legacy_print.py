@@ -1,14 +1,10 @@
-"""Fresh synthetic demo and honest four-case baseline; never trains or calls a builder."""
+"""Retired print workflow helpers, retained only for deterministic regression tests."""
 
-import argparse
-import asyncio
-import json
 from datetime import UTC, datetime
-from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from quartermaster import evaluations, teaching
-from quartermaster.config import Settings, initialize_storage
+from quartermaster.config import initialize_storage
 from quartermaster.contracts.advice import Case
 from quartermaster.contracts.adviser import AdviceEngineEdit
 from quartermaster.contracts.evaluation import Rubric, SaveEvaluationCase, SuiteCreate
@@ -16,7 +12,6 @@ from quartermaster.contracts.project import ProjectCreate
 from quartermaster.contracts.sources import KnowledgeSelection, ParseOptions
 from quartermaster.contracts.teaching import TestInput, TestRun
 from quartermaster.db import connect, migrate
-from quartermaster.errors import DomainError
 from quartermaster.inference import LocalInference, hosted_identity
 from quartermaster.knowledge import revise_knowledge
 from quartermaster.projects import create_project, edit_advice_engine, get_adviser
@@ -222,39 +217,3 @@ async def baseline(settings, project_id, suite_id, engine, consent_external=Fals
         "cost_note": "Not reported; check actual provider billing.",
         "gate": "PENDING HUMAN REVIEW: JSON validity alone does not establish usefulness.",
     }
-
-
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project", type=UUID)
-    parser.add_argument("--suite", type=UUID)
-    parser.add_argument("--engine", choices=["local", "hosted"])
-    parser.add_argument(
-        "--consent-external",
-        action="store_true",
-        help="Consent to sending this synthetic project's mission, cases, policy and routines.",
-    )
-    parser.add_argument("--report", type=Path)
-    args = parser.parse_args()
-    settings = Settings()
-    try:
-        if args.engine:
-            if not args.project or not args.suite or not args.report:
-                parser.error("Baseline requires --project, --suite and --report.")
-            # Never overwrite a historical baseline report.
-            with args.report.open("x", encoding="utf-8") as stream:
-                report = asyncio.run(
-                    baseline(settings, args.project, args.suite, args.engine, args.consent_external)
-                )
-                json.dump(report, stream, ensure_ascii=False, indent=2)
-            print(f"Baseline saved to {args.report}; review actual answers and cited excerpts.")
-        else:
-            project, suite = seed(settings)
-            print(f"Project: {project.id}\nSuite: {suite.id}\nOpen /projects/{project.id}/test")
-            print("10 synthetic held-out cases saved. Owner review pending; no model calls made.")
-    except DomainError as exc:
-        parser.exit(1, exc.message + "\n")
-
-
-if __name__ == "__main__":
-    main()

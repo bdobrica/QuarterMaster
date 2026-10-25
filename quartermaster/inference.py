@@ -29,7 +29,7 @@ def model_alias(sha256: str) -> str:
 def identity(settings: Settings) -> str:
     if settings.local_base_url is None or settings.local_model_sha256 is None:
         raise DomainError(
-            "LOCAL_CONFIG: Set up the pinned local base model using docs/milestone-4.md."
+            "LOCAL_CONFIG: Set up the pinned local base model using docs/operator-guide.md."
         )
     return model_alias(settings.local_model_sha256)
 

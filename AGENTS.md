@@ -11,7 +11,7 @@ QuarterMaster is an independent, self-hosted **factory for personal, teachable A
 
 Order of intended design authority:
 
-**accepted ADRs (when added) → versioned contracts and privacy/security invariants → PLAN.md → TODO.md → README.md**.
+**accepted [ADRs](docs/adr/README.md) → versioned contracts and privacy/security invariants → PLAN.md → TODO.md → README.md**.
 
 Tests and existing code are evidence of behavior, not grounds to silently weaken an explicit invariant. If source documents conflict, explain the conflict and make the smallest safe, reviewable resolution; do not invent a major product policy.
 
@@ -30,7 +30,7 @@ Tests and existing code are evidence of behavior, not grounds to silently weaken
 - **Ask when missing data matters:** requesting clarification, refusing an unsupported recommendation, and reporting limitations are valid successful behaviors.
 - **No silent leakage:** keep post-decision outcomes out of decision inputs; protect frozen evaluation cases from training and synthetic-data prompts.
 - **Standalone export:** exported advisers must not require QuarterMaster's database or a frontier-model API for core advice.
-- **Generic contracts, narrow engines:** never hard-code real estate, TV selection, job choice, marketing, invoices or customer support into core schemas. The first real-estate demonstration is a fixture/use case, not the architecture.
+- **Generic contracts, narrow engines:** keep domain-specific fields out of core schemas. The apartment example is a use case, not the architecture.
 - **Portable teaching, compatible adapters:** knowledge and approved owner decisions must survive model swaps; a LoRA adapter generally belongs to a particular pinned base-model version and may require retraining.
 - **Single-user local MVP:** do not add multi-tenancy, cloud orchestration or enterprise machinery speculatively.
 
@@ -59,7 +59,7 @@ Tests and existing code are evidence of behavior, not grounds to silently weaken
 - Keep root README concise: current status, intended quick start, product loop, architecture, limits and links.
 - Update PLAN when the design or scope genuinely changes. Keep implementation work and acceptance criteria in TODO.
 - Add ADRs for irreversible cross-component decisions, not for every refactor. Once accepted, supersede rather than rewrite their meaning.
-- Use repository-relative Markdown links. Keep new docs consistent with the actual code and release status.
+- Use repository-relative Markdown links. Keep current operations in `docs/operator-guide.md` and durable decisions in `docs/adr/`; retrieve obsolete walkthroughs from Git instead of adding archives. Regression fixtures are test data, not product demos. Keep docs consistent with actual code and release status.
 - Do not create fake screenshots, benchmarks, certifications, cost figures, successful GPU runs, or runtime commands as if tested.
 - Avoid copying code or binding QuarterMaster to the private/internal data models of KitchenSoup, ThinkPixelSR or SecondContext. They are sources of design inspiration only; a public, versioned API integration would require separate approval.
 - Do not introduce product branding/trademark assumptions based on the QuarterMaster codename.

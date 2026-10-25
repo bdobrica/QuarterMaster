@@ -20,7 +20,7 @@ from tests import test_interview, test_teaching, test_training
 from tests.test_foundation import ref, select_knowledge, upload
 from tests.test_teaching import FakeBuilder, draft
 
-EXAMPLES = Path(__file__).parents[1] / "quartermaster/ui/static/examples"
+EXAMPLES = Path(__file__).parent / "fixtures/legacy-workflows"
 SECURITY = Path(__file__).parent / "fixtures/security"
 workshop = test_teaching.workshop
 guided = test_interview.guided
@@ -202,7 +202,7 @@ def test_demo_domains_same_public_teach_test_correct_evaluate_contracts(settings
             assert client.get(ui + tab).status_code == 200
 
 
-def test_blank_states_and_downloads_need_no_provider(client):
+def test_blank_states_and_current_example_need_no_provider(client):
     project = checked(
         client.post("/api/projects", json={"name": "Blank", "mission": "Advise."}), 201
     )["id"]
@@ -217,13 +217,15 @@ def test_blank_states_and_downloads_need_no_provider(client):
         assert page.status_code == 200 and expected in page.text
         assert 'href="/help"' in page.text and 'href="/examples"' in page.text
     page = client.get("/examples")
-    assert page.status_code == 200 and "AI-drafted fiction" in page.text
-    assert "Sample mission" in page.text and "Synthetic print-proof adviser" in page.text
+    assert page.status_code == 200 and "Apartment adviser example" in page.text
+    assert "are planned" in page.text
+    assert "Synthetic print-proof adviser" not in page.text
+    assert client.get("/api/projects").json()[0]["id"] == project
+    assert len(client.get("/api/projects").json()) == 1
     for domain in ("tool-rental", "print-shop", "social-post"):
         for filename in ("observations.csv", "knowledge.md", "scenario.json"):
             response = client.get(f"/static/examples/{domain}/{filename}")
-            assert response.status_code == 200
-            assert response.content == (EXAMPLES / domain / filename).read_bytes()
+            assert response.status_code == 404
     assert client.get("/help").status_code == 200
 
 

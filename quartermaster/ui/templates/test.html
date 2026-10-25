@@ -3,12 +3,12 @@
 <p><a href="/projects/{{ project.id }}">Teach · {{ project.name }}</a></p>
 <h1>Ask your adviser</h1>
 <p><a href="/projects/{{ project.id }}/evaluations">Review saved check questions and expected answers</a></p>
-<p>Teach → Test → Correct → Export. Ask a real question, check the evidence, then approve a reusable correction.</p>
+<p>Ask a question, inspect its evidence and record your review. Eligible corrections can become a separately reviewed teaching improvement.</p>
 {% if selected_test %}<p><a href="/projects/{{ project.id }}/test">Back to recent tests</a> · Viewing a saved original test</p>{% endif %}
 {% if project.advice_mode == 'hosted' %}<p>Advice uses the consented hosted model, current knowledge and approved lessons. Reviewed lessons change runtime context. No training job runs here.</p>{% else %}<p>Advice uses the selected active weights, current knowledge and approved lessons. Active weights: <strong>{{ model_labels.get(project.model.adapter_artifact, 'Base model v1.0.0') }}</strong>. Reviewed lessons change <strong>context, not model weights</strong>. No training job runs here.</p>{% endif %}
-{% if not local_ready and project.advice_mode == "local_only" %}<p role="status">Local inference is not configured. Follow the local model setup in docs/milestone-4.md, then return here. Teaching and lesson review remain available.</p>{% endif %}
+{% if not local_ready and project.advice_mode == "local_only" %}<p role="status">Local inference is not configured. Follow the local model setup in docs/operator-guide.md, then return here. Teaching and lesson review remain available.</p>{% endif %}
 <details><summary>Advice engine and data-sharing consent</summary>
-<p>Current mode: <strong>{{ project.advice_mode }}</strong>. Hosted advice is recommended for the useful demo; local-only advice is the privacy/offline alternative. Hosted advice requires provider connectivity and is not an offline export.</p>
+<p>Current mode: <strong>{{ project.advice_mode }}</strong>. Choose hosted advice with explicit data-sharing consent, or use local-only advice. Hosted advice requires provider connectivity and is not an offline export.</p>
 {% if hosted_ready %}<p>Configured provider: {{ hosted_endpoint }} · Model: {{ hosted_model }} · Reasoning effort: {{ hosted_effort or "provider default" }}</p>
 <form method="post" action="/projects/{{ project.id }}/advice-engine">
 <input type="hidden" name="expected_revision" value="{{ project.revision }}">
@@ -56,7 +56,7 @@
 </form></details>{% endif %}<details><summary>Saved context and model details</summary><p>{{ run.model_alias }}</p><p>Knowledge revision: {{ knowledge_labels.get(run.adviser.knowledge_revision, 'No knowledge') }} · Lesson selection revision: {{ run.adviser.lessons_revision or 'none' }}</p><pre>{{ run.context }}</pre></details>
 {% if run.evidence %}<details><summary>Knowledge supplied to this response · {{ run.evidence|length }} excerpts</summary><p>These excerpts were available to the model. Only the citations listed above were selected by it; availability alone does not establish support for a claim.</p>
 {% for item in run.evidence %}<p><a href="/projects/{{ project.id }}/citations/{{ item.citation_id }}?revision={{ run.adviser.knowledge_revision }}">{{ item.source_name }} · lines {{ item.line_start }}–{{ item.line_end }}</a></p><blockquote class="mission">{{ item.text }}</blockquote>{% endfor %}</details>{% endif %}
-</article>{% else %}<p>No test responses yet. Enter a situation with facts known before deciding to get a baseline response, then give a correction and retest a similar new situation. <a href="/examples">Try a synthetic situation</a>. A request for missing information is a valid result.</p>{% endfor %}
+</article>{% else %}<p>No test responses yet. Enter a situation with facts known before deciding to get a baseline response, then give a correction and retest a similar new situation. <a href="/examples">See the apartment example</a>. A request for missing information is a valid result.</p>{% endfor %}
 </section>
 <section id="lessons"><h2>Lessons to review</h2>
 {% for lesson in lessons %}{% set record = feedback[lesson.id|string] %}<article id="lesson-{{ lesson.id }}">

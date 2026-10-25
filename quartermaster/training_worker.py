@@ -575,7 +575,7 @@ def main():
     # Use the same bind-mounted data directory as the web app. No Docker socket
     # or training control privilege is ever mounted into the web service.
     if not settings.database_path.exists():
-        parser.error("Use the existing app data directory; see docs/milestone-6.md.")
+        parser.error("Use the existing app data directory; see docs/operator-guide.md.")
     migrate(settings.database_path)
     engine = DockerEngine(
         settings, args.base, args.base_gguf, args.trainer_image, args.runtime_image, args.gpu_mode
