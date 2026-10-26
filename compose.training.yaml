@@ -14,6 +14,8 @@ services:
       target: candidate-runtime
     image: quartermaster-candidate-runtime:m6
     pull_policy: never
+    environment:
+      QM_LOCAL_THREADS: ${QM_LOCAL_THREADS:-4}
     volumes:
       - ${QM_TRAINING_DATA_DIR:-./data/training-app}:/data:ro
     read_only: true
@@ -22,7 +24,7 @@ services:
     tmpfs: ["/tmp:rw,nosuid,nodev,size=64m"]
     init: true
     mem_limit: ${QM_LOCAL_MEMORY_LIMIT:-4g}
-    cpus: 4
+    cpus: ${QM_LOCAL_THREADS:-4}
     pids_limit: 128
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3)"]

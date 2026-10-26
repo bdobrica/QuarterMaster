@@ -17,6 +17,16 @@ MODEL_REVISION = "2fc06364715b967f1860aea9cf38778875588b17"
 LLAMA_REVISION = "1a24df163920a4744a95373d178d790b72a9bb2f"
 
 
+def thread_count(value):
+    try:
+        count = int(value)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError("Choose 1–32 local CPU threads") from None
+    if str(count) != str(value) or not 1 <= count <= 32:
+        raise argparse.ArgumentTypeError("Choose 1–32 local CPU threads")
+    return count
+
+
 def sha256(path):
     result = hashlib.sha256()
     with path.open("rb") as stream:
@@ -72,6 +82,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, default=Path("/model"))
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--threads", type=thread_count, default=os.getenv("QM_LOCAL_THREADS", "4"))
     args = parser.parse_args()
     try:
         record = verify(args.directory)
@@ -98,7 +109,7 @@ def main():
             "-c",
             "8192",
             "-t",
-            "4",
+            str(args.threads),
             "-ngl",
             "0",
             "--parallel",

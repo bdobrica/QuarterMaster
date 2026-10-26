@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import subprocess
 import threading
 import time
@@ -12,10 +13,10 @@ from pathlib import Path
 from uuid import UUID
 
 if __package__:
-    from quartermaster.local_runtime import sha256
+    from quartermaster.local_runtime import sha256, thread_count
     from quartermaster.model_pins import BASES, ORIGINAL_REVISION, model_limit
 else:
-    from local_runtime import sha256
+    from local_runtime import sha256, thread_count
     from model_pins import BASES, ORIGINAL_REVISION, model_limit
 
 
@@ -64,8 +65,9 @@ def verify(artifacts, candidate_id):
 
 
 class Gateway:
-    def __init__(self, artifacts):
+    def __init__(self, artifacts, threads=4):
         self.artifacts = artifacts
+        self.threads = thread_count(threads)
         self.lock = threading.Lock()
         self.process = None
         self.selected = None
@@ -99,7 +101,7 @@ class Gateway:
                 "-c",
                 "8192",
                 "-t",
-                "4",
+                str(self.threads),
                 "-ngl",
                 "0",
                 "--parallel",
@@ -199,9 +201,10 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifacts", type=Path, default=Path("/data/artifacts"))
+    parser.add_argument("--threads", type=thread_count, default=os.getenv("QM_LOCAL_THREADS", "4"))
     args = parser.parse_args()
     server = ThreadingHTTPServer(("0.0.0.0", 8080), Handler)
-    server.gateway = Gateway(args.artifacts)
+    server.gateway = Gateway(args.artifacts, args.threads)
     try:
         server.serve_forever()
     finally:
