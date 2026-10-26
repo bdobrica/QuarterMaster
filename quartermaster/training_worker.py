@@ -333,12 +333,10 @@ class DockerInference:
         return GroundedAdvice.model_validate_json(raw)
 
     async def predict(self, *, system, context, parameters=None):
-        from quartermaster.contracts.prediction import Prediction
-        from quartermaster.generation import unambiguous_json
-        from quartermaster.prediction_context import schema_for
+        from quartermaster.prediction_context import parse_answer, schema_for
 
         raw = await self.complete(system, context, parameters, schema_for(context))
-        return Prediction.model_validate(unambiguous_json(raw))
+        return parse_answer(raw, context)
 
     async def complete(self, system, context, parameters, schema):
         parameters = checked_parameters(parameters)

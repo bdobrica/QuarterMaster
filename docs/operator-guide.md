@@ -205,6 +205,8 @@ Report sanitized codes and record IDs, not private cases or credentials. `BUILDE
 
 `LOCAL_TIMEOUT` also covers the outer typed-prediction deadline. Wait for concurrent local training/conversion to finish or shorten the question before an explicit retry. A timeout does not establish that the model returned invalid JSON. The original request and failure remain reviewable; no target is created by a failed request alone.
 
+Typed Ask, candidate replay and portable inference share answer decoding. Repeating the same accessible excerpt in a response's bounded reference list is displayed once, with the price/category and explanation unchanged. Unknown references, lists longer than three and ambiguous JSON keys remain invalid; direct public Prediction validation still requires unique references. This normalization does not establish factual support or model quality, and never rewrites historical answers.
+
 For `TRAINING_*`/`EXAMPLE_*`, inspect reviewed targets, check exclusions, hardware bounds and saved failure state. For `EXPORT_*`, preserve the archive/report and inspect exact image/model/context bytes and isolated cleanup. For `STORAGE_*`, check permissions, disk and complete backups; never delete SQLite to suppress an error. See [third-party notices](third-party-licenses.md) before redistributing models or knowledge.
 
 

@@ -7,7 +7,7 @@ from copy import deepcopy
 from quartermaster.advice_context import assemble_context
 from quartermaster.contracts.prediction import Prediction, PredictionInput
 from quartermaster.errors import DomainError
-from quartermaster.generation import PARAMETERS
+from quartermaster.generation import PARAMETERS, unambiguous_json
 
 PROMPT_VERSION = "context/v4"
 SYSTEM = """You are a personal adviser, never an actor. Predict the owner's preferred number
@@ -96,6 +96,23 @@ def encoded(value):
 
 def digest(value):
     return hashlib.sha256(encoded(value).encode()).hexdigest()
+
+
+def parse_answer(content, context):
+    """Canonicalize repeated accessible refs; leave the public response contract strict."""
+    answer = unambiguous_json(content)
+    refs = answer.get("evidence_refs") if isinstance(answer, dict) else None
+    if isinstance(refs, list) and len(refs) <= 3 and all(isinstance(r, str) for r in refs):
+        captured = json.loads(context)
+        allowed = {
+            item["citation_id"]
+            for item in captured.get("source_excerpts", captured.get("retrieved_evidence", []))
+        }
+        if set(refs) <= allowed:
+            # No new evidence, unknown-reference removal or oversized-list acceptance.
+            # Preserve the price/category and explanation exactly as generated.
+            answer["evidence_refs"] = list(dict.fromkeys(refs))
+    return Prediction.model_validate(answer)
 
 
 def schema_for(context):

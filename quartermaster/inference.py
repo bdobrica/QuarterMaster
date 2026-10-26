@@ -133,12 +133,11 @@ class LocalInference:
         self.base_url = base_url
 
     async def predict(self, *, system, context, parameters=None):
-        from quartermaster.contracts.prediction import Prediction
-        from quartermaster.prediction_context import schema_for
+        from quartermaster.prediction_context import parse_answer, schema_for
 
         content, _ = await self._completion(system, context, parameters, schema_for(context))
         try:
-            return Prediction.model_validate(unambiguous_json(content))
+            return parse_answer(content, context)
         except (ValueError, TypeError, RecursionError):
             raise DomainError("PREDICTION_JSON: The model returned an invalid answer.") from None
 
