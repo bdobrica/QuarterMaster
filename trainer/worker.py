@@ -180,7 +180,7 @@ def training_args(output, *, cpu=False, recipe=None):
         max_length=recipe.max_length if recipe else MAX_LENGTH,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=1,
-        learning_rate=LEARNING_RATE,
+        learning_rate=getattr(recipe, "learning_rate", LEARNING_RATE),
         lr_scheduler_type="constant",
         warmup_steps=0,
         gradient_checkpointing=True,

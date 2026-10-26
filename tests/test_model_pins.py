@@ -56,9 +56,22 @@ def test_model_pairs_and_recipe_versions_are_closed_and_historical_defaults_unch
         with pytest.raises(ValidationError):
             ModelSpec(**fields)
     assert recipe_for(old, "quick") == training.recipe("quick")
-    new_recipe = recipe_for(new, "quick")
-    assert new_recipe.schema_version == "quartermaster.lora-recipe/v2"
+    # The stronger experiment overfit real owner cases; never make it the default.
+    assert recipe_for(new, "quick").schema_version == "quartermaster.lora-recipe/v2"
+    new_recipe = recipe_for(new, "quick", version="quartermaster.lora-recipe/v3")
+    assert new_recipe.schema_version == "quartermaster.lora-recipe/v3"
     assert new_recipe.precision == "nf4-float16"
+    assert new_recipe.learning_rate == 0.0002
+    previous = recipe_for(new, "quick", version="quartermaster.lora-recipe/v2")
+    assert previous.learning_rate == 0.00001
+    assert Recipe.model_validate_json(previous.model_dump_json()) == previous
+    for recipe in (previous, new_recipe):
+        with pytest.raises(ValidationError):
+            Recipe(**{**recipe.model_dump(), "learning_rate": 0.001})
+    with pytest.raises(ValidationError):
+        Recipe(**{**new_recipe.model_dump(), "learning_rate": 0.00001})
+    with pytest.raises(ValueError):
+        recipe_for(old, "quick", version="quartermaster.lora-recipe/v3")
     with pytest.raises(ValidationError):
         Recipe(**{**new_recipe.model_dump(), "schema_version": "quartermaster.lora-recipe/v1"})
     with pytest.raises(ValidationError):
@@ -256,6 +269,73 @@ def test_new_job_rejects_stale_trainer_capabilities_before_gpu_work(
     labels["io.quartermaster.prediction-context"] = "context/v6"
     engine.preflight(queued, job)
     assert len(stages) == 1
+    job = job.model_copy(
+        update={"recipe": recipe_for(job.model, "quick", version="quartermaster.lora-recipe/v3")}
+    )
+    # A previous quantized image cannot execute a new learning-rate version.
+    with pytest.raises(DomainError, match="TRAINING_IMAGE"):
+        engine.preflight(queued, job)
+    labels["io.quartermaster.training-recipe"] = "quartermaster.lora-recipe/v3"
+    engine.preflight(queued, job)
+    assert len(stages) == 2
+    legacy = job.model_copy(
+        update={"recipe": recipe_for(job.model, "quick", version="quartermaster.lora-recipe/v2")}
+    )
+    for label in ("quartermaster.lora-recipe/v2", "quartermaster.lora-recipe/v3"):
+        labels["io.quartermaster.training-recipe"] = label
+        engine.preflight(queued, legacy)
+
+
+@pytest.mark.parametrize("fmt", [NUMBER, CATEGORY])
+def test_frozen_quantized_recipe_keeps_its_original_rate_and_public_validation(
+    settings, collection, fmt
+):
+    installed(settings)
+    project, item, _ = setup(settings, collection, fmt)
+    configure(settings, project, fmt)
+    use_local_base(
+        settings,
+        project,
+        VersionedAction(expected_revision=get_adviser(settings.database_path, project).revision),
+    )
+    queued = predictions.prepare(settings, project, item.id, selection(settings, project, fmt))
+    job = training.read_job(settings, queued)
+    raw = serialize(job.examples)
+    frozen = job.model_dump_json()
+    assert verify_job(job, raw).model_dump_json() == frozen
+    assert job.recipe.learning_rate == 0.00001
+    experiment = job.model_copy(
+        update={"recipe": recipe_for(job.model, "quick", version="quartermaster.lora-recipe/v3")}
+    )
+    assert verify_job(experiment, raw).recipe.learning_rate == 0.0002
+    assert (training.directory(settings, queued.id) / "input/job.json").read_text() == (
+        job.model_dump_json()
+    )
+
+
+def test_trainer_uses_the_frozen_learning_rate_and_retains_legacy_defaults(tmp_path, monkeypatch):
+    import importlib.util
+    import sys
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    spec = importlib.util.spec_from_file_location(
+        "rate_checked_worker", Path(__file__).parents[1] / "trainer/worker.py"
+    )
+    worker = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(worker)
+    monkeypatch.setitem(sys.modules, "trl", SimpleNamespace(SFTConfig=lambda **kw: kw))
+    model = ModelSpec.for_revision(CAPABLE_REVISION)
+    for version, rate in (
+        ("quartermaster.lora-recipe/v2", 0.00001),
+        ("quartermaster.lora-recipe/v3", 0.0002),
+    ):
+        recipe = recipe_for(model, "standard", version=version)
+        config = worker.training_args(tmp_path, recipe=recipe)
+        assert config["learning_rate"] == rate
+        assert config["max_steps"] == 48 and config["max_length"] == 2048
+        assert config["completion_only_loss"] and not config["packing"]
+    assert worker.training_args(tmp_path)["learning_rate"] == 0.00001
 
 
 def test_portable_size_limit_is_bound_to_the_pinned_model(settings, tmp_path, monkeypatch):

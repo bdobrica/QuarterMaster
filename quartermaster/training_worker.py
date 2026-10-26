@@ -528,9 +528,13 @@ class DockerEngine:
             or trainer["Config"].get("Labels", {}).get("io.quartermaster.training-contract")
             != job.schema_version
             or (
-                job.recipe.schema_version == "quartermaster.lora-recipe/v2"
+                job.recipe.schema_version != "quartermaster.lora-recipe/v1"
                 and trainer["Config"].get("Labels", {}).get("io.quartermaster.training-recipe")
-                != "quartermaster.lora-recipe/v2"
+                not in (
+                    {"quartermaster.lora-recipe/v2", "quartermaster.lora-recipe/v3"}
+                    if job.recipe.schema_version == "quartermaster.lora-recipe/v2"
+                    else {"quartermaster.lora-recipe/v3"}
+                )
             )
             or (
                 job.schema_version == "quartermaster.training-job/v2"

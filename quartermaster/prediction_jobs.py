@@ -22,16 +22,23 @@ def dataset_bytes(dataset):
     ).encode()
 
 
-def recipe_for(model, preset):
+def recipe_for(model, preset, *, version=None):
+    quantized = model.base_revision == CAPABLE_REVISION
+    version = version or (
+        "quartermaster.lora-recipe/v2" if quantized else "quartermaster.lora-recipe/v1"
+    )
+    if (
+        quantized
+        and version not in {"quartermaster.lora-recipe/v2", "quartermaster.lora-recipe/v3"}
+    ) or (not quantized and version != "quartermaster.lora-recipe/v1"):
+        raise ValueError("The fixed recipe must match the pinned base")
     return Recipe(
+        schema_version=version,
         preset=preset,
         steps=12 if preset == "quick" else 48,
         seconds=1200 if preset == "quick" else 3600,
-        **(
-            {"schema_version": "quartermaster.lora-recipe/v2", "precision": "nf4-float16"}
-            if model.base_revision == CAPABLE_REVISION
-            else {}
-        ),
+        precision="nf4-float16" if quantized else "float32",
+        learning_rate=0.0002 if version == "quartermaster.lora-recipe/v3" else 0.00001,
     )
 
 
@@ -44,7 +51,7 @@ def verify_job(job, raw):
             and any(e.input.prompt_version != "context/v6" for e in job.examples)
         )
         or job.baseline != job.adviser.model
-        or job.recipe != recipe_for(job.model, job.recipe.preset)
+        or job.recipe != recipe_for(job.model, job.recipe.preset, version=job.recipe.schema_version)
         or job.project_id != job.teaching.project_id
         or job.adviser.id != job.project_id
         or job.adviser.outputs != "quartermaster.prediction/v1"

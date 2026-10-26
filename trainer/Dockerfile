@@ -88,7 +88,7 @@ ENTRYPOINT ["python", "/opt/trainer/decision_worker.py"]
 # Explicit generic contract; never advertise legacy jobs as accepting owner datasets.
 FROM trainer AS prediction-trainer
 LABEL io.quartermaster.training-contract="quartermaster.training-job/v2" \
-      io.quartermaster.training-recipe="quartermaster.lora-recipe/v2" \
+      io.quartermaster.training-recipe="quartermaster.lora-recipe/v3" \
       io.quartermaster.prediction-context="context/v6"
 COPY quartermaster/prediction_context.py quartermaster/prediction_jobs.py \
      quartermaster/advice_context.py quartermaster/generation.py quartermaster/errors.py \

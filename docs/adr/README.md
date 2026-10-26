@@ -14,6 +14,7 @@ These decisions retain the useful results of earlier work without keeping duplic
 | [0008](0008-stabilized-owner-loop.md) | Connect typed feedback, saved-page handoff and versioned owner-response prompts without changing historical artifacts. |
 | [0009](0009-visible-prediction-contract.md) | Show the full response contract, compact decision facts and align explanation/target generation without rewriting old profiles. |
 | [0010](0010-verified-local-model.md) | Use the verified pinned 4B base, bounded quantized LoRA recipe and compatible portable runtime while preserving historical models. |
+| [0011](0011-bounded-owner-preference-recipe.md) | Preserve the bounded stronger recipe experiment while retaining the existing default after overfitting and missing-information regressions. |
 
 Accepted ADRs describe intended design; they do not mark unfinished features complete. Supersede an accepted decision with a new ADR rather than rewriting its meaning.
 

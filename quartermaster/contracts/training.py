@@ -50,15 +50,17 @@ class ExampleSend(Consent):
 
 
 class Recipe(Contract):
-    schema_version: Literal["quartermaster.lora-recipe/v1", "quartermaster.lora-recipe/v2"] = (
-        "quartermaster.lora-recipe/v1"
-    )
+    schema_version: Literal[
+        "quartermaster.lora-recipe/v1",
+        "quartermaster.lora-recipe/v2",
+        "quartermaster.lora-recipe/v3",
+    ] = "quartermaster.lora-recipe/v1"
     preset: Literal["quick", "standard"]
     steps: Literal[12, 48]
     max_length: Literal[2048] = 2048
     rank: Literal[4] = 4
     alpha: Literal[8] = 8
-    learning_rate: Literal[0.00001] = 0.00001
+    learning_rate: Literal[0.00001, 0.0002] = 0.00001
     seed: Literal[17] = 17
     precision: Literal["float32", "nf4-float16"] = "float32"
     completion_only_loss: Literal[True] = True
@@ -67,7 +69,11 @@ class Recipe(Contract):
     @model_validator(mode="after")
     def precision_version(self):
         if (self.schema_version == "quartermaster.lora-recipe/v1") != (self.precision == "float32"):
-            raise ValueError("Quantized base training requires the version 2 recipe")
+            raise ValueError("Quantized base training requires a quantized recipe version")
+        if self.learning_rate != (
+            0.0002 if self.schema_version == "quartermaster.lora-recipe/v3" else 0.00001
+        ):
+            raise ValueError("The learning rate must match the fixed recipe version")
         return self
 
 

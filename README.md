@@ -2,9 +2,7 @@
 
 A self-hosted workshop for teaching a personal AI adviser: **Collect → Teach → Ask → optional Review**. The intended loop turns accepted answers and corrections into reusable teaching evidence automatically. Approved knowledge changes affect context immediately; model behavior changes through separately authorized LoRA training.
 
-**Status:** the four-activity workflow has been exercised in Chromium with consented extraction, personal judgments and automatic correction-to-teaching reuse. The preferred pinned local 4B model passes twelve controlled number/category/missing-information checks and a real-browser follow-up. A bounded GPU LoRA run and fresh offline export check completed, but the candidate did not improve the taught answers and remains unselected. Useful unseen advice on the owner's material and an uncoached nontechnical trial remain open. See the [stabilization record](TODO.md#mvp-stabilization--2026-10-25).
-
-A further agent simulation used the owner’s actual saved listings and three personal EUR judgments, including automatic correction reuse. The first longer candidate still failed its price replay and was left unselected; the owner deferred UI inspection.
+**Status:** the four activities have been exercised in Chromium, including the owner's actual saved listings, three personal EUR judgments and automatic correction reuse. The pinned 4B base passes twelve controlled generation checks; bounded GPU training and fresh offline export also run. The stronger owner-material candidate fitted two taught prices but copied the wrong apartment and ignored missing area. It remains unselected, with the previous training default retained. Useful personalization and an uncoached human trial remain open; the owner deferred UI inspection. See the [stabilization record](TODO.md#mvp-stabilization--2026-10-25).
 
 The current example is personal apartment valuation. Its [starting policies](examples/apartments/owner-policies.md) distinguish owner preferences and unverified assumptions. Core schemas stay generic.
 
