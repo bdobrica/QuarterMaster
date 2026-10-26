@@ -4,6 +4,8 @@ A self-hosted workshop for teaching a personal AI adviser: **Collect → Teach �
 
 **Status:** the four-activity workflow has been exercised in Chromium with consented extraction, personal judgments and automatic correction-to-teaching reuse. The preferred pinned local 4B model passes twelve controlled number/category/missing-information checks and a real-browser follow-up. A bounded GPU LoRA run and fresh offline export check completed, but the candidate did not improve the taught answers and remains unselected. Useful unseen advice on the owner's material and an uncoached nontechnical trial remain open. See the [stabilization record](TODO.md#mvp-stabilization--2026-10-25).
 
+A further agent simulation used the owner’s actual saved listings and three personal EUR judgments, including automatic correction reuse. The first longer candidate still failed its price replay and was left unselected; the owner deferred UI inspection.
+
 The current example is personal apartment valuation. Its [starting policies](examples/apartments/owner-policies.md) distinguish owner preferences and unverified assumptions. Core schemas stay generic.
 
 ## Start the current application
